@@ -1,8 +1,8 @@
 {
-  "name": "game-icarros-functions",
+  "name": "game-aura-functions",
   "private": true,
   "main": "index.js",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "dependencies": {
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.0.1"

@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Credenciais
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -20,4 +20,4 @@ jobs:
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="$HOME/sa.json"
           PROJETO=$(node -p "require('./.firebaserc').projects.default")
-          npx -y firebase-tools@13 deploy --only firestore:rules --project "$PROJETO" --non-interactive
+          npx -y firebase-tools@latest deploy --only firestore:rules --project "$PROJETO" --non-interactive
