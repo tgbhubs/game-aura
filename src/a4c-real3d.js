@@ -191,7 +191,7 @@ function criar3DReal(E) {
     });
     return g;
   }
-  var meu = carro(0xEC7000, { farois: true }); scene.add(meu);
+  var meu = carro(0x2F7FE0, { farois: true }); scene.add(meu);
   // carro escolhido na garagem: troca o modelo do Aura pelo modelo 3D quando ele terminar de carregar
   var cfgCarro = CARROS[E.carro] || CARROS.aura;
   if (cfgCarro.arquivo) carregarModeloCarro(E.carro, function (modelo) {
@@ -258,7 +258,7 @@ function criar3DReal(E) {
   var matCobertura = new T.MeshStandardMaterial({ color: cor(0x1B2C70), roughness: 0.45, metalness: 0.3 });
   var matLaranja = new T.MeshStandardMaterial({ color: cor(0xEC7000), roughness: 0.5, emissive: cor(0x6A2E00), emissiveIntensity: 0.4 });
   var matVidroCab = new T.MeshStandardMaterial({ color: cor(0x9CC9FF), metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.65 });
-  var CORES_PARADOS = [0xE6E8EC, 0x8E97A6, 0x202329, 0xA8322B, 0x2F5D9A, 0x6B6F55];
+  var CORES_PARADOS = [0xE6E8EC, 0x8E97A6, 0x202329, 0xC9CDD3, 0x4F5A4C, 0x6B6F55];
   function criarMesh(o) {
     var g = new T.Group(), wm = o.w * K, lm = o.h * K;
     if (o.tipo === 'cone') {

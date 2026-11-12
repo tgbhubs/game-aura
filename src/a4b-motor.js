@@ -13,8 +13,8 @@ function carregarThree(cb) {
 }
 /* Garagem: modelos de carro do 3D realista */
 var CARROS = {
-  aura: { nome: 'Aura', desc: 'O carro da casa, laranja' },
-  conceito: { nome: 'Conceito', desc: 'Esportivo vermelho', arquivo: 'assets/carros/conceito.glb', rotY: Math.PI },
+  aura: { nome: 'Aura', desc: 'O carro da casa, azul' },
+  conceito: { nome: 'Conceito', desc: 'Esportivo laranja', arquivo: 'assets/carros/conceito.glb', rotY: Math.PI, pintura: { material: 'body', cor: 0xB04600 } },
   cyberpunk: { nome: 'Cyberpunk', desc: 'Muscle car grafite', arquivo: 'assets/carros/cyberpunk.glb', rotY: 0 }
 };
 var GLTF_URL = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
@@ -36,6 +36,10 @@ function carregarModeloCarro(id, cb) {
       var raiz = new THREE.Group(), obj = g.scene; raiz.add(obj);
       obj.rotation.y = cfg.rotY || 0; raiz.updateMatrixWorld(true);
       var total = new THREE.Box3().setFromObject(obj), tz = total.getSize(new THREE.Vector3());
+      if (cfg.pintura) obj.traverse(function (m) {
+        if (!m.isMesh) return;
+        (Array.isArray(m.material) ? m.material : [m.material]).forEach(function (mt) { if (mt && mt.name === cfg.pintura.material) { mt.color.setHex(cfg.pintura.cor).convertSRGBToLinear(); } });
+      });
       var bx = new THREE.Box3(), achou = false, temRigida = false;
       // malhas com esqueleto (skinned) têm caixa da pose original, que não bate com o que aparece na tela: mede só as rígidas (rodas etc.)
       obj.traverse(function (m) { if (m.isMesh && !m.isSkinnedMesh) temRigida = true; });
@@ -294,7 +298,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       g.add(sombra(2.4, 3.6));
       return g;
     }
-    var meu = carro(0xEC7000, 0xB85600); scene.add(meu);
+    var meu = carro(0x2F7FE0, 0x1F5FB5); scene.add(meu);
     // texturas dos itens
     var texTag = canvasTex(128, 96, function (g, w, h) { g.fillStyle = '#14235E'; rr(g, 4, 4, w - 8, h - 8, 16); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke(); g.fillStyle = '#EC7000'; g.font = '900 44px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAG', w / 2, h / 2 + 2); });
     var texSeg = canvasTex(128, 160, function (g, w, h) {
@@ -319,7 +323,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         var b1 = new T.Mesh(new T.CircleGeometry(0.5, 20), matBordaB); b1.rotation.x = -Math.PI / 2; b1.scale.set(wm, lm * 1.4, 1); b1.position.y = 0.008; g.add(b1);
         var b2 = new T.Mesh(new T.CircleGeometry(0.42, 20), matBuraco); b2.rotation.x = -Math.PI / 2; b2.scale.set(wm, lm * 1.4, 1); b2.position.y = 0.01; g.add(b2);
       } else if (o.tipo === 'carro') {
-        var cc = carro(0x5E7FA8, 0x3F5C82); cc.rotation.y = 0; g.add(cc); g.userData.pisca = cc.userData.lanternas;
+        var cc = carro(0x9AA1AC, 0x666C76); cc.rotation.y = 0; g.add(cc); g.userData.pisca = cc.userData.lanternas;
       } else if (o.tipo === 'cancela') {
         var poste = new T.Mesh(new T.BoxGeometry(0.2, 1.1, 0.2), matBranco); poste.position.set(-LANE * K / 2 + 0.15, 0.55, 0); g.add(poste);
         var piv = new T.Group(); piv.position.set(-LANE * K / 2 + 0.15, 0.95, 0); g.add(piv);
@@ -410,7 +414,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillStyle = '#23262E'; ctx.beginPath(); ctx.ellipse(cx, bot - o.h / 2, o.w / 2, o.h / 2, 0, 0, 7); ctx.fill();
         ctx.strokeStyle = '#555B69'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = '#15171C'; ctx.beginPath(); ctx.ellipse(cx + 4, bot - o.h / 2 + 3, o.w / 3, o.h / 3.2, 0, 0, 7); ctx.fill();
-      } else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#5E7FA8', '#3F5C82', true);
+      } else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#9AA1AC', '#666C76', true);
       else if (o.tipo === 'cancela') {
         if (o.lane === 0) { ctx.fillStyle = '#14235E'; rr(ctx, 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); rr(ctx, W - R0 + 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.fillRect(2, top - 18, R0 - 4, 6); ctx.fillRect(W - R0 + 2, top - 18, R0 - 4, 6); }
         ctx.fillStyle = '#C9CED8'; rr(ctx, cx - 50, top - 6, 10, o.h + 12, 3); ctx.fill();
@@ -429,7 +433,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillText('PEDÁGIO', W / 2, bot - 20); ctx.fillRect(R0 + 12, bot - 2, ROAD - 24, 4); ctx.restore();
       }
     });
-    if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) carroClassico(ctx, R0 + s.x, CY, '#EC7000', '#B85600', false);
+    if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) carroClassico(ctx, R0 + s.x, CY, '#2F7FE0', '#1F5FB5', false);
     if (s.tag) { ctx.fillStyle = '#14235E'; rr(ctx, R0 + s.x - 11, CY + 30, 22, 14, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 8px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', R0 + s.x, CY + 37); }
   }
 
@@ -498,8 +502,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     A.grama = ruido(256, 256, '#4E7F3A', ['#5A8C43', '#44733A', '#5F9246', '#3E6A33', '#6B9A4C'], 7000, 3);
     A.terra = ruido(128, 128, '#9C8E77', ['#A89A82', '#8F826C', '#B1A48C'], 1800, 2);
     A.carros = {
-      eu: spriteCarro('#EC7000', '#A84E00'),
-      p: [spriteCarro('#E9ECF1', '#A9AFBA'), spriteCarro('#8E97A6', '#59606C'), spriteCarro('#23262D', '#0D0F12'), spriteCarro('#A8322B', '#6E1C17'), spriteCarro('#2F5D9A', '#1B3A63')]
+      eu: spriteCarro('#2F7FE0', '#1A4E99'),
+      p: [spriteCarro('#E9ECF1', '#A9AFBA'), spriteCarro('#8E97A6', '#59606C'), spriteCarro('#23262D', '#0D0F12'), spriteCarro('#C9CDD3', '#8C929C'), spriteCarro('#4F5A4C', '#2F372E')]
     };
     A.sombraCarro = spriteSombra(44, 84);
     A.arvores = [spriteArvore(34, 11), spriteArvore(42, 23), spriteArvore(28, 37), spriteArvore(38, 51)];
