@@ -110,7 +110,7 @@ function telaPendente() {
 /* ---------- App ---------- */
 var ABAS = [['inicio', '🏠', 'Início'], ['jogar', '🎮', 'Jogar'], ['ranking', '🏆', 'Ranking'], ['perfil', '👤', 'Perfil'], ['regras', '📘', 'Regras']];
 function shell() {
-  var h = bannerDemo() + '<div class="top"><div class="wrap"><div class="row" style="align-items:center">' + wm(28) + '<span class="pill-game">GAME</span></div>' +
+  var h = bannerDemo() + '<div class="top"><div class="wrap"><button class="logo-home" data-a="tab" data-v="inicio" aria-label="Voltar para o início">' + wm(28) + '<span class="pill-game">GAME</span></button>' +
     '<button style="background:none;border:0;padding:0" data-a="tab" data-v="perfil">' + avatar(S.me, S.user.uid) + '</button></div></div><div class="wrap">';
   var t = S.tab;
   if (t === 'adm' && !ehAdm()) t = 'inicio';
