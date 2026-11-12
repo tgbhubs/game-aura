@@ -8,7 +8,7 @@
   L.TENTATIVAS = 3;
   L.N_PERGUNTAS = 10;
   L.TEMAS = ['Carros e curiosidades', 'Mobilidade, pedágio e tag', 'ConectCar e sócios', 'icarros', 'Quem é quem'];
-  L.MIX_PADRAO = { 'Carros e curiosidades': 3, 'Mobilidade, pedágio e tag': 2, 'ConectCar e sócios': 2, 'icarros': 1, 'Quem é quem': 2 };
+  L.MIX_PADRAO = { 'Carros e curiosidades': 6, 'Mobilidade, pedágio e tag': 4, 'ConectCar e sócios': 0, 'icarros': 0, 'Quem é quem': 0 };
   L.PREENCHIMENTO = ['Carros e curiosidades', 'Mobilidade, pedágio e tag', 'ConectCar e sócios', 'icarros'];
   L.DIA = 86400000;
 

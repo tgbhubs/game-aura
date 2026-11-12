@@ -53,7 +53,7 @@ function formTemporada() {
   var hoje = Logica.inicioSemana(Date.now() + 7 * DIA);
   var h = '<h3>Nova temporada</h3><label class="f">Nome</label><input class="inp" id="tNome" value="Temporada ' + (Object.keys(D.temporadas).length + 1) + '">' +
     '<label class="f">Começa na semana de (a rodada abre na segunda 00:00)</label><input class="inp" id="tIni" type="date" value="' + msParaData(hoje) + '">' +
-    '<div class="grid2"><div><label class="f">Semanas</label><input class="inp" id="tSem" type="number" min="1" max="26" value="13"></div><div><label class="f">Fator k da corrida</label><input class="inp" id="tK" type="number" min="10" max="120" value="' + ((tempAtiva() || {}).k || 40) + '"></div></div>' +
+    '<div class="grid2"><div><label class="f">Semanas</label><input class="inp" id="tSem" type="number" min="1" max="26" value="10"></div><div><label class="f">Fator k da corrida</label><input class="inp" id="tK" type="number" min="10" max="120" value="' + ((tempAtiva() || {}).k || 40) + '"></div></div>' +
     '<label class="f">Mix por rodada (soma 10)</label>';
   TEMAS.forEach(function (x, i) { h += '<div class="row between" style="margin:6px 0"><span class="small">' + esc(x) + '</span><input class="inp" style="width:80px" type="number" min="0" max="10" id="tMix' + i + '" value="' + Logica.MIX_PADRAO[x] + '"></div>'; });
   h += '<label class="f">Novo código de acesso (opcional)</label><input class="inp" id="tCod" autocapitalize="characters" placeholder="ex.: ICARROS-T2">' +
