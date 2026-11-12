@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Como jogar · Game Aura</title>
+<meta name="description" content="Guia rápido do Game Aura: como entrar, como funcionam o quiz, a corrida, o Placa! e os rankings.">
+<meta name="theme-color" content="#14235E">
+<link rel="apple-touch-icon" href="assets/icone-180.png">
+<link rel="icon" type="image/png" href="assets/icone-192.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Game Aura">
+<meta property="og:title" content="Como jogar o Game Aura">
+<meta property="og:description" content="Quiz, corrida e Placa! do time: como entrar e como pontuar.">
+<meta property="og:url" content="https://tgbhubs.github.io/game-aura/como-jogar.html">
+<meta property="og:image" content="https://tgbhubs.github.io/game-aura/assets/og-game-aura.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#14235E;--navy2:#1C398E;--lar:#EC7000;--areia:#F4F1EA;--ink:#14235E;--mut:#5B6684;--line:#E4DED2;--azul:#499EF2;--card:#fff}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--areia);color:var(--ink);font:16px/1.55 'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+h1,h2,h3,.m{font-family:'Montserrat',system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+a{color:inherit}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+header{background:var(--navy);color:var(--areia);padding:calc(env(safe-area-inset-top) + 28px) 0 34px;position:relative;overflow:hidden}
+header:after{content:"";position:absolute;right:-120px;top:0;bottom:0;width:300px;background:var(--navy2);transform:skewX(-12deg)}
+header .wrap{position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:52px;height:52px;border-radius:14px}
+.pill{display:inline-block;background:var(--lar);color:var(--navy);font:900 13px/1 'Montserrat',sans-serif;letter-spacing:.14em;padding:7px 12px;border-radius:99px;transform:skewX(-10deg)}
+header h1{font-size:clamp(28px,7vw,40px);font-weight:900;margin-top:22px;text-wrap:balance}
+header p{margin:8px 0 0;opacity:.82;max-width:34em}
+.acesso{margin-top:22px;background:rgba(255,255,255,.08);border-radius:18px;padding:16px;display:grid;gap:12px}
+.cta{display:block;text-align:center;background:var(--lar);color:var(--navy);font:900 18px/1 'Montserrat',sans-serif;text-decoration:none;padding:17px;border-radius:14px}
+.cod{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cod span{font-size:14px;opacity:.8}
+.cod b{font:800 22px/1 'Montserrat',sans-serif;letter-spacing:.04em;background:var(--areia);color:var(--navy);padding:9px 14px;border-radius:10px;user-select:all}
+main{padding:26px 0 40px}
+section{background:var(--card);border-radius:20px;padding:20px 20px 18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(20,35,94,.05),0 6px 18px rgba(20,35,94,.05)}
+section h2{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.n{flex:none;width:30px;height:30px;border-radius:9px;background:var(--navy);color:var(--areia);font:900 15px/30px 'Montserrat',sans-serif;text-align:center}
+section p{margin:0 0 10px}
+ul,ol{margin:0;padding-left:20px}
+li{margin:6px 0}
+li::marker{color:var(--lar)}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.bloco{background:var(--areia);border-radius:14px;padding:14px}
+.bloco h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.bloco ul{padding-left:18px;font-size:15px}
+table{border-collapse:collapse;width:100%;max-width:340px;font-variant-numeric:tabular-nums;margin-top:8px}
+td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:15px}
+th{font:800 12px 'Montserrat',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+td:last-child,th:last-child{text-align:right}
+.nota{font-size:14px;color:var(--mut)}
+.so{font-size:14px;color:var(--mut);margin-top:10px}
+footer{text-align:center;color:var(--mut);font-size:14px;padding:0 0 calc(env(safe-area-inset-bottom) + 30px)}
+footer .cta{max-width:360px;margin:0 auto 14px}
+@media (max-width:520px){.dupla{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand"><img src="assets/icone-192.png" alt=""><span class="pill">GAME AURA</span></div>
+  <h1>Como jogar o Game Aura</h1>
+  <p>Toda semana tem rodada nova com quiz e corrida, e a qualquer hora dá para chamar o time para uma partida de Placa!. É só pela diversão: ranking, conquistas e muita resenha.</p>
+  <div class="acesso">
+    <a class="cta" href="./">Abrir o Game Aura</a>
+    <div class="cod"><span>Código de acesso da temporada</span><b>gameicarros</b></div>
+  </div>
+</div></header>
+
+<main><div class="wrap">
+  <section>
+    <h2><span class="n">1</span>Entre no app</h2>
+    <ol>
+      <li>Abra o link e entre com a sua conta <b>Google</b> ou crie um login com <b>e-mail e senha</b>.</li>
+      <li>Preencha nome, um <b>apelido</b> (é ele que aparece no ranking) e a sua <b>área</b>.</li>
+      <li>Digite o código <b>gameicarros</b>. Com ele você entra na hora; sem ele, o cadastro fica esperando aprovação.</li>
+    </ol>
+    <p class="so"><b>Dica:</b> salve o app na tela inicial. No iPhone, abra no Safari, toque em Compartilhar e depois em "Adicionar à Tela de Início". No Android, no Chrome, toque nos três pontinhos e em "Adicionar à tela inicial".</p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>A rodada da semana</h2>
+    <p>A rodada vai de <b>segunda 00:00 a domingo 23:59</b>. Jogue as duas etapas quando quiser, em qualquer ordem. Cada etapa vale até 100 pontos, então a rodada vale até <b>200</b>.</p>
+    <div class="dupla">
+      <div class="bloco"><h3>🧠 Quiz</h3><ul>
+        <li>10 perguntas, 4 alternativas, 20 segundos cada.</li>
+        <li><b>Uma tentativa</b> por rodada.</li>
+        <li>10 pontos por acerto. Tempo esgotado conta como erro.</li>
+        <li>Desempate: quem acertou mais rápido.</li>
+      </ul></div>
+      <div class="bloco"><h3>🏎️ Corrida</h3><ul>
+        <li>Toque à esquerda ou à direita para trocar de faixa e desviar de cones, buracos e carros.</li>
+        <li><b>3 tentativas</b>; vale o melhor tempo.</li>
+        <li><b>Seguro Porto</b> (escudo azul): vida extra, até 2.</li>
+        <li><b>Pedágio</b> fecha todas as faixas: com a <b>TAG</b> você passa direto; sem ela, perde 5 segundos.</li>
+      </ul></div>
+    </div>
+    <p style="margin-top:14px">Na corrida, os pontos vêm só do seu tempo, não da posição dos outros:</p>
+    <table><tr><th>Melhor tempo</th><th>Pontos</th></tr>
+      <tr><td>30 s</td><td>53</td></tr><tr><td>60 s</td><td>78</td></tr><tr><td>90 s</td><td>89</td></tr><tr><td>120 s</td><td>95</td></tr></table>
+    <p class="so">Quer aquecer? O treino da corrida é livre e não gasta tentativa. Dá para escolher o visual da pista e o carro.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Placa!, o jogo de cartas</h2>
+    <p>Mesa online de 2 a 6 pessoas, no estilo do UNO. Na aba <b>Jogar</b>, crie uma mesa ou entre numa que esteja esperando gente. A partida começa quando a mesa lota.</p>
+    <ul>
+      <li>Jogue uma carta da mesma <b>cor</b>, <b>número</b> ou <b>símbolo</b> da mesa. Sem jogada, compre 1.</li>
+      <li>Cartas especiais: <b>Pedágio</b> (o próximo perde a vez), <b>Retorno</b> (inverte o sentido), <b>Guincho +2</b> (acumula: dá para devolver com outro Guincho), <b>Seguro</b> (escolhe a cor) e <b>Seguro Total +4</b>.</li>
+      <li>Ao ficar com 1 carta, toque em <b>Placa!</b>. Esqueceu? Qualquer um pode tocar em <b>Multa!</b> e você compra 2.</li>
+      <li>Ganha quem zerar a mão primeiro. Não tem tempo por jogada e dá para pausar.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>Rankings e conquistas</h2>
+    <ul>
+      <li><b>Rodada:</b> quiz + corrida da semana.</li>
+      <li><b>Temporada:</b> soma de todas as rodadas.</li>
+      <li><b>Áreas:</b> média de quem jogou em cada área (mínimo de 3 pessoas).</li>
+      <li><b>Placa!:</b> ranking próprio, por vitórias (a partir de 5 partidas).</li>
+    </ul>
+    <p class="so">As conquistas aparecem no seu Perfil. Toque numa delas para gerar uma imagem e compartilhar.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>Combinado do jogo</h2>
+    <p>É um jogo de integração: nada de pesquisar respostas ou passar gabarito. A graça é descobrir junto e zoar o ranking na segunda-feira.</p>
+    <p class="nota">As regras completas ficam na aba <b>Regras</b>, dentro do app.</p>
+  </section>
+</div></main>
+
+<footer><div class="wrap">
+  <a class="cta" href="./">Abrir o Game Aura</a>
+  Dúvidas ou sugestões? Fale com o Tarcísio.
+</div></footer>
+</body>
+</html>
