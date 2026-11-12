@@ -1,0 +1,8 @@
+node_modules/
+functions/node_modules/
+*.log
+
+# Gabarito: nunca publicar
+src/banco-perguntas.json
+demo.html
+*.xlsx

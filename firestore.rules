@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signed() { return request.auth != null; }
+    function cfgPath() { return /databases/$(db)/documents/config/geral; }
+    function mePath() { return /databases/$(db)/documents/jogadores/$(request.auth.uid); }
+    function isMaster() { return signed() && exists(cfgPath()) && get(cfgPath()).data.masterUid == request.auth.uid; }
+    function isAtivo() { return signed() && exists(mePath()) && get(mePath()).data.status == 'ativo'; }
+    function isAdm() { return isMaster() || (isAtivo() && get(mePath()).data.papel == 'adm'); }
+    function codigoOk(c) {
+      return c is string && c != ''
+        && exists(/databases/$(db)/documents/segredos/acesso)
+        && get(/databases/$(db)/documents/segredos/acesso).data.codigo == c;
+    }
+    function muda(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos); }
+    function soMuda(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos); }
+
+    // Configuração geral: o primeiro login vira Master
+    match /config/geral {
+      allow read: if true;
+      allow create: if signed() && request.resource.data.keys().hasOnly(['masterUid'])
+                    && request.resource.data.masterUid == request.auth.uid;
+      allow update: if isAdm() && request.resource.data.masterUid == resource.data.masterUid;
+    }
+    match /segredos/{id} { allow read, write: if isAdm(); }
+
+    match /areas/{id} {
+      allow read: if true;
+      allow create: if isAdm() || (signed() && request.resource.data.status == 'pendente');
+      allow update, delete: if isAdm();
+    }
+    match /temporadas/{id} { allow read: if true; allow write: if isAdm(); }
+    match /rodadas/{id} { allow read: if isAtivo(); allow write: if isAdm(); }
+    match /perguntas/{id} { allow read, write: if isAdm(); }
+    match /gabarito/{id} { allow read, write: if isAdm(); }
+
+    match /jogadores/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAtivo());
+      allow create: if signed() && request.auth.uid == uid && request.resource.data.uid == uid && (
+           (request.resource.data.papel == 'master' && request.resource.data.status == 'ativo' && isMaster())
+        || (request.resource.data.papel == 'jogador' && request.resource.data.status == 'pendente')
+        || (request.resource.data.papel == 'jogador' && request.resource.data.status == 'ativo' && codigoOk(request.resource.data.codigoAcesso))
+      );
+      allow update: if
+           (signed() && request.auth.uid == uid && !muda(['papel', 'status', 'uid']))
+        || (signed() && request.auth.uid == uid && resource.data.status == 'pendente'
+              && request.resource.data.status == 'ativo' && soMuda(['status', 'codigoAcesso'])
+              && codigoOk(request.resource.data.codigoAcesso))
+        || (isAdm() && uid != get(cfgPath()).data.masterUid && !muda(['papel', 'uid']))
+        || (isMaster() && !muda(['uid']));
+      allow delete: if isMaster();
+    }
+
+    // Resultados: escritos só pelas Cloud Functions
+    match /quiz/{id} { allow read: if signed() && (resource.data.uid == request.auth.uid || isAdm()); allow write: if false; }
+    match /corrida/{id} { allow read: if signed() && (resource.data.uid == request.auth.uid || isAdm()); allow write: if false; }
+    match /placar/{id} { allow read: if isAtivo(); allow write: if false; }
+    // Placa!: tudo é gravado pelo servidor (Cloud Function "placa"). Cada pessoa lê só a própria mão; o monte ninguém lê.
+    match /mesas/{id} { allow read: if isAtivo(); allow write: if false; }
+    match /maos/{id} { allow read: if signed() && id.matches('.+_' + request.auth.uid); allow write: if false; }
+    match /montes/{id} { allow read, write: if false; }
+    match /placaPartidas/{id} { allow read: if isAtivo(); allow write: if false; }
+  }
+}
