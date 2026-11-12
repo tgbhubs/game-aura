@@ -29,15 +29,16 @@ var PICO = {
   ret: '<svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15h20l-6-6"/><path d="M31 25H11l6 6"/></svg>',
   seg: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4l13 5v9c0 9-5.6 15.4-13 18C12.6 33.4 7 27 7 18V9z" fill="currentColor"/><path d="M14 19l4.5 4.5L27 15" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
-function cartaHTML(id, extra, attrs) {
+function cartaHTML(id, extra, attrs, tag) {
+  tag = tag || 'button';
   var c = Placa.carta(id), cls = 'pc ' + (c.curinga ? 'cw' : 'c' + c.cor) + (extra ? ' ' + extra : '');
   var mio, canto;
   if (/^\d$/.test(c.v)) { mio = '<span class="pv">' + c.v + '</span>'; canto = c.v; }
   else if (c.v === 'g2') { mio = '<span class="pv sm">+2</span>'; canto = '+2'; }
   else if (c.v === 's4') { mio = PICO.seg + '<span class="pmais">+4</span>'; canto = '+4'; }
   else { mio = PICO[c.v]; canto = c.v === 'ped' ? '⊘' : c.v === 'ret' ? '⇄' : '★'; }
-  return '<button class="' + cls + '" ' + (attrs || '') + ' aria-label="' + esc(Placa.nomeCarta(id)) + '"><span class="pk">' + canto + '</span><span class="po">' + mio + '</span>' +
-    (PROTULO[c.v] ? '<span class="pr">' + PROTULO[c.v] + '</span>' : '') + '</button>';
+  return '<' + tag + ' class="' + cls + '" ' + (attrs || '') + (tag === 'button' ? ' aria-label="' + esc(Placa.nomeCarta(id)) + '"' : ' aria-hidden="true"') + '><span class="pk">' + canto + '</span><span class="po">' + mio + '</span>' +
+    (PROTULO[c.v] ? '<span class="pr">' + PROTULO[c.v] + '</span>' : '') + '</' + tag + '>';
 }
 function versoHTML(extra, attrs, n) {
   return '<button class="pc verso' + (extra ? ' ' + extra : '') + '" ' + (attrs || '') + '><span class="pvl">PLACA!</span>' + (n != null ? '<span class="pn">' + n + '</span>' : '') + '</button>';
@@ -52,7 +53,7 @@ function minhasMesasVez() {
 function avisoVezPlaca() {
   var l = minhasMesasVez();
   if (!l.length) return '';
-  return '<button class="pvez" data-a="placaAbrir" data-v="' + l[0] + '"><span class="pvez-c">' + cartaHTML('L.7.1', 'mini') + '</span><span style="flex:1;text-align:left"><b>Sua vez no Placa!</b><span>' + (l.length > 1 ? l.length + ' mesas esperando você' : 'A mesa está esperando sua jogada') + '</span></span><span class="tag gold">Jogar</span></button>';
+  return '<button class="pvez" data-a="placaAbrir" data-v="' + l[0] + '"><span class="pvez-c">' + cartaHTML('L.7.1', 'mini', '', 'span') + '</span><span style="flex:1;text-align:left"><b>Sua vez no Placa!</b><span>' + (l.length > 1 ? l.length + ' mesas esperando você' : 'A mesa está esperando sua jogada') + '</span></span><span class="tag gold">Jogar</span></button>';
 }
 function secaoPlaca() {
   var me = S.user.uid;
@@ -64,7 +65,7 @@ function secaoPlaca() {
   });
   var jogando = Object.keys(D.mesas).filter(function (k) { var m = D.mesas[k]; return m.status !== 'aguardando' && m.uids.indexOf(me) < 0; }).length;
   var h = '<div class="sec">Placa! · jogo de cartas</div><div class="card pl-card">' +
-    '<div class="row" style="gap:12px;align-items:flex-start"><div class="pl-leque">' + cartaHTML('A.ped.1', 'mini') + cartaHTML('L.7.1', 'mini') + cartaHTML('W.s4.1', 'mini') + '</div>' +
+    '<div class="row" style="gap:12px;align-items:flex-start"><div class="pl-leque">' + cartaHTML('A.ped.1', 'mini', '', 'span') + cartaHTML('L.7.1', 'mini', '', 'span') + cartaHTML('W.s4.1', 'mini', '', 'span') + '</div>' +
     '<div style="flex:1;min-width:0"><h3 style="margin:0 0 2px">Mesa online, de 2 a 6 pessoas</h3><p class="small mut" style="margin:0">Combine cor ou número, zere a mão e grite "Placa!" na penúltima carta. Ranking próprio, separado do quiz e da corrida.</p></div></div>' +
     '<button class="btn lar full" style="margin-top:12px" data-a="placaCriar">Criar mesa</button>';
   if (!ids.length) h += '<p class="small mut" style="margin:12px 0 0;text-align:center">Nenhuma mesa esperando gente agora. Crie uma e chame o time.</p>';
@@ -80,6 +81,14 @@ function secaoPlaca() {
   });
   if (jogando) h += '<p class="tiny mut" style="margin:10px 0 0;text-align:center">' + jogando + ' mesa' + (jogando > 1 ? 's' : '') + ' em jogo agora.</p>';
   return h + '</div>';
+}
+
+// atalho no Início
+function cartaoPlacaInicio() {
+  var me = S.user.uid, abertas = Object.keys(D.mesas).filter(function (k) { var m = D.mesas[k]; return m.status === 'aguardando' && m.uids.indexOf(me) < 0; }).length;
+  var minhas = Object.keys(D.mesas).filter(function (k) { return D.mesas[k].uids.indexOf(me) >= 0; }).length;
+  var sub = minhas ? 'Você está em ' + minhas + ' mesa' + (minhas > 1 ? 's' : '') : abertas ? abertas + ' mesa' + (abertas > 1 ? 's' : '') + ' esperando gente' : 'Crie uma mesa e chame o time';
+  return '<button class="pvez pl-ini" data-a="placaIr"><span class="pl-leque">' + cartaHTML('A.ped.1', 'mini', '', 'span') + cartaHTML('L.7.1', 'mini', '', 'span') + cartaHTML('W.s4.1', 'mini', '', 'span') + '</span><span style="flex:1;text-align:left"><b>Placa! · jogo de cartas</b><span>' + sub + '</span></span><span class="tag nv">Jogar</span></button>';
 }
 
 /* ---------- abrir / fechar a mesa ---------- */
@@ -288,6 +297,7 @@ var A_PLACA = {
     B.chamar('placa', { op: 'entrar', mesaId: v }).then(function () { abrirMesa(v); }).catch(function (e) { toast(msgErro(e)); });
   },
   placaAbrir: function (v) { abrirMesa(v); },
+  placaIr: function () { S.tab = 'jogar'; S.manterScroll = false; R(); setTimeout(function () { var x = document.querySelector('.pl-card'); if (x) x.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60); },
   placaFechar: function () { fecharMesaPlaca(); },
   placaSair: function () { placaChamar('sair').then(function () { fecharMesaPlaca(); }); },
   placaIniciar: function () { placaChamar('iniciar'); },

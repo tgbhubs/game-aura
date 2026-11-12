@@ -160,6 +160,7 @@ function cartoesJogo(detalhado) {
 function telaInicio() {
   var h = avisoVezPlaca() + heroRodada();
   h += cartoesJogo(false);
+  h += cartaoPlacaInicio();
   var tid = tempAtivaId();
   if (tid && D.temporadas[tid]) {
     var res = calcTemporada(tid), uid = S.user.uid, r = rodadaAtual();
@@ -194,8 +195,8 @@ function telaJogar() {
   var h = heroRodada();
   if (!rodadaAtual()) return h + '<div class="card"><h3>Sem rodada aberta agora</h3><p class="mut">Enquanto isso, que tal treinar a corrida?</p><button class="btn lar full" data-a="treino">Treinar corrida</button></div>' + secaoPlaca();
   h += cartoesJogo(true);
-  h += '<div class="card"><h3>Como pontua</h3><p class="small mut" style="margin:0">Cada etapa vale até <b>100 pontos</b>. No quiz, 10 por acerto. Na corrida, os pontos vêm do seu melhor tempo: 30 s ≈ 53 · 60 s ≈ 78 · 90 s ≈ 89 · 120 s ≈ 95. A rodada vale até 200.</p></div>';
   h += secaoPlaca();
+  h += '<div class="card"><h3>Como pontua</h3><p class="small mut" style="margin:0">Cada etapa vale até <b>100 pontos</b>. No quiz, 10 por acerto. Na corrida, os pontos vêm do seu melhor tempo: 30 s ≈ 53 · 60 s ≈ 78 · 90 s ≈ 89 · 120 s ≈ 95. A rodada vale até 200.</p></div>';
   return h;
 }
 function linhaRank(l, pts, sub, eu) {
