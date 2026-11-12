@@ -11,7 +11,7 @@ Jogo interno de integração: **quiz + corrida** toda semana, com ranking indivi
 ## Colocar no ar (passo a passo)
 
 ### 1. GitHub
-1. Crie o repositório (ex.: `game-icarros`) e suba todos os arquivos desta pasta.
+1. Crie o repositório (ex.: `game-aura`) e suba todos os arquivos desta pasta.
 2. Em **Settings → Pages**, publique a branch `main` (pasta raiz).
 3. Abra o endereço do Pages: o app já funciona em modo demonstração.
 
@@ -25,8 +25,8 @@ Jogo interno de integração: **quiz + corrida** toda semana, com ranking indivi
 
 ### 3. Functions e regras (Google Cloud Shell)
 ```bash
-git clone https://github.com/<seu-usuario>/game-icarros.git
-cd game-icarros/functions && npm install && cd ..
+git clone https://github.com/tgbhubs/game-aura.git
+cd game-aura/functions && npm install && cd ..
 npx -y firebase-tools@13 deploy --only functions,firestore:rules
 ```
 Depois disso, as regras passam a ser publicadas pelo GitHub Actions: crie o secret `FIREBASE_SERVICE_ACCOUNT` com a chave da conta de serviço (papéis **Administrador do Firebase** e **Consumidor do Service Usage**), como no Fute.
