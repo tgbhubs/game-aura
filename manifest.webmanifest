@@ -1,0 +1,14 @@
+{
+  "name": "Game Aura",
+  "short_name": "Game Aura",
+  "description": "Quiz, corrida e Placa! do time: rodada nova toda semana.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14235E",
+  "theme_color": "#14235E",
+  "icons": [
+    { "src": "assets/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
