@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-12g';
+var BUILD = '2026-11-12h';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -269,7 +269,7 @@ function criarDemo() {
     gravar('montes/' + mid, Placa.privado(E));
     E.uids.forEach(function (u) { gravar('maos/' + mid + '_' + u, { uid: u, mesaId: mid, cartas: E.maos[u] }); });
     (E.removidos || []).forEach(function (u) { delete col('maos')[mid + '_' + u]; });
-    if (E.status === 'fim' && (!antes || antes.status !== 'fim')) gravar('placaPartidas/' + mid, Placa.resultado(E, mid));
+    if (E.status === 'fim' && !E.temRobo && (!antes || antes.status !== 'fim')) gravar('placaPartidas/' + mid, Placa.resultado(E, mid));
   }
   function placaEstado(mid) {
     var mesa = lerDoc('mesas/' + mid), priv = lerDoc('montes/' + mid), maos = {};
@@ -292,18 +292,19 @@ function criarDemo() {
       if (m2.jogadores.length === m2.lugares) placaGravar(mid, Placa.iniciar(m2, null, semente(), now)); else gravar('mesas/' + mid, m2);
     } else if (d.op === 'sair') gravar('mesas/' + mid, Placa.sair(mesa, uid, now));
     else if (d.op === 'iniciar') placaGravar(mid, Placa.iniciar(mesa, uid, semente(), now));
-    else if (d.op === 'robos') {
-      // só na demonstração: completa os lugares livres com pessoas fictícias e começa
-      var livres = mesa.lugares - mesa.jogadores.length, m3 = mesa;
-      Object.keys(col('jogadores')).filter(function (u) { var j = col('jogadores')[u]; return j.status === 'ativo' && u !== uid && m3.uids.indexOf(u) < 0 && u !== 'demo-master'; })
-        .slice(0, livres).forEach(function (u) { m3 = Placa.entrar(m3, u, col('jogadores')[u], now); });
-      placaGravar(mid, Placa.iniciar(m3, null, semente(), now));
+    else if (d.op === 'robos') placaGravar(mid, Placa.iniciar(Placa.addRobos(mesa, uid, now), null, semente(), now));
+    else if (d.op === 'robo') {
+      var ER = placaEstado(mid), R2 = ER && ER.temRobo ? Placa.acaoRobo(ER, now) : null;
+      if (R2) placaGravar(mid, R2, mesa);
+      robos(mid);
+      return { feito: !!R2 };
     } else if (d.op === 'revanche') {
       if (mesa.revanche) return { mesaId: mesa.revanche };
       var nova = Placa.novaMesa({ uid: uid, jog: jog, lugares: mesa.lugares, now: now, temporadaId: cfg.temporadaAtiva || '' });
       var nid = 'M' + now.toString(36) + Math.floor(Math.random() * 1e4);
       // na demonstração, os robôs da mesa anterior entram na revanche
       mesa.uids.forEach(function (u) { if (u !== uid && /^demo-/.test(u) && col('jogadores')[u]) nova = Placa.entrar(nova, u, col('jogadores')[u], now); });
+      if (mesa.temRobo && nova.jogadores.length < nova.lugares) nova = Placa.addRobos(nova, uid, now);
       gravar('mesas/' + nid, nova); mesa.revanche = nid; gravar('mesas/' + mid, mesa);
       if (nova.jogadores.length === nova.lugares) placaGravar(nid, Placa.iniciar(nova, null, semente(), now));
       robos(nid); return { mesaId: nid };

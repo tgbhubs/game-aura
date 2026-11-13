@@ -113,7 +113,8 @@ function gravarEstado(tx, mid, E, antes) {
   tx.set(db.doc('montes/' + mid), P.privado(E));
   E.uids.forEach((u) => tx.set(db.doc('maos/' + mid + '_' + u), { uid: u, mesaId: mid, cartas: E.maos[u] }));
   (E.removidos || []).forEach((u) => tx.delete(db.doc('maos/' + mid + '_' + u)));
-  if (E.status === 'fim' && (!antes || antes.status !== 'fim')) tx.set(db.doc('placaPartidas/' + mid), P.resultado(E, mid));
+  // partidas com robô não contam para o ranking
+  if (E.status === 'fim' && !E.temRobo && (!antes || antes.status !== 'fim')) tx.set(db.doc('placaPartidas/' + mid), P.resultado(E, mid));
 }
 
 exports.placa = onCall((req) => {
@@ -145,14 +146,37 @@ exports.placa = onCall((req) => {
         else gravarEstado(tx, mid, P.iniciar(mesa, uid, semente(), now));
         return { ok: true };
       }
+      if (op === 'robos') {
+        const m2 = P.addRobos(mesa, uid, now);
+        gravarEstado(tx, mid, P.iniciar(m2, null, semente(), now));
+        return { ok: true };
+      }
+      if (op === 'robo') {
+        // alguém da mesa pede a vez dos robôs; o servidor decide se é hora de algum robô jogar
+        if (mesa.uids.indexOf(uid) < 0) throw new HttpsError('permission-denied', 'Você não está nesta mesa.');
+        if (!mesa.temRobo || mesa.status !== 'jogando') return { feito: false };
+        const privR = dados(await tx.get(db.doc('montes/' + mid)));
+        const snapsR = await Promise.all(mesa.uids.map((u) => tx.get(db.doc('maos/' + mid + '_' + u))));
+        const maosR = {};
+        mesa.uids.forEach((u, i) => { maosR[u] = (dados(snapsR[i]) || {}).cartas || []; });
+        const ER = P.acaoRobo(P.compor(mesa, privR, maosR), now);
+        if (!ER) return { feito: false };
+        gravarEstado(tx, mid, ER, mesa);
+        return { feito: true };
+      }
       if (op === 'revanche') {
         if (mesa.uids.indexOf(uid) < 0) throw new HttpsError('permission-denied', 'Você não estava nesta mesa.');
         if (mesa.revanche) return { mesaId: mesa.revanche };
         if (mesa.status !== 'fim' && mesa.status !== 'encerrada') throw new HttpsError('failed-precondition', 'A partida ainda não terminou.');
         const [j, cfg] = await Promise.all([tx.get(db.doc('jogadores/' + uid)), tx.get(db.doc('config/geral'))]);
-        const nova = P.novaMesa({ uid, jog: dados(j), lugares: mesa.lugares, now, temporadaId: (dados(cfg) || {}).temporadaAtiva || '' });
+        let nova = P.novaMesa({ uid, jog: dados(j), lugares: mesa.lugares, now, temporadaId: (dados(cfg) || {}).temporadaAtiva || '' });
         const ref = db.collection('mesas').doc();
-        tx.set(ref, nova);
+        // mesa só com você e robôs: a revanche já começa com robôs de novo
+        const outrosHumanos = mesa.jogadores.filter((x) => !x.bot && x.uid !== uid).length;
+        if (mesa.temRobo && !outrosHumanos) {
+          nova = P.addRobos(nova, uid, now);
+          gravarEstado(tx, ref.id, P.iniciar(nova, null, semente(), now));
+        } else tx.set(ref, nova);
         tx.update(mRef, { revanche: ref.id });
         return { mesaId: ref.id };
       }

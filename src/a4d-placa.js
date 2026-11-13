@@ -71,11 +71,11 @@ function secaoPlaca() {
   if (!ids.length) h += '<p class="small mut" style="margin:12px 0 0;text-align:center">Nenhuma mesa esperando gente agora. Crie uma e chame o time.</p>';
   ids.forEach(function (k) {
     var m = D.mesas[k], minha = m.uids.indexOf(me) >= 0, vez = m.status === 'jogando' && m.jogadores[m.vez] && m.jogadores[m.vez].uid === me;
-    var st = m.status === 'aguardando' ? '<span class="tag nv">' + m.jogadores.length + ' de ' + m.lugares + ' lugares</span>' : m.status === 'pausada' ? '<span class="tag">Pausada</span>' : vez ? '<span class="tag gold">Sua vez</span>' : '<span class="tag ok">Em jogo</span>';
+    var st = (m.temRobo ? '<span class="tag" style="margin-right:4px">🤖 com robôs</span>' : '') + (m.status === 'aguardando' ? '<span class="tag nv">' + m.jogadores.length + ' de ' + m.lugares + ' lugares</span>' : m.status === 'pausada' ? '<span class="tag">Pausada</span>' : vez ? '<span class="tag gold">Sua vez</span>' : '<span class="tag ok">Em jogo</span>');
     var dono = jogDe(m.dono, null) || m.jogadores[0];
     var bt = minha ? '<button class="btn sm' + (vez ? ' lar' : '') + '" data-a="placaAbrir" data-v="' + k + '">' + (m.status === 'aguardando' ? 'Ver mesa' : 'Abrir') + '</button>'
       : '<button class="btn sm lar" data-a="placaEntrar" data-v="' + k + '">Entrar</button>';
-    h += '<div class="pl-mesa"><div class="pl-avs">' + m.jogadores.slice(0, 4).map(function (j) { return avatar(jogDe(j.uid, j), j.uid, 'sm'); }).join('') + '</div>' +
+    h += '<div class="pl-mesa"><div class="pl-avs">' + m.jogadores.slice(0, 4).map(function (j) { return avJ(j, 'sm'); }).join('') + '</div>' +
       '<div style="flex:1;min-width:0"><b class="small">Mesa de ' + esc(nomeExib(dono)) + '</b><div>' + st + '</div></div>' + bt +
       (ehAdm() && !minha ? '<button class="lnk tiny" data-a="placaFecharMesa" data-v="' + k + '">Fechar</button>' : '') + '</div>';
   });
@@ -98,7 +98,7 @@ function abrirMesa(mid) {
   var uid = S.user.uid;
   PL.unsub.push(B.ouvirDoc('mesas/' + mid, function (m) {
     if (!PL || PL.mid !== mid) return;
-    var antes = PL.mesa; PL.mesa = m; eventosMesa(antes, m); desenharMesa();
+    var antes = PL.mesa; PL.mesa = m; eventosMesa(antes, m); desenharMesa(); agendarRobo();
   }));
   PL.unsub.push(B.ouvirDoc('maos/' + mid + '_' + uid, function (d) {
     if (!PL || PL.mid !== mid) return;
@@ -113,7 +113,7 @@ function abrirMesa(mid) {
 }
 function fecharMesaPlaca(semRender) {
   if (!PL) return;
-  limpar(PL.unsub); clearInterval(PL.relogio); PL = null;
+  limpar(PL.unsub); clearInterval(PL.relogio); clearTimeout(PL.tRobo); PL = null;
   var o = $('#ov'); o.className = ''; o.innerHTML = ''; document.body.style.overflow = '';
   if (!semRender) R();
 }
@@ -133,6 +133,23 @@ function eventosMesa(antes, m) {
   if (vez && !PL.vezAntes && antes) { setTimeout(function () { som('vez'); }, 260); try { navigator.vibrate && navigator.vibrate(60); } catch (e) { } }
   PL.vezAntes = vez;
 }
+// quando é a vez de um robô (ou há multa de robô agendada), quem está na mesa pede ao servidor para o robô jogar
+function agendarRobo() {
+  if (!PL) return;
+  clearTimeout(PL.tRobo);
+  var m = PL.mesa; if (!m || !m.temRobo) return;
+  var quando = Placa.roboPendente(m); if (!quando) return;
+  var mid = PL.mid, espera = Math.max(250, Math.min(4000, quando - Date.now() + 150));
+  if (PL.tentRobo > 6) espera = 1500;
+  PL.tRobo = setTimeout(function () {
+    if (!PL || PL.mid !== mid) return;
+    B.chamar('placa', { op: 'robo', mesaId: mid }).then(function (r) {
+      if (!PL || PL.mid !== mid) return;
+      if (r && r.feito) PL.tentRobo = 0;
+      else { PL.tentRobo = (PL.tentRobo || 0) + 1; if (PL.tentRobo < 40) agendarRobo(); }
+    }).catch(function () { if (PL && PL.mid === mid) { PL.tentRobo = (PL.tentRobo || 0) + 1; if (PL.tentRobo < 40) setTimeout(agendarRobo, 2000); } });
+  }, espera);
+}
 function placaChamar(op, extra) {
   if (!PL || PL.ocupado) return Promise.resolve();
   var d = { op: op, mesaId: PL.mid }; Object.keys(extra || {}).forEach(function (k) { d[k] = extra[k]; });
@@ -143,7 +160,8 @@ function placaChamar(op, extra) {
 
 /* ---------- desenho ---------- */
 function estadoCliente(m) { return { acumulo: m.acumulo || 0, comprou: m.comprou || '', cor: m.cor, descarte: [m.topo] }; }
-function nomeJ(j) { var x = jogDe(j.uid, j); return nomeExib(x); }
+function nomeJ(j) { if (j.bot) return j.ap; var x = jogDe(j.uid, j); return nomeExib(x); }
+function avJ(j, cls) { return j.bot ? '<span class="av bot' + (cls ? ' ' + cls : '') + '" aria-hidden="true">🤖</span>' : avatar(jogDe(j.uid, j), j.uid, cls); }
 function desenharMesa() {
   if (!PL) return;
   var m = PL.mesa, me = S.user.uid, o = $('#ov');
@@ -169,13 +187,13 @@ function salaEspera(m, me) {
     '<h2 style="font-size:24px;font-weight:900;text-align:center;margin:4px 0 16px">' + m.jogadores.length + ' de ' + m.lugares + ' lugares ocupados</h2><div class="plugares">';
   for (var i = 0; i < m.lugares; i++) {
     var j = m.jogadores[i];
-    h += j ? '<div class="plugar">' + avatar(jogDe(j.uid, j), j.uid) + '<b>' + esc(nomeJ(j)) + '</b>' + (j.uid === m.dono ? '<span>criou a mesa</span>' : '<span>na mesa</span>') + '</div>'
+    h += j ? '<div class="plugar">' + avJ(j) + '<b>' + esc(nomeJ(j)) + '</b>' + (j.uid === m.dono ? '<span>criou a mesa</span>' : j.bot ? '<span>robô</span>' : '<span>na mesa</span>') + '</div>'
       : '<div class="plugar vazio"><span class="av" style="background:rgba(255,255,255,.08)">+</span><b>Lugar livre</b><span>esperando</span></div>';
   }
   h += '</div><p class="small" style="opacity:.75;text-align:center;margin-top:14px">A partida começa sozinha quando a mesa lotar. Os lugares são sorteados na hora.</p></div>';
   if (!dentro) h += '<button class="btn lar full" data-a="placaEntrar" data-v="' + PL.mid + '">Sentar na mesa</button>';
   if (dono && m.jogadores.length >= 2) h += '<button class="btn lar full" data-a="placaIniciar">Começar com ' + m.jogadores.length + ' pessoas</button>';
-  if (DEMO && dentro && m.jogadores.length < m.lugares) h += '<button class="btn wh full" style="margin-top:10px" data-a="placaRobos">Completar com pessoas fictícias (demonstração)</button>';
+  if (dono && m.jogadores.length < m.lugares) h += '<button class="btn wh full" style="margin-top:10px" data-a="placaRobos">🤖 Completar com robôs e começar</button><div class="tiny" style="opacity:.7;text-align:center;margin-top:6px">Partidas com robôs não contam para o ranking.</div>';
   if (dentro) h += '<button class="btn gh full" style="margin-top:10px;background:rgba(255,255,255,.1);color:#fff" data-a="placaSair">Sair da mesa</button>';
   return h;
 }
@@ -189,7 +207,7 @@ function mesaJogo(m, me) {
   for (var k = 1; k < N + (eu < 0 ? 1 : 0); k++) {
     var idx = eu < 0 ? k - 1 : (eu + k * (m.sentido || 1) + N * 6) % N, j = m.jogadores[idx], u = j.uid, nc = (m.nCartas || {})[u] || 0;
     var multa = m.multavel === u && !(m.gritou || {})[u] && eu >= 0 && m.status === 'jogando';
-    h += '<div class="pop' + (idx === m.vez && m.status === 'jogando' ? ' vez' : '') + '">' + avatar(jogDe(u, j), u, 'sm') +
+    h += '<div class="pop' + (idx === m.vez && m.status === 'jogando' ? ' vez' : '') + '">' + avJ(j, 'sm') +
       '<b>' + esc(nomeJ(j)) + '</b><span class="pnc">' + nc + ' carta' + (nc === 1 ? '' : 's') + '</span>' +
       ((m.gritou || {})[u] && nc === 1 ? '<span class="pgrito">PLACA!</span>' : '') +
       (multa ? '<button class="pmulta" data-a="placaMulta" data-v="' + u + '">Multa!</button>' : '') + '</div>';
@@ -270,8 +288,9 @@ function fimPartida(m, me) {
   if (m.status === 'encerrada') return '<div class="pfim"><h2>Partida encerrada</h2><p>Sem resultado: não conta no ranking.</p>' + botoesFim(m, me) + '</div>';
   var v = m.jogadores.filter(function (j) { return j.uid === m.vencedor; })[0], venci = m.vencedor === me;
   var h = '<div class="pfim"><div class="pfim-ic">' + (venci ? '🏆' : '🪪') + '</div><h2>' + (venci ? 'Você zerou a mão e venceu!' : esc(v ? nomeJ(v) : 'Alguém') + ' venceu') + '</h2>';
-  h += '<div class="pfim-l">' + m.jogadores.map(function (j) { var n = (m.nCartas || {})[j.uid] || 0; return '<div class="row between"><span class="row" style="gap:8px">' + avatar(jogDe(j.uid, j), j.uid, 'sm') + esc(nomeJ(j)) + '</span><b>' + (j.uid === m.vencedor ? 'venceu' : n + ' carta' + (n === 1 ? '' : 's')) + '</b></div>'; }).join('') + '</div>';
-  if (venci) {
+  h += '<div class="pfim-l">' + m.jogadores.map(function (j) { var n = (m.nCartas || {})[j.uid] || 0; return '<div class="row between"><span class="row" style="gap:8px">' + avJ(j, 'sm') + esc(nomeJ(j)) + '</span><b>' + (j.uid === m.vencedor ? 'venceu' : n + ' carta' + (n === 1 ? '' : 's')) + '</b></div>'; }).join('') + '</div>';
+  if (m.temRobo) h += '<p class="small" style="opacity:.75;margin:0">Partida com robôs: não conta para o ranking.</p>';
+  if (venci && !m.temRobo) {
     var tid = m.temporadaId; var nov = tid ? (calcPlaca(tid).badges[me] || []).filter(function (b) { return b.rid === 'placa|' + PL.mid; }) : [];
     nov.forEach(function (b) { h += '<button class="bdg novo" style="text-align:left" data-a="compartilharBadge" data-v="' + esc(b.tipo + '|' + b.rid + '|') + '"><span class="e">' + BADGES[b.tipo].e + '</span><span style="flex:1"><b>' + BADGES[b.tipo].t + '</b><span>' + esc(BADGES[b.tipo].d) + '</span></span><span class="tag nv">Compartilhar</span></button>'; });
   }
@@ -285,9 +304,18 @@ function botoesFim(m, me) {
 /* ---------- ações ---------- */
 var A_PLACA = {
   placaCriar: function () {
-    abrirModal('<h3>Criar mesa de Placa!</h3><p class="mut small">Quantos lugares? A partida começa quando a mesa lotar, ou antes, se você quiser.</p><div class="pl-lug">' +
+    abrirModal('<h3>Nova partida de Placa!</h3><p class="mut small" style="margin-bottom:4px"><b>Mesa com o time:</b> quantos lugares? Começa quando lotar, ou antes, se você quiser.</p><div class="pl-lug">' +
       [2, 3, 4, 5, 6].map(function (n) { return '<button class="btn ' + (n === 4 ? 'lar' : 'gh') + '" data-a="placaCriarN" data-v="' + n + '">' + n + '</button>'; }).join('') +
+      '</div><p class="mut small" style="margin:16px 0 4px"><b>🤖 Contra robôs, agora:</b> quantos jogadores no total, contando você? Não conta para o ranking.</p><div class="pl-lug">' +
+      [2, 3, 4, 5, 6].map(function (n) { return '<button class="btn gh" data-a="placaCriarRobo" data-v="' + n + '">' + n + '</button>'; }).join('') +
       '</div><div class="mact"><button class="btn gh" data-a="fecharModal">Cancelar</button></div>');
+  },
+  placaCriarRobo: function (v) {
+    fecharModal();
+    B.chamar('placa', { op: 'criar', lugares: parseInt(v, 10) }).then(function (r) {
+      if (!r || !r.mesaId) return;
+      return B.chamar('placa', { op: 'robos', mesaId: r.mesaId }).then(function () { abrirMesa(r.mesaId); });
+    }).catch(function (e) { toast(msgErro(e)); });
   },
   placaCriarN: function (v) {
     fecharModal();

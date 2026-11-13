@@ -69,6 +69,9 @@
     E.hist = (E.hist || []).concat([ev]).slice(-12);
   }
   function apelido(E, uid) { var s = seatDe(E, uid); return s >= 0 ? (E.jogadores[s].ap || E.jogadores[s].nm || 'Alguém') : 'Alguém'; }
+  function ehRobo(E, uid) { var s = seatDe(E, uid); return s >= 0 && !!E.jogadores[s].bot; }
+  function humanos(E) { return E.uids.filter(function (u) { return !ehRobo(E, u); }); }
+  P.ehRobo = function (m, uid) { return (m.jogadores || []).some(function (j) { return j.uid === uid && j.bot; }); };
   function stat(E, uid) { return (E.stats[uid] = E.stats[uid] || { multas: 0, guincho8: 0 }); }
 
   // ---------- mesa (sala de espera) ----------
@@ -89,12 +92,27 @@
     m.jogadores.push(P.jogadorDe(uid, jog)); m.uids.push(uid); m.atualizadaEm = now;
     return m;
   };
+  P.NOMES_ROBO = ['Robô Turbo', 'Robô Pistão', 'Robô Faísca', 'Robô Radar', 'Robô Embreagem'];
+  P.addRobos = function (m, uid, now) {
+    m = clone(m);
+    if (m.status !== 'aguardando') erro('Esta mesa já começou.');
+    if (m.dono !== uid) erro('Só quem criou a mesa pode chamar robôs.');
+    var usados = m.jogadores.map(function (j) { return j.ap; }), k = 0;
+    while (m.jogadores.length < m.lugares) {
+      var nome = P.NOMES_ROBO.filter(function (x) { return usados.indexOf(x) < 0; })[0] || ('Robô ' + (k + 1));
+      usados.push(nome); k++;
+      var id = 'bot-' + m.jogadores.length + '-' + (now % 100000);
+      m.jogadores.push({ uid: id, ap: nome, nm: nome, a: '', bot: true }); m.uids.push(id);
+    }
+    m.temRobo = true; m.atualizadaEm = now;
+    return m;
+  };
   P.sair = function (m, uid, now) {
     m = clone(m);
     if (m.status !== 'aguardando') erro('A partida já começou. Use "Encerrar partida" no menu da mesa.');
     var i = m.uids.indexOf(uid); if (i < 0) return m;
     m.jogadores.splice(i, 1); m.uids.splice(i, 1); m.atualizadaEm = now;
-    if (!m.jogadores.length) { m.status = 'cancelada'; m.aberta = false; }
+    if (!m.jogadores.some(function (j) { return !j.bot; })) { m.status = 'cancelada'; m.aberta = false; }
     else if (m.dono === uid) m.dono = m.uids[0];
     return m;
   };
@@ -165,10 +183,10 @@
       var v = E.votosEncerrar.filter(function (x) { return x !== uid; });
       if (a.sim !== false) v.push(uid);
       E.votosEncerrar = v;
-      if (E.uids.every(function (u) { return v.indexOf(u) >= 0; })) {
+      if (humanos(E).every(function (u) { return v.indexOf(u) >= 0; })) {
         E.status = 'encerrada'; E.aberta = false; E.fimEm = now; E.multavel = '';
         log(E, 'Todos concordaram: partida encerrada sem resultado.');
-      } else if (a.sim !== false) log(E, apelido(E, uid) + ' propôs encerrar a partida (' + v.length + ' de ' + n(E) + ').');
+      } else if (a.sim !== false) log(E, apelido(E, uid) + ' propôs encerrar a partida (' + v.length + ' de ' + humanos(E).length + ').');
       E.atualizadaEm = now; return E;
     }
     if (op === 'pausar') {
@@ -191,7 +209,8 @@
       if (now - E.ultimaJogadaEm < P.AUSENTE_MS) erro('Ainda não passaram 10 minutos sem jogar.');
       var vr = (E.votosRemover[alvo] || []).filter(function (x) { return x !== uid; }); vr.push(uid);
       E.votosRemover[alvo] = vr;
-      var precisa = Math.floor((n(E) - 1) / 2) + 1;
+      if (ehRobo(E, alvo)) erro('Robôs não ficam ausentes.');
+      var precisa = Math.floor((humanos(E).length - 1) / 2) + 1;
       if (vr.length < precisa) { log(E, apelido(E, uid) + ' votou para remover ' + apelido(E, alvo) + ' (' + vr.length + ' de ' + precisa + ').'); E.atualizadaEm = now; return E; }
       // remove
       var nome = apelido(E, alvo);
@@ -202,7 +221,7 @@
       E.removidos = (E.removidos || []).concat([alvo]);
       if (E.multavel === alvo) E.multavel = '';
       E.acumulo = 0; E.acumuloDe = ''; E.comprou = '';
-      if (n(E) < 2) { E.status = 'encerrada'; E.aberta = false; E.fimEm = now; log(E, nome + ' foi removido. Sem adversários, a partida foi encerrada sem resultado.'); }
+      if (n(E) < 2 || !humanos(E).length) { E.status = 'encerrada'; E.aberta = false; E.fimEm = now; log(E, nome + ' foi removido. Sem adversários, a partida foi encerrada sem resultado.'); }
       else { E.vez = E.sentido === 1 ? sa % n(E) : (sa - 1 + n(E)) % n(E); E.ultimaJogadaEm = now; log(E, nome + ' foi removido da mesa por ausência. As cartas voltaram para o monte.'); }
       E.atualizadaEm = now; return E;
     }
@@ -270,7 +289,13 @@
         terminar(E, uid, now);
         return E;
       }
-      if (mao.length === 1) { if (!E.gritou[uid]) E.multavel = uid; }
+      if (mao.length === 1) {
+        if (!E.gritou[uid]) {
+          E.multavel = uid; E.multaRoboEm = 0;
+          var fiscais = E.uids.filter(function (u) { return u !== uid && ehRobo(E, u); });
+          if (fiscais.length && rngDe(E)() < (ehRobo(E, uid) ? 0.5 : 0.6)) E.multaRoboEm = now + 2500;
+        }
+      }
       else E.gritou[uid] = false;
       var nx = prox(E, E.vez), alvoN = apelido(E, E.jogadores[nx].uid);
       if (c.v === 'ped') { desc += ' ' + alvoN + ' perde a vez.'; E.vez = prox(E, E.vez, 2); }
@@ -320,10 +345,39 @@
     var st = {};
     E.jogadores.forEach(function (j) { var s = E.stats[j.uid] || {}; st[j.uid] = { multas: s.multas || 0, guincho8: s.guincho8 || 0 }; });
     return { mesaId: mesaId, temporadaId: E.temporadaId || '', fimEm: E.fimEm, iniciadaEm: E.iniciadaEm, vencedor: E.vencedor,
-      uids: E.uids.slice(), jogadores: clone(E.jogadores), stats: st, segurado: E.ultimaSeguro === E.vencedor };
+      uids: E.uids.slice(), jogadores: clone(E.jogadores), stats: st, segurado: E.ultimaSeguro === E.vencedor, temRobo: !!E.temRobo };
   };
 
-  // ---------- robô (só no modo demonstração) ----------
+  // ---------- robôs na mesa ----------
+  // Quem está na mesa pede ao servidor; o servidor decide se algum robô deve agir agora.
+  // ehRoboFn (opcional) permite tratar outras pessoas como robôs (modo demonstração).
+  P.ESPERA_ROBO = 900;
+  P.acaoRobo = function (E, now, ehRoboFn) {
+    var eh = ehRoboFn || function (u) { return ehRobo(E, u); };
+    if (E.status !== 'jogando') return null;
+    // multa em quem esqueceu de gritar
+    if (E.multavel && !E.gritou[E.multavel] && E.multaRoboEm && now >= E.multaRoboEm) {
+      var fiscal = E.uids.filter(function (u) { return u !== E.multavel && eh(u); })[0];
+      if (fiscal) { var M = P.acao(E, fiscal, { op: 'multa', alvo: E.multavel }, now); M.multaRoboEm = 0; return M; }
+    }
+    // multa agendada ainda não venceu: o robô da vez espera, para dar a chance de alguém gritar ou multar
+    if (E.multavel && !E.gritou[E.multavel] && E.multaRoboEm && now < E.multaRoboEm) return null;
+    var vez = E.jogadores[E.vez].uid;
+    if (!eh(vez)) return null;
+    if (now - (E.ultimaJogadaEm || 0) < P.ESPERA_ROBO) return null;
+    var r = rngDe(E);
+    if (E.maos[vez].length === 2 && !E.gritou[vez] && !E.comprou && P.validas(E, vez).length && r() < 0.7) return P.acao(E, vez, { op: 'placa' }, now);
+    return P.acao(E, vez, P.bot(E, vez, r), now);
+  };
+  P.roboPendente = function (m) {
+    if (!m || m.status !== 'jogando') return 0;
+    var j = m.jogadores[m.vez];
+    if (m.multavel && !(m.gritou || {})[m.multavel] && m.multaRoboEm) return Math.max(m.multaRoboEm, 1);
+    if (j && j.bot) return (m.ultimaJogadaEm || 0) + P.ESPERA_ROBO + 400;
+    return 0;
+  };
+
+  // ---------- estratégia do robô (nível médio) ----------
   P.bot = function (E, uid, r) {
     r = r || Math.random;
     var mao = E.maos[uid];
