@@ -103,7 +103,7 @@ function abrirCorrida(treino) {
 function desenharCorrida() {
   if (!CR) return;
   var k = (tempAtiva() || {}).k || 40;
-  var h = '<div class="ovw" style="padding-bottom:12px"><div class="ovtop"><div class="row" style="align-items:center">' + wm(22) + '<span class="pill-game">' + (CR.treino ? 'TREINO' : 'CORRIDA') + '</span></div><button class="xbtn" data-a="fecharCorrida">✕</button></div>';
+  var h = '<div class="ovw" style="padding-bottom:12px"><div class="ovtop"><div class="row" style="align-items:center">' + wm(22) + '<span class="pill-game">' + (CR.treino ? 'TREINO' : 'CORRIDA') + '</span></div><div class="row" style="gap:8px"><button class="xbtn" id="btMusica" data-a="musica" aria-label="Ligar ou desligar a música" title="Música">' + (Musica.ligada() ? '♫' : '<s>♫</s>') + '</button><button class="xbtn" data-a="fecharCorrida">✕</button></div></div>';
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +

@@ -744,11 +744,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (parado) return;
     if (ultimo == null) ultimo = ts;
     var dt = Math.min(0.05, (ts - ultimo) / 1000); ultimo = ts;
-    if (s.fase === 'contagem') { s.cont -= dt; if (s.cont <= 0) s.fase = 'rodando'; }
-    else if (s.fase === 'rodando') { s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
+    if (s.fase === 'contagem') {
+      var antesC = Math.ceil(s.cont); s.cont -= dt;
+      if (s.cont <= 0) { s.fase = 'rodando'; if (window.Musica) { Musica.bip(true); Musica.tocar(); } }
+      else if (Math.ceil(s.cont) !== antesC && window.Musica) Musica.bip(false);
+    }
+    else if (s.fase === 'rodando') { if (window.Musica) Musica.ritmo(nivel(s.t)); s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
     else if (s.fase === 'batida') {
       s.flash = Math.max(0, s.flash - dt * 1.4); if (s.tremor > 0) s.tremor -= dt;
-      if (!fimDisparado) { fimDisparado = true; setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100); }, 1100); }
+      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100); }, 1100); }
     }
     desenhar(ts / 1000);
     raf = requestAnimationFrame(quadro);
@@ -765,7 +769,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   }
   function oculto() { if (document.hidden && s.fase === 'rodando' && s.vivo) { s.vivo = false; s.fase = 'batida'; s.flash = 1; } }
   function parar() {
-    parado = true; if (raf) cancelAnimationFrame(raf);
+    parado = true; if (raf) cancelAnimationFrame(raf); if (window.Musica) Musica.parar();
     document.removeEventListener('keydown', tecla); document.removeEventListener('visibilitychange', oculto);
     wrap.removeEventListener('pointerdown', toque);
     if (R3) { R3.destruir(); R3 = null; }

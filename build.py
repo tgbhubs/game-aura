@@ -6,7 +6,7 @@ src = 'src/'
 logica = open('functions/logica.js').read()
 placa = open('functions/placa.js').read()
 garagem = open('functions/garagem.js').read()
-partes = ''.join(open(src + f).read() + '\n' for f in ['a0-logo.js', 'a0b-fotos.js', 'a1-base.js', 'a2-dados.js', 'a3-telas.js', 'a4-jogos.js', 'a4b-motor.js', 'a4c-real3d.js', 'a4d-placa.js', 'a4e-garagem.js', 'a5-adm.js', 'a6-acoes.js'])
+partes = ''.join(open(src + f).read() + '\n' for f in ['a0-logo.js', 'a0b-fotos.js', 'a1-base.js', 'a2-dados.js', 'a3-telas.js', 'a4-jogos.js', 'a4b-motor.js', 'a4c-real3d.js', 'a4d-placa.js', 'a4e-garagem.js', 'a4f-musica.js', 'a5-adm.js', 'a6-acoes.js'])
 head = open(src + 'head.html').read()
 
 def montar(banco, modelos=None):
