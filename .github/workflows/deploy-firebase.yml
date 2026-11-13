@@ -1,0 +1,28 @@
+name: Deploy Firebase (Functions + regras)
+on:
+  push:
+    branches: [main]
+    paths: ['functions/**', 'firestore.rules', 'firebase.json', '.github/workflows/deploy-firebase.yml']
+  workflow_dispatch:
+concurrency: deploy-firebase
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dependências das Functions
+        run: cd functions && npm install --no-audit --no-fund
+      - name: Credenciais
+        env:
+          SA: ${{ secrets.FIREBASE_SA }}
+        run: printf '%s' "$SA" > "$HOME/sa.json"
+      - name: Deploy
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$HOME/sa.json"
+          npx -y firebase-tools@latest deploy --only functions,firestore:rules --project game-aura-59bf8 --non-interactive --force
+      - name: Limpar credenciais
+        if: always()
+        run: rm -f "$HOME/sa.json"
