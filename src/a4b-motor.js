@@ -128,7 +128,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var COR_EU = SEL.cor == null ? 0x3A3F4B : SEL.cor;
   function hexCss(n, f) { var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; f = f || 1; return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')'; }
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
-  var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15;
+  var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
@@ -192,7 +192,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
         continue;
       }
-      if (o.tipo === 'buraco' && s.revisao > 0) continue;
+      if (o.tipo === 'buraco') {
+        // buraco não encerra: estraga o pneu (a revisão do CAP protege)
+        if (s.revisao > 0) continue;
+        o.batido = true; som('buraco'); s.pneu -= BURACO; s.tremor = 0.4; s.buracos = (s.buracos || 0) + 1;
+        s.msg = { txt: 'Buraco! Pneu −' + BURACO + '%', cor: '#FFD07A', ate: s.t + 1.3 };
+        continue;
+      }
       if (o.tipo === 'tag') { o.pego = true; s.tag = true; s.msg = { txt: 'Tag ativada', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
       if (o.tipo === 'seguro') {
         o.pego = true;

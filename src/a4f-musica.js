@@ -145,6 +145,10 @@ var Musica = (function () {
       // batida mais leve + escudo (acorde subindo)
       chiado(t, 0.22, 500, 0.6); var o2 = ctx.createOscillator(), g2 = ctx.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(110, t); o2.frequency.exponentialRampToValueAtTime(40, t + 0.2); env(g2, t, 0.003, 0.8, 0.25); o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 0.3);
       [76, 81, 88].forEach(function (m, i) { osc('triangle', m, t + 0.12 + i * 0.07, 0.25, 0.12); });
+    } else if (tipo === 'buraco') {
+      // baque seco + chacoalhar
+      var o3 = ctx.createOscillator(), g3 = ctx.createGain(); o3.type = 'sine'; o3.frequency.setValueAtTime(90, t); o3.frequency.exponentialRampToValueAtTime(35, t + 0.18); env(g3, t, 0.003, 1.0, 0.22); o3.connect(g3); g3.connect(master); o3.start(t); o3.stop(t + 0.3);
+      chiado(t, 0.12, 200, 0.5); chiado(t + 0.1, 0.06, 1500, 0.25); chiado(t + 0.18, 0.05, 1500, 0.2);
     } else if (tipo === 'furou') {
       // estouro + ar escapando
       chiado(t, 0.08, 800, 1.0); chiado(t + 0.06, 0.9, 2500, 0.25);

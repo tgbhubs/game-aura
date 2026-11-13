@@ -107,9 +107,9 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones, buracos e carros parados</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
     if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
-    else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto.</p>';
+    else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto, mas o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
     var vis = CR.visual || visualPreferido();
     h += '<div class="ovcard" style="padding:12px 14px"><div class="small" style="opacity:.8;margin-bottom:8px">Visual da pista (não muda a pontuação)</div><div class="seg" style="margin:0;background:rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 1fr">' +
       [['3dreal', '3D realista'], ['3d', '3D leve'], ['realista', 'De cima realista'], ['classico', 'De cima clássico']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
@@ -137,6 +137,13 @@ function desenharCorrida() {
       h += '<div class="ovcard" style="margin-top:16px;text-align:left"><div class="row between"><span>Melhor tempo da rodada</span><b>' + fmtSeg(CR.res.melhor) + '</b></div><div class="row between" style="margin-top:6px"><span>Pontos que valem</span><b>' + Logica.curva(CR.res.melhor, k) + '</b></div><div class="row between" style="margin-top:6px"><span>Tentativas restantes</span><b>' + CR.res.restantes + '</b></div></div>';
       if (t >= 120) h += '<div class="ovcard"><b>Conquista: Piloto de Ouro!</b><br><button class="btn wh sm" style="margin-top:10px" data-a="compartilharBadge" data-v="piloto|' + CR.rid + '|' + CR.n + '">📸 Compartilhar</button></div>';
     }
+    if (CR.treino && CR.resTreino) {
+      var rt = CR.resTreino;
+      h += '<div class="ovcard" style="margin-top:16px;text-align:left">' + (rt.recorde ? '<b style="color:#FFB27A">Novo recorde pessoal no treino!</b>' : rt.recordeSemana ? '<b style="color:#FFB27A">Seu melhor treino da semana!</b>' : '') +
+        '<div class="row between" style="margin-top:6px"><span>Seu melhor treino da semana</span><b>' + fmtSeg(rt.melhorSemana) + '</b></div><div class="row between" style="margin-top:6px"><span>Seu recorde geral</span><b>' + fmtSeg(rt.melhor) + '</b></div>' +
+        (rt.valido ? '' : '<div class="tiny" style="opacity:.7;margin-top:6px">Esse tempo não entrou no ranking (não bateu com o tempo real da partida).</div>') +
+        '<button class="btn wh sm" style="margin-top:10px" data-a="verRankingTreino">Ver ranking de treinos</button></div>';
+    }
     h += '</div>';
     if (CR.treino) h += '<button class="btn lar full" data-a="iniciarCorrida">Treinar de novo</button>' + (CR.rid && m && m.restantes > 0 ? '<button class="btn wh full" style="margin-top:10px" data-a="paraValendo">Correr valendo</button>' : '');
     else if (CR.res && CR.res.restantes > 0) h += '<button class="btn lar full" data-a="iniciarCorrida">Usar a tentativa ' + (4 - CR.res.restantes) + ' de 3</button>';
@@ -147,7 +154,14 @@ function desenharCorrida() {
   if (CR.fase === 'jogo') montarMotor();
 }
 function iniciarCorrida() {
-  if (CR.treino) { CR.seed = Math.floor(Math.random() * 4e9); CR.fase = 'jogo'; desenharCorrida(); return; }
+  if (CR.treino) {
+    // o servidor marca o início para o tempo poder entrar no ranking de treinos; sem conexão, treina mesmo assim
+    CR.fase = 'carregando'; CR.resTreino = null; desenharCorrida();
+    B.chamar('treino', { op: 'iniciar', carro: CR.carro || carroPreferido() }).then(function (r) {
+      if (!CR) return; CR.seed = r.seed; CR.semRecorde = false; CR.fase = 'jogo'; desenharCorrida();
+    }).catch(function () { if (!CR) return; CR.seed = Math.floor(Math.random() * 4e9); CR.semRecorde = true; CR.fase = 'jogo'; desenharCorrida(); });
+    return;
+  }
   CR.fase = 'carregando'; desenharCorrida();
   B.chamar('iniciarCorrida', { rodadaId: CR.rid }).then(function (r) {
     if (!CR) return;
@@ -157,7 +171,13 @@ function iniciarCorrida() {
 function fimCorrida(t) {
   if (!CR) return;
   CR.tempo = t; CR.motor = null;
-  if (CR.treino) { CR.fase = 'fim'; desenharCorrida(); return; }
+  if (CR.treino) {
+    if (CR.semRecorde) { CR.fase = 'fim'; desenharCorrida(); return; }
+    CR.fase = 'salvando'; desenharCorrida();
+    B.chamar('treino', { op: 'finalizar', tempo: t }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+      .catch(function () { if (!CR) return; CR.fase = 'fim'; desenharCorrida(); });
+    return;
+  }
   CR.fase = 'salvando'; desenharCorrida();
   var tentar = function (n) {
     B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t }).then(function (r) {

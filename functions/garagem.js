@@ -110,5 +110,39 @@
     return { garagemComprador: gc, garagemVendedor: gv, carteiraComprador: cc, carteiraVendedor: cv, anuncio: an, iid: iid, taxa: tx };
   };
 
+  // ---------- treino com recorde (validado como a corrida da rodada) ----------
+  // carro: chave escolhida (um dos da casa ou o id de um carro da garagem)
+  G.catDoCarro = function (carro, garagem) {
+    if (G.BASE.indexOf(carro) >= 0) return carro;
+    var c = (garagem && garagem.carros || {})[carro];
+    return c && G.CATALOGO[c.cat] ? c.cat : 'aura';
+  };
+  G.iniciarTreino = function (c) {
+    if (!c.jog || c.jog.status !== 'ativo') L.erro('Seu cadastro ainda não foi aprovado.');
+    var seed = (L.hash(c.uid + '|' + c.now + '|' + Math.random()) >>> 0) || 1;
+    var doc = L.clone(c.doc || {});
+    doc.uid = c.uid; doc.ap = c.jog.apelido || ''; doc.nm = String(c.jog.nome || '').trim().split(/\s+/)[0] || ''; doc.a = c.jog.areaId || '';
+    doc.sessao = { inicio: c.now, seed: seed, cat: G.catDoCarro(c.carro, c.garagem) };
+    return { doc: doc, resp: { seed: seed } };
+  };
+  G.finalizarTreino = function (c) {
+    var doc = L.clone(c.doc || {}), ss = doc.sessao;
+    if (!ss) L.erro('Treino não encontrado. Comece de novo.');
+    var tempo = Number(c.tempo); if (!(tempo >= 0)) tempo = 0;
+    var maxT = (c.now - ss.inicio) / 1000 + 2, valido = tempo <= maxT && tempo <= 600;
+    tempo = Math.round(Math.min(tempo, maxT) * 100) / 100;
+    delete doc.sessao;
+    doc.treinos = (doc.treinos || 0) + 1;
+    var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false;
+    if (valido) {
+      if (!doc.melhor || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
+      doc.semanas = doc.semanas || {};
+      if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+      // guarda só as últimas 12 semanas
+      Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
+    }
+    return { doc: doc, resp: { tempo: tempo, valido: valido, recorde: recorde, recordeSemana: recordeSemana, melhor: doc.melhor ? doc.melhor.t : 0, melhorSemana: doc.semanas && doc.semanas[sid] ? doc.semanas[sid].t : 0 } };
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = G; else root.Garagem = G;
 })(this);

@@ -1082,6 +1082,40 @@ span.pc{display:flex}
     return { garagemComprador: gc, garagemVendedor: gv, carteiraComprador: cc, carteiraVendedor: cv, anuncio: an, iid: iid, taxa: tx };
   };
 
+  // ---------- treino com recorde (validado como a corrida da rodada) ----------
+  // carro: chave escolhida (um dos da casa ou o id de um carro da garagem)
+  G.catDoCarro = function (carro, garagem) {
+    if (G.BASE.indexOf(carro) >= 0) return carro;
+    var c = (garagem && garagem.carros || {})[carro];
+    return c && G.CATALOGO[c.cat] ? c.cat : 'aura';
+  };
+  G.iniciarTreino = function (c) {
+    if (!c.jog || c.jog.status !== 'ativo') L.erro('Seu cadastro ainda não foi aprovado.');
+    var seed = (L.hash(c.uid + '|' + c.now + '|' + Math.random()) >>> 0) || 1;
+    var doc = L.clone(c.doc || {});
+    doc.uid = c.uid; doc.ap = c.jog.apelido || ''; doc.nm = String(c.jog.nome || '').trim().split(/\s+/)[0] || ''; doc.a = c.jog.areaId || '';
+    doc.sessao = { inicio: c.now, seed: seed, cat: G.catDoCarro(c.carro, c.garagem) };
+    return { doc: doc, resp: { seed: seed } };
+  };
+  G.finalizarTreino = function (c) {
+    var doc = L.clone(c.doc || {}), ss = doc.sessao;
+    if (!ss) L.erro('Treino não encontrado. Comece de novo.');
+    var tempo = Number(c.tempo); if (!(tempo >= 0)) tempo = 0;
+    var maxT = (c.now - ss.inicio) / 1000 + 2, valido = tempo <= maxT && tempo <= 600;
+    tempo = Math.round(Math.min(tempo, maxT) * 100) / 100;
+    delete doc.sessao;
+    doc.treinos = (doc.treinos || 0) + 1;
+    var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false;
+    if (valido) {
+      if (!doc.melhor || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
+      doc.semanas = doc.semanas || {};
+      if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+      // guarda só as últimas 12 semanas
+      Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
+    }
+    return { doc: doc, resp: { tempo: tempo, valido: valido, recorde: recorde, recordeSemana: recordeSemana, melhor: doc.melhor ? doc.melhor.t : 0, melhorSemana: doc.semanas && doc.semanas[sid] ? doc.semanas[sid].t : 0 } };
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = G; else root.Garagem = G;
 })(this);
 
@@ -1117,7 +1151,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-13c';
+var BUILD = '2026-11-13d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1235,7 +1269,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v3';
+  var CH = 'gameicarros_demo_v4';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -1369,6 +1403,12 @@ function criarDemo() {
     }
     if (nome === 'placa') return demoPlaca(uid, jog, d, now);
     if (nome === 'garagem') return demoGaragem(uid, jog, d, now);
+    if (nome === 'treino') {
+      var tr0 = lerDoc('treinos/' + uid);
+      var rt = d.op === 'iniciar' ? Garagem.iniciarTreino({ now: now, uid: uid, jog: jog, doc: tr0, carro: String(d.carro || ''), garagem: lerDoc('garagens/' + uid) })
+        : Garagem.finalizarTreino({ now: now, doc: tr0, tempo: d.tempo });
+      gravar('treinos/' + uid, rt.doc); return rt.resp;
+    }
     Logica.erro('Função desconhecida: ' + nome);
   }
   /* ---- Garagem no modo demonstração: mesma lógica das Cloud Functions ---- */
@@ -1562,6 +1602,14 @@ function semearDemo(db) {
     });
     put('placar', rid2, { temporadaId: tid, rodadaId: rid2, p: P });
   }
+  // Treinos: recordes fictícios desta semana e gerais
+  var sidT = Garagem.semana(agora);
+  pessoas.slice(1).forEach(function (p, i) {
+    if (r() < 0.25) return;
+    var tg = Math.round((40 + r() * 140) * 100) / 100, ts = Math.round(tg * (0.55 + r() * 0.45) * 100) / 100, cats = ['aura', 'conceito', 'cyberpunk', 'suv-porto', 'hatch-verde'];
+    var semanas = {}; if (r() < 0.75) semanas[sidT] = { t: ts, cat: cats[i % cats.length], em: agora - i * 3600000 };
+    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas });
+  });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
     var gid = 'garagens/' + x[0], g0 = (db.cols.garagens && db.cols.garagens[x[0]]) || { carros: {}, seq: 0 };
@@ -1594,7 +1642,7 @@ var S = {
 };
 var D = {
   config: null, configOk: false, areas: {}, temporadas: {}, rodadas: {}, placares: {}, jogadores: {},
-  meusQuiz: {}, minhasCorridas: {}, perguntas: {}, segredo: null, admCorridas: null, outrasTemp: {}, mesas: {}, partidas: {}, garagem: null, carteira: null, anuncios: {}
+  meusQuiz: {}, minhasCorridas: {}, perguntas: {}, segredo: null, admCorridas: null, outrasTemp: {}, mesas: {}, partidas: {}, treinos: {}, garagem: null, carteira: null, anuncios: {}
 };
 var subUser = [], subTemp = [], subAdm = [];
 function limpar(lista) { lista.forEach(function (u) { try { u(); } catch (e) { } }); lista.length = 0; }
@@ -1642,7 +1690,7 @@ function assinarBase() {
   B.onAuth(function (u) {
     limpar(subUser); limpar(subTemp); limpar(subAdm);
     S.user = u; S.me = null; S.meOk = false; S.ativoAssinado = false; S.tidAssinado = null;
-    D.jogadores = {}; D.meusQuiz = {}; D.minhasCorridas = {}; D.placares = {}; D.rodadas = {}; D.perguntas = {}; D.mesas = {}; D.partidas = {}; D.garagem = null; D.carteira = null; D.anuncios = {};
+    D.jogadores = {}; D.meusQuiz = {}; D.minhasCorridas = {}; D.placares = {}; D.rodadas = {}; D.perguntas = {}; D.mesas = {}; D.partidas = {}; D.treinos = {}; D.garagem = null; D.carteira = null; D.anuncios = {};
     if (u) {
       subUser.push(B.ouvirDoc('jogadores/' + u.uid, function (d) {
         S.me = d; S.meOk = true;
@@ -1660,6 +1708,7 @@ function assinarAtivo() {
   subUser.push(B.ouvirDoc('garagens/' + S.user.uid, function (d) { D.garagem = d; render(); }));
   subUser.push(B.ouvirDoc('carteira/' + S.user.uid, function (d) { var mudou = D.carteira && d && JSON.stringify(d) !== JSON.stringify(D.carteira); D.carteira = d; if (mudou && typeof atualizarSaldo === 'function') atualizarSaldo(); render(); }));
   subUser.push(B.ouvirCol('anuncios', [['status', '==', 'ativo']], function (m) { D.anuncios = m; render(); }));
+  subUser.push(B.ouvirCol('treinos', null, function (m) { D.treinos = m; render(); }));
   subUser.push(B.ouvirCol('mesas', [['aberta', '==', true]], function (m) { D.mesas = m; render(); if (typeof placaAtualizarLista === 'function') placaAtualizarLista(); }));
   reassinarTemporada();
   assinarAdm();
@@ -2065,10 +2114,11 @@ function telaRanking() {
     temps.forEach(function (k) { h += '<option value="' + k + '"' + (k === tid ? ' selected' : '') + '>' + esc(D.temporadas[k].nome) + '</option>'; });
     h += '</select>';
   }
-  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa'].map(function (m) {
-    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!' }[m] + '</button>';
+  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa', 'treino'].map(function (m) {
+    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino' }[m] + '</button>';
   }).join('') + '</div>';
   if (S.rankModo === 'placa') return h + rankingPlaca(tid);
+  if (S.rankModo === 'treino') return h + rankingTreino();
   var iniciadas = res.rods.filter(function (r) { return Date.now() >= r.inicio; });
   if (!iniciadas.length) return h + '<div class="empty">A primeira rodada ainda não começou.</div>';
   var rid = S.rankRodada && res.rod[S.rankRodada] ? S.rankRodada : iniciadas[iniciadas.length - 1].id;
@@ -2113,6 +2163,23 @@ function telaRanking() {
   }
   S._compart = { titulo: titulo, linhas: linhasCompart, area: S.rankModo === 'areas' };
   if (linhasCompart.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+function rankingTreino() {
+  var sem = S.rankTreino !== 'geral', sid = Garagem.semana(Date.now()), uid = S.user.uid, linhas = [], h = '';
+  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (sem ? '' : ' on') + '" data-a="rankTreino" data-v="geral">Geral</button></div>';
+  var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return r ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
+    .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
+  h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos nem créditos.</p><div class="card" style="padding:6px 16px">';
+  if (!l.length) h += '<div class="empty">Ninguém treinou ' + (sem ? 'esta semana' : 'ainda') + '.</div>';
+  l.forEach(function (x, i) {
+    var j = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a }), c = Garagem.CATALOGO[x.r.cat] || Garagem.CATALOGO.aura, pos = i > 0 && l[i - 1].r.t === x.r.t ? linhas[i - 1].pos : i + 1;
+    linhas.push({ pos: pos, uid: x.uid, l: { ap: x.d.ap, nm: x.d.nm, a: x.d.a }, pts: fmtSeg(x.r.t), sub: c.nome });
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
+  });
+  h += '</div>';
+  S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
+  if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
   return h;
 }
 function rankingPlaca(tid) {
@@ -2201,7 +2268,7 @@ function telaRegras() {
   return '<div class="card regras" style="margin-top:16px"><h3 style="font-size:20px">Como funciona</h3>' +
     '<p>O Game Aura tem uma <b>rodada por semana</b>, de segunda 00:00 a domingo 23:59. Cada rodada tem duas etapas, que você joga quando quiser dentro da semana e em qualquer ordem.</p>' +
     '<h4>🧠 Quiz</h4><ul><li>10 perguntas, 4 alternativas, 20 segundos por pergunta.</li><li>Uma tentativa por rodada. Tempo esgotado conta como erro.</li><li>10 pontos por acerto (máximo 100).</li><li>Se você sair no meio, pode continuar depois; a pergunta que estava na tela conta como erro se o tempo dela acabar.</li><li>Desempate: menor tempo total nas perguntas que você acertou.</li><li>A ordem das perguntas e das alternativas muda para cada pessoa.</li></ul>' +
-    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones, buracos e carros parados tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua.</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos.</li><li><b>Praça de pedágio:</b> todas as faixas fecham. Com a <b>tag</b> (pegue no caminho, costuma aparecer logo depois do aviso PEDÁGIO) a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b> no cronômetro.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto.</li></ul>' +
+    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua.</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos.</li><li><b>Praça de pedágio:</b> todas as faixas fecham. Com a <b>tag</b> (pegue no caminho, costuma aparecer logo depois do aviso PEDÁGIO) a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b> no cronômetro.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O seu melhor tempo no treino entra no <b>ranking de treinos</b> (da semana e geral), onde valem os atributos do carro.</li></ul>' +
     '<p><b>Pontos pelo melhor tempo</b> (não depende da posição dos outros):</p><table class="t" style="max-width:260px"><tr><th>Tempo</th><th class="n">Pontos</th></tr>' + tab + '</table>' +
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
@@ -2329,9 +2396,9 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones, buracos e carros parados</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
     if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
-    else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto.</p>';
+    else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto, mas o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
     var vis = CR.visual || visualPreferido();
     h += '<div class="ovcard" style="padding:12px 14px"><div class="small" style="opacity:.8;margin-bottom:8px">Visual da pista (não muda a pontuação)</div><div class="seg" style="margin:0;background:rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 1fr">' +
       [['3dreal', '3D realista'], ['3d', '3D leve'], ['realista', 'De cima realista'], ['classico', 'De cima clássico']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
@@ -2359,6 +2426,13 @@ function desenharCorrida() {
       h += '<div class="ovcard" style="margin-top:16px;text-align:left"><div class="row between"><span>Melhor tempo da rodada</span><b>' + fmtSeg(CR.res.melhor) + '</b></div><div class="row between" style="margin-top:6px"><span>Pontos que valem</span><b>' + Logica.curva(CR.res.melhor, k) + '</b></div><div class="row between" style="margin-top:6px"><span>Tentativas restantes</span><b>' + CR.res.restantes + '</b></div></div>';
       if (t >= 120) h += '<div class="ovcard"><b>Conquista: Piloto de Ouro!</b><br><button class="btn wh sm" style="margin-top:10px" data-a="compartilharBadge" data-v="piloto|' + CR.rid + '|' + CR.n + '">📸 Compartilhar</button></div>';
     }
+    if (CR.treino && CR.resTreino) {
+      var rt = CR.resTreino;
+      h += '<div class="ovcard" style="margin-top:16px;text-align:left">' + (rt.recorde ? '<b style="color:#FFB27A">Novo recorde pessoal no treino!</b>' : rt.recordeSemana ? '<b style="color:#FFB27A">Seu melhor treino da semana!</b>' : '') +
+        '<div class="row between" style="margin-top:6px"><span>Seu melhor treino da semana</span><b>' + fmtSeg(rt.melhorSemana) + '</b></div><div class="row between" style="margin-top:6px"><span>Seu recorde geral</span><b>' + fmtSeg(rt.melhor) + '</b></div>' +
+        (rt.valido ? '' : '<div class="tiny" style="opacity:.7;margin-top:6px">Esse tempo não entrou no ranking (não bateu com o tempo real da partida).</div>') +
+        '<button class="btn wh sm" style="margin-top:10px" data-a="verRankingTreino">Ver ranking de treinos</button></div>';
+    }
     h += '</div>';
     if (CR.treino) h += '<button class="btn lar full" data-a="iniciarCorrida">Treinar de novo</button>' + (CR.rid && m && m.restantes > 0 ? '<button class="btn wh full" style="margin-top:10px" data-a="paraValendo">Correr valendo</button>' : '');
     else if (CR.res && CR.res.restantes > 0) h += '<button class="btn lar full" data-a="iniciarCorrida">Usar a tentativa ' + (4 - CR.res.restantes) + ' de 3</button>';
@@ -2369,7 +2443,14 @@ function desenharCorrida() {
   if (CR.fase === 'jogo') montarMotor();
 }
 function iniciarCorrida() {
-  if (CR.treino) { CR.seed = Math.floor(Math.random() * 4e9); CR.fase = 'jogo'; desenharCorrida(); return; }
+  if (CR.treino) {
+    // o servidor marca o início para o tempo poder entrar no ranking de treinos; sem conexão, treina mesmo assim
+    CR.fase = 'carregando'; CR.resTreino = null; desenharCorrida();
+    B.chamar('treino', { op: 'iniciar', carro: CR.carro || carroPreferido() }).then(function (r) {
+      if (!CR) return; CR.seed = r.seed; CR.semRecorde = false; CR.fase = 'jogo'; desenharCorrida();
+    }).catch(function () { if (!CR) return; CR.seed = Math.floor(Math.random() * 4e9); CR.semRecorde = true; CR.fase = 'jogo'; desenharCorrida(); });
+    return;
+  }
   CR.fase = 'carregando'; desenharCorrida();
   B.chamar('iniciarCorrida', { rodadaId: CR.rid }).then(function (r) {
     if (!CR) return;
@@ -2379,7 +2460,13 @@ function iniciarCorrida() {
 function fimCorrida(t) {
   if (!CR) return;
   CR.tempo = t; CR.motor = null;
-  if (CR.treino) { CR.fase = 'fim'; desenharCorrida(); return; }
+  if (CR.treino) {
+    if (CR.semRecorde) { CR.fase = 'fim'; desenharCorrida(); return; }
+    CR.fase = 'salvando'; desenharCorrida();
+    B.chamar('treino', { op: 'finalizar', tempo: t }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+      .catch(function () { if (!CR) return; CR.fase = 'fim'; desenharCorrida(); });
+    return;
+  }
   CR.fase = 'salvando'; desenharCorrida();
   var tentar = function (n) {
     B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t }).then(function (r) {
@@ -2523,7 +2610,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var COR_EU = SEL.cor == null ? 0x3A3F4B : SEL.cor;
   function hexCss(n, f) { var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; f = f || 1; return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')'; }
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
-  var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15;
+  var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
@@ -2587,7 +2674,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
         continue;
       }
-      if (o.tipo === 'buraco' && s.revisao > 0) continue;
+      if (o.tipo === 'buraco') {
+        // buraco não encerra: estraga o pneu (a revisão do CAP protege)
+        if (s.revisao > 0) continue;
+        o.batido = true; som('buraco'); s.pneu -= BURACO; s.tremor = 0.4; s.buracos = (s.buracos || 0) + 1;
+        s.msg = { txt: 'Buraco! Pneu −' + BURACO + '%', cor: '#FFD07A', ate: s.t + 1.3 };
+        continue;
+      }
       if (o.tipo === 'tag') { o.pego = true; s.tag = true; s.msg = { txt: 'Tag ativada', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
       if (o.tipo === 'seguro') {
         o.pego = true;
@@ -4242,6 +4335,10 @@ var Musica = (function () {
       // batida mais leve + escudo (acorde subindo)
       chiado(t, 0.22, 500, 0.6); var o2 = ctx.createOscillator(), g2 = ctx.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(110, t); o2.frequency.exponentialRampToValueAtTime(40, t + 0.2); env(g2, t, 0.003, 0.8, 0.25); o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 0.3);
       [76, 81, 88].forEach(function (m, i) { osc('triangle', m, t + 0.12 + i * 0.07, 0.25, 0.12); });
+    } else if (tipo === 'buraco') {
+      // baque seco + chacoalhar
+      var o3 = ctx.createOscillator(), g3 = ctx.createGain(); o3.type = 'sine'; o3.frequency.setValueAtTime(90, t); o3.frequency.exponentialRampToValueAtTime(35, t + 0.18); env(g3, t, 0.003, 1.0, 0.22); o3.connect(g3); g3.connect(master); o3.start(t); o3.stop(t + 0.3);
+      chiado(t, 0.12, 200, 0.5); chiado(t + 0.1, 0.06, 1500, 0.25); chiado(t + 0.18, 0.05, 1500, 0.2);
     } else if (tipo === 'furou') {
       // estouro + ar escapando
       chiado(t, 0.08, 800, 1.0); chiado(t + 0.06, 0.9, 2500, 0.25);
@@ -4854,6 +4951,8 @@ var A = {
   treinoDaqui: function () { CR.treino = true; CR.fase = 'intro'; desenharCorrida(); },
   paraValendo: function () { CR.treino = false; CR.fase = 'intro'; desenharCorrida(); },
   iniciarCorrida: function () { Musica.preparar(); iniciarCorrida(); },
+  rankTreino: function (v) { S.rankTreino = v; S.manterScroll = true; R(); },
+  verRankingTreino: function () { fecharOv(); S.tab = 'ranking'; S.rankModo = 'treino'; S.rankTreino = 'semana'; R(); },
   musica: function () {
     var on = Musica.alternar(), b = $('#btMusica');
     if (b) b.innerHTML = on ? '♫' : '<s>♫</s>';

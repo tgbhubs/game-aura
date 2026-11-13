@@ -230,6 +230,8 @@ var A = {
   treinoDaqui: function () { CR.treino = true; CR.fase = 'intro'; desenharCorrida(); },
   paraValendo: function () { CR.treino = false; CR.fase = 'intro'; desenharCorrida(); },
   iniciarCorrida: function () { Musica.preparar(); iniciarCorrida(); },
+  rankTreino: function (v) { S.rankTreino = v; S.manterScroll = true; R(); },
+  verRankingTreino: function () { fecharOv(); S.tab = 'ranking'; S.rankModo = 'treino'; S.rankTreino = 'semana'; R(); },
   musica: function () {
     var on = Musica.alternar(), b = $('#btMusica');
     if (b) b.innerHTML = on ? '♫' : '<s>♫</s>';

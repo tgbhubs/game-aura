@@ -222,10 +222,11 @@ function telaRanking() {
     temps.forEach(function (k) { h += '<option value="' + k + '"' + (k === tid ? ' selected' : '') + '>' + esc(D.temporadas[k].nome) + '</option>'; });
     h += '</select>';
   }
-  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa'].map(function (m) {
-    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!' }[m] + '</button>';
+  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa', 'treino'].map(function (m) {
+    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino' }[m] + '</button>';
   }).join('') + '</div>';
   if (S.rankModo === 'placa') return h + rankingPlaca(tid);
+  if (S.rankModo === 'treino') return h + rankingTreino();
   var iniciadas = res.rods.filter(function (r) { return Date.now() >= r.inicio; });
   if (!iniciadas.length) return h + '<div class="empty">A primeira rodada ainda não começou.</div>';
   var rid = S.rankRodada && res.rod[S.rankRodada] ? S.rankRodada : iniciadas[iniciadas.length - 1].id;
@@ -270,6 +271,23 @@ function telaRanking() {
   }
   S._compart = { titulo: titulo, linhas: linhasCompart, area: S.rankModo === 'areas' };
   if (linhasCompart.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+function rankingTreino() {
+  var sem = S.rankTreino !== 'geral', sid = Garagem.semana(Date.now()), uid = S.user.uid, linhas = [], h = '';
+  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (sem ? '' : ' on') + '" data-a="rankTreino" data-v="geral">Geral</button></div>';
+  var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return r ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
+    .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
+  h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos nem créditos.</p><div class="card" style="padding:6px 16px">';
+  if (!l.length) h += '<div class="empty">Ninguém treinou ' + (sem ? 'esta semana' : 'ainda') + '.</div>';
+  l.forEach(function (x, i) {
+    var j = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a }), c = Garagem.CATALOGO[x.r.cat] || Garagem.CATALOGO.aura, pos = i > 0 && l[i - 1].r.t === x.r.t ? linhas[i - 1].pos : i + 1;
+    linhas.push({ pos: pos, uid: x.uid, l: { ap: x.d.ap, nm: x.d.nm, a: x.d.a }, pts: fmtSeg(x.r.t), sub: c.nome });
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
+  });
+  h += '</div>';
+  S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
+  if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
   return h;
 }
 function rankingPlaca(tid) {
@@ -358,7 +376,7 @@ function telaRegras() {
   return '<div class="card regras" style="margin-top:16px"><h3 style="font-size:20px">Como funciona</h3>' +
     '<p>O Game Aura tem uma <b>rodada por semana</b>, de segunda 00:00 a domingo 23:59. Cada rodada tem duas etapas, que você joga quando quiser dentro da semana e em qualquer ordem.</p>' +
     '<h4>🧠 Quiz</h4><ul><li>10 perguntas, 4 alternativas, 20 segundos por pergunta.</li><li>Uma tentativa por rodada. Tempo esgotado conta como erro.</li><li>10 pontos por acerto (máximo 100).</li><li>Se você sair no meio, pode continuar depois; a pergunta que estava na tela conta como erro se o tempo dela acabar.</li><li>Desempate: menor tempo total nas perguntas que você acertou.</li><li>A ordem das perguntas e das alternativas muda para cada pessoa.</li></ul>' +
-    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones, buracos e carros parados tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua.</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos.</li><li><b>Praça de pedágio:</b> todas as faixas fecham. Com a <b>tag</b> (pegue no caminho, costuma aparecer logo depois do aviso PEDÁGIO) a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b> no cronômetro.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto.</li></ul>' +
+    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua.</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos.</li><li><b>Praça de pedágio:</b> todas as faixas fecham. Com a <b>tag</b> (pegue no caminho, costuma aparecer logo depois do aviso PEDÁGIO) a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b> no cronômetro.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O seu melhor tempo no treino entra no <b>ranking de treinos</b> (da semana e geral), onde valem os atributos do carro.</li></ul>' +
     '<p><b>Pontos pelo melhor tempo</b> (não depende da posição dos outros):</p><table class="t" style="max-width:260px"><tr><th>Tempo</th><th class="n">Pontos</th></tr>' + tab + '</table>' +
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].d) + '</li>'; }).join('') + '</ul>' +

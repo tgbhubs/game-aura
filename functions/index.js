@@ -294,3 +294,26 @@ exports.garagem = onCall((req) => {
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');
   }));
 });
+
+/* ================== TREINO COM RECORDE ==================
+   O treino continua livre, mas o tempo só entra no ranking de treinos se bater com o tempo real decorrido. */
+exports.treino = onCall((req) => {
+  const uid = uidDe(req);
+  const d = req.data || {};
+  return rodar(() => db.runTransaction(async (tx) => {
+    const ref = db.doc('treinos/' + uid);
+    const [j, t, g] = await Promise.all([tx.get(db.doc('jogadores/' + uid)), tx.get(ref), tx.get(db.doc('garagens/' + uid))]);
+    const now = Date.now();
+    if (d.op === 'iniciar') {
+      const r = G.iniciarTreino({ now, uid, jog: dados(j), doc: dados(t), carro: String(d.carro || ''), garagem: dados(g) });
+      tx.set(ref, r.doc);
+      return r.resp;
+    }
+    if (d.op === 'finalizar') {
+      const r = G.finalizarTreino({ now, doc: dados(t), tempo: d.tempo });
+      tx.set(ref, r.doc);
+      return r.resp;
+    }
+    throw new HttpsError('invalid-argument', 'Operação desconhecida.');
+  }));
+});

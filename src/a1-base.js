@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-13c';
+var BUILD = '2026-11-13d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v3';
+  var CH = 'gameicarros_demo_v4';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -262,6 +262,12 @@ function criarDemo() {
     }
     if (nome === 'placa') return demoPlaca(uid, jog, d, now);
     if (nome === 'garagem') return demoGaragem(uid, jog, d, now);
+    if (nome === 'treino') {
+      var tr0 = lerDoc('treinos/' + uid);
+      var rt = d.op === 'iniciar' ? Garagem.iniciarTreino({ now: now, uid: uid, jog: jog, doc: tr0, carro: String(d.carro || ''), garagem: lerDoc('garagens/' + uid) })
+        : Garagem.finalizarTreino({ now: now, doc: tr0, tempo: d.tempo });
+      gravar('treinos/' + uid, rt.doc); return rt.resp;
+    }
     Logica.erro('Função desconhecida: ' + nome);
   }
   /* ---- Garagem no modo demonstração: mesma lógica das Cloud Functions ---- */
@@ -455,6 +461,14 @@ function semearDemo(db) {
     });
     put('placar', rid2, { temporadaId: tid, rodadaId: rid2, p: P });
   }
+  // Treinos: recordes fictícios desta semana e gerais
+  var sidT = Garagem.semana(agora);
+  pessoas.slice(1).forEach(function (p, i) {
+    if (r() < 0.25) return;
+    var tg = Math.round((40 + r() * 140) * 100) / 100, ts = Math.round(tg * (0.55 + r() * 0.45) * 100) / 100, cats = ['aura', 'conceito', 'cyberpunk', 'suv-porto', 'hatch-verde'];
+    var semanas = {}; if (r() < 0.75) semanas[sidT] = { t: ts, cat: cats[i % cats.length], em: agora - i * 3600000 };
+    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas });
+  });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
     var gid = 'garagens/' + x[0], g0 = (db.cols.garagens && db.cols.garagens[x[0]]) || { carros: {}, seq: 0 };
