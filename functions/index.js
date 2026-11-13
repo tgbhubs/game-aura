@@ -202,3 +202,95 @@ exports.placa = onCall((req) => {
     });
   });
 });
+
+/* ================== GARAGEM (créditos, 0 km, Retomados Porto e mercado entre pessoas) ==================
+   Saldo = pontos de todas as rodadas + vitórias no Placa! contra pessoas + vendas − compras.
+   Carteira, garagem, lote e anúncios são gravados só aqui. */
+const G = require('./garagem');
+
+async function lerSaldo(tx, uid) {
+  const [plac, temps, vit, cart, gar] = await Promise.all([
+    tx.get(db.collection('placar')),
+    tx.get(db.collection('temporadas')),
+    tx.get(db.collection('placaPartidas').where('vencedor', '==', uid)),
+    tx.get(db.doc('carteira/' + uid)),
+    tx.get(db.doc('garagens/' + uid))
+  ]);
+  const tmap = {};
+  temps.forEach((d) => { tmap[d.id] = d.data(); });
+  const vitorias = vit.docs.filter((d) => !d.data().temRobo).length;
+  const ganhos = G.ganhos(uid, plac.docs.map((d) => d.data()), tmap, vitorias);
+  const carteira = dados(cart) || {};
+  return { uid, ganhos, carteira, garagem: dados(gar) || { carros: {} }, saldo: G.saldo(ganhos, carteira) };
+}
+
+exports.garagem = onCall((req) => {
+  const uid = uidDe(req);
+  const d = req.data || {};
+  const op = String(d.op || '');
+  return rodar(async () => db.runTransaction(async (tx) => {
+    const eu = dados(await tx.get(db.doc('jogadores/' + uid)));
+    if (!eu || eu.status !== 'ativo') throw new HttpsError('permission-denied', 'Seu cadastro ainda não foi aprovado.');
+    const now = Date.now();
+    const loteRef = db.doc('estoque/' + G.semana(now));
+
+    if (op === 'saldo') {
+      const st = await lerSaldo(tx, uid);
+      return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] };
+    }
+    if (op === 'vitrine') {
+      const lt = await tx.get(loteRef);
+      if (!lt.exists) { const novo = G.lote(now); tx.set(loteRef, novo); return { semana: novo.semana }; }
+      return { semana: lt.id };
+    }
+    if (op === 'comprar0km') {
+      const st = await lerSaldo(tx, uid);
+      const r = G.comprar0km(st, String(d.cat || ''), now);
+      tx.set(db.doc('garagens/' + uid), r.garagem);
+      tx.set(db.doc('carteira/' + uid), r.carteira);
+      return { iid: r.iid, saldo: st.saldo - G.CATALOGO[d.cat].preco };
+    }
+    if (op === 'comprarRetomado') {
+      const lt = await tx.get(loteRef);
+      const st = await lerSaldo(tx, uid);
+      const lote = dados(lt) || G.lote(now);
+      const r = G.comprarRetomado(st, lote, String(d.item || ''), now);
+      tx.set(loteRef, r.lote);
+      tx.set(db.doc('garagens/' + uid), r.garagem);
+      tx.set(db.doc('carteira/' + uid), r.carteira);
+      return { iid: r.iid };
+    }
+    if (op === 'anunciar') {
+      const [gar, ans] = await Promise.all([tx.get(db.doc('garagens/' + uid)), tx.get(db.collection('anuncios').where('vendedor', '==', uid))]);
+      const st = { uid, apelido: eu.apelido || eu.nome || '', garagem: dados(gar) || { carros: {} } };
+      const an = G.anunciar(st, String(d.iid || ''), d.preco, ans.docs.map((x) => x.data()), now);
+      const ref = db.collection('anuncios').doc();
+      tx.set(ref, an);
+      return { anuncioId: ref.id };
+    }
+    if (op === 'cancelarAnuncio') {
+      const ref = db.doc('anuncios/' + String(d.anuncioId || ''));
+      const an = dados(await tx.get(ref));
+      if (!an || an.vendedor !== uid) throw new HttpsError('permission-denied', 'Esse anúncio não é seu.');
+      if (an.status !== 'ativo') return { ok: true };
+      tx.update(ref, { status: 'cancelado', canceladoEm: now });
+      return { ok: true };
+    }
+    if (op === 'comprarUsado') {
+      const ref = db.doc('anuncios/' + String(d.anuncioId || ''));
+      const an = dados(await tx.get(ref));
+      if (!an) throw new HttpsError('not-found', 'Anúncio não encontrado.');
+      const comprador = await lerSaldo(tx, uid);
+      const [gv, cv] = await Promise.all([tx.get(db.doc('garagens/' + an.vendedor)), tx.get(db.doc('carteira/' + an.vendedor))]);
+      const vendedor = { uid: an.vendedor, garagem: dados(gv) || { carros: {} }, carteira: dados(cv) || {} };
+      const r = G.comprarUsado(comprador, vendedor, an, now);
+      tx.set(db.doc('garagens/' + uid), r.garagemComprador);
+      tx.set(db.doc('garagens/' + an.vendedor), r.garagemVendedor);
+      tx.set(db.doc('carteira/' + uid), r.carteiraComprador);
+      tx.set(db.doc('carteira/' + an.vendedor), r.carteiraVendedor);
+      tx.set(ref, r.anuncio);
+      return { iid: r.iid, taxa: r.taxa };
+    }
+    throw new HttpsError('invalid-argument', 'Operação desconhecida.');
+  }));
+});

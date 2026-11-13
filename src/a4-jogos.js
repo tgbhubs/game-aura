@@ -86,6 +86,12 @@ function responderQuiz(alt) {
   }).catch(function (e) { if (!QZ) return; QZ.fase = 'erro'; QZ.erro = msgErro(e) + ' Toque em "Tentar de novo" para continuar de onde parou.'; desenharQuiz(); });
 }
 
+// atributos do carro (só valem no treino)
+function barrasAtr(a, vale) {
+  function barra(rot, v, txt) { return '<div class="atr"><span>' + rot + '</span><i><b style="width:' + Math.round(Math.max(8, Math.min(100, v)) ) + '%"></b></i><em>' + txt + '</em></div>'; }
+  return '<div class="atrs">' + barra('Agilidade', 50 * a.faixa, Math.round(a.faixa * 100) + '%') + barra('Pneus', 50 / a.pneu, a.pneu < 1 ? 'duram mais' : a.pneu > 1 ? 'gastam mais' : 'normais') +
+    barra('Seguro', a.seguro ? 100 : 8, a.seguro ? 'larga com 1' : 'sem') + '</div><div class="tiny" style="opacity:.7;margin-top:6px">' + (vale ? 'No treino, os atributos do carro valem.' : 'Na rodada todos os carros andam igual; os atributos valem só no treino.') + '</div>';
+}
 /* ================== CORRIDA ================== */
 var CR = null;
 function abrirCorrida(treino) {
@@ -101,16 +107,16 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones, buracos e carros parados</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones, buracos e carros parados</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: com <b>tag</b> você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s</li></ul></div>';
     if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
     else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto.</p>';
     var vis = CR.visual || visualPreferido();
     h += '<div class="ovcard" style="padding:12px 14px"><div class="small" style="opacity:.8;margin-bottom:8px">Visual da pista (não muda a pontuação)</div><div class="seg" style="margin:0;background:rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 1fr">' +
       [['3dreal', '3D realista'], ['3d', '3D leve'], ['realista', 'De cima realista'], ['classico', 'De cima clássico']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
-    var car = CR.carro || carroPreferido(), usaCarro = vis === '3dreal' || vis === 'realista'; imgCima(car);
-    h += '<div class="ovcard" style="padding:12px 14px"><div class="small" style="opacity:.8;margin-bottom:8px">Seu carro' + (usaCarro ? '' : ' (aparece no 3D realista e na vista de cima realista)') + '</div><div class="garagem' + (usaCarro ? '' : ' off') + '">' +
-      Object.keys(CARROS).map(function (k) { var f = window.FOTOS_CARROS && FOTOS_CARROS[k]; return '<button class="gcar' + (car === k ? ' on' : '') + '" data-a="carro" data-v="' + k + '" aria-pressed="' + (car === k) + '">' + (f ? '<img src="' + f.foto + '" alt="Carro ' + esc(CARROS[k].nome) + '">' : '') + '<b>' + CARROS[k].nome + '</b><span>' + esc(CARROS[k].desc) + '</span></button>'; }).join('') +
-      '</div><div class="tiny" style="opacity:.7;margin-top:8px">Só muda o visual: todos os carros têm o mesmo tamanho na pista.</div></div>';
+    var car = CR.carro || carroPreferido(), sel = carroSel(car), lista = meusCarros(); imgCima(sel.cat);
+    h += '<div class="ovcard" style="padding:12px 14px"><div class="row between" style="margin-bottom:8px"><span class="small" style="opacity:.8">Seu carro</span><button class="lnk tiny" style="color:#9FD3FF" data-a="irGaragem">Comprar carros na Garagem →</button></div><div class="garagem rolar">' +
+      lista.map(function (x) { var c = Garagem.CATALOGO[x.cat], f = window.FOTOS_CARROS && FOTOS_CARROS[x.cat]; return '<button class="gcar' + (car === x.key ? ' on' : '') + '" data-a="carro" data-v="' + esc(x.key) + '" aria-pressed="' + (car === x.key) + '">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '<b>' + esc(c.nome) + '</b><span>' + (x.origem === 'base' ? 'da casa' : x.origem === 'retomado' ? 'Retomado Porto' : x.origem === 'usado' ? 'usado' : '0 km') + '</span></button>'; }).join('') +
+      '</div>' + barrasAtr(sel.atr, CR.treino) + '</div>';
     h += '</div>';
     if (CR.treino) h += '<button class="btn lar full" data-a="iniciarCorrida">Começar treino</button>';
     else if (m.restantes > 0) h += '<button class="btn lar full" data-a="iniciarCorrida">Usar a tentativa ' + (m.usadas + 1) + ' de 3</button><button class="btn gh full" style="margin-top:10px" data-a="treinoDaqui">Treinar antes</button>';

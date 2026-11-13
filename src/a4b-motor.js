@@ -11,15 +11,28 @@ function carregarThree(cb) {
   setTimeout(function () { fim(!!window.THREE); }, 8000);
   document.head.appendChild(s);
 }
-/* Garagem: modelos de carro do 3D realista */
+/* Modelos 3D dos carros (o catálogo com preços e cores fica em functions/garagem.js) */
 var CARROS = {
-  aura: { nome: 'Aura', desc: 'O carro da casa, azul' },
-  conceito: { nome: 'Conceito', desc: 'Esportivo laranja', arquivo: 'assets/carros/conceito.glb', rotY: Math.PI, pintura: { material: 'body', cor: 0xB04600 } },
-  cyberpunk: { nome: 'Cyberpunk', desc: 'Muscle car grafite', arquivo: 'assets/carros/cyberpunk.glb', rotY: 0 }
+  aura: { forma: 'sedan' }, hatch: { forma: 'hatch' }, suv: { forma: 'suv' }, picape: { forma: 'picape' },
+  conceito: { arquivo: 'assets/carros/conceito.glb', rotY: Math.PI, pintura: 'body' },
+  cyberpunk: { arquivo: 'assets/carros/cyberpunk.glb', rotY: 0 }
 };
 var GLTF_URL = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
 var _modelosCache = {};
-function carroPreferido() { var c = lerLS('gi_carro', 'aura'); return CARROS[c] ? c : 'aura'; }
+// carro escolhido: um dos três de base (aura, conceito, cyberpunk) ou um carro comprado (id da garagem)
+function meusCarros() {
+  var l = Garagem.BASE.map(function (cat) { return { key: cat, cat: cat, origem: 'base', km: 0 }; });
+  var g = (typeof D !== 'undefined' && D.garagem && D.garagem.carros) || {};
+  Object.keys(g).sort(function (a, b) { return (g[a].compradoEm || 0) - (g[b].compradoEm || 0); }).forEach(function (iid) { if (Garagem.CATALOGO[g[iid].cat]) l.push({ key: iid, cat: g[iid].cat, origem: g[iid].origem, km: g[iid].km || 0, de: g[iid].de || '' }); });
+  return l;
+}
+function carroPreferido() { var c = lerLS('gi_carro', 'aura'); return meusCarros().some(function (x) { return x.key === c; }) ? c : 'aura'; }
+function carroSel(key) {
+  key = key || carroPreferido();
+  var x = meusCarros().filter(function (y) { return y.key === key; })[0] || { key: 'aura', cat: 'aura' };
+  var c = Garagem.CATALOGO[x.cat];
+  return { key: x.key, cat: x.cat, nome: c.nome, modelo: c.modelo, cor: c.cor, atr: c.atr };
+}
 function carregarGLTFLoader(cb) {
   if (window.THREE && THREE.GLTFLoader) { cb(true); return; }
   var sc = document.createElement('script'); sc.src = GLTF_URL;
@@ -27,7 +40,7 @@ function carregarGLTFLoader(cb) {
   document.head.appendChild(sc);
 }
 // carrega o modelo, normaliza o porte (até 3,2 × 1,55 m), direção (frente para -z) e apoia no chão
-function carregarModeloCarro(id, cb) {
+function carregarModeloCarro(id, cb, corPintura) {
   var cfg = CARROS[id]; if (!cfg || !cfg.arquivo) { cb(null); return; }
   carregarGLTFLoader(function (ok) {
     if (!ok) { cb(null); return; }
@@ -36,9 +49,11 @@ function carregarModeloCarro(id, cb) {
       var raiz = new THREE.Group(), obj = g.scene; raiz.add(obj);
       obj.rotation.y = cfg.rotY || 0; raiz.updateMatrixWorld(true);
       var total = new THREE.Box3().setFromObject(obj), tz = total.getSize(new THREE.Vector3());
-      if (cfg.pintura) obj.traverse(function (m) {
+      if (cfg.pintura && corPintura != null) obj.traverse(function (m) {
         if (!m.isMesh) return;
-        (Array.isArray(m.material) ? m.material : [m.material]).forEach(function (mt) { if (mt && mt.name === cfg.pintura.material) { mt.color.setHex(cfg.pintura.cor).convertSRGBToLinear(); } });
+        // pintura um pouco mais escura que a cor da marca: o reflexo do céu clareia bastante no 3D
+        var c3 = new THREE.Color(corPintura); c3.multiplyScalar(0.75);
+        (Array.isArray(m.material) ? m.material : [m.material]).forEach(function (mt) { if (mt && mt.name === cfg.pintura) { mt.color.setRGB(c3.r, c3.g, c3.b).convertSRGBToLinear(); } });
       });
       var bx = new THREE.Box3(), achou = false, temRigida = false;
       // malhas com esqueleto (skinned) têm caixa da pose original, que não bate com o que aparece na tela: mede só as rígidas (rodas etc.)
@@ -65,7 +80,7 @@ function carregarModeloCarro(id, cb) {
 // carro visto de cima (vista realista): Aura usa o desenho próprio; os outros, a foto gerada do modelo 3D
 var _imgsCima = {};
 function imgCima(id) {
-  if (id === 'aura' || !window.FOTOS_CARROS || !FOTOS_CARROS[id]) return null;
+  if (!window.FOTOS_CARROS || !FOTOS_CARROS[id]) return null;
   var im = _imgsCima[id];
   if (!im) { im = _imgsCima[id] = new Image(); im.src = FOTOS_CARROS[id].cima; }
   return im.complete && im.naturalWidth ? im : null;
@@ -73,6 +88,17 @@ function imgCima(id) {
 function visualPreferido() { var v = lerLS('gi_visual', '3dreal'); return ['3dreal', '3d', 'classico', 'realista'].indexOf(v) >= 0 ? v : '3dreal'; }
 function webglOk() {
   try { var c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch (e) { return false; }
+}
+// textura do piso do CAP Porto (usada pelas visões 3D)
+function capTextura(g, w, h) {
+  function rr2(x, y, ww, hh, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + ww, y, x + ww, y + hh, r); g.arcTo(x + ww, y + hh, x, y + hh, r); g.arcTo(x, y + hh, x, y, r); g.arcTo(x, y, x + ww, y, r); g.closePath(); }
+  g.fillStyle = 'rgba(73,158,242,.92)'; rr2(4, 4, w - 8, h - 8, 26); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 8; g.setLineDash([26, 18]); rr2(18, 18, w - 36, h - 36, 18); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '900 78px Montserrat, Arial, sans-serif'; g.fillText('CAP', w / 2, 92);
+  g.font = '800 40px Montserrat, Arial, sans-serif'; g.fillText('PORTO', w / 2, 150);
+  g.strokeStyle = '#fff'; g.lineWidth = 14; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (var i = 0; i < 2; i++) { var y = h - 150 + i * 62; g.beginPath(); g.moveTo(w / 2 - 50, y + 26); g.lineTo(w / 2, y - 14); g.lineTo(w / 2 + 50, y + 26); g.stroke(); }
 }
 function montarMotor() {
   var box = $('#cvBox'), wrap = $('#cvWrap'), hud = $('#cv');
@@ -95,10 +121,18 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
   var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5;
-  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40] };
+  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40], cap: [92, 150] };
+  // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
+  var SEL = carroSel(CR && CR.carro);
+  var ATR = (CR && CR.treino) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro só valem no treino
+  var COR_EU = SEL.cor == null ? 0x3A3F4B : SEL.cor;
+  function hexCss(n, f) { var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; f = f || 1; return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')'; }
+  function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
+  var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
-    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: 0, invul: 0, usouSeguro: 0, tremor: 0 };
+    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   function vel(t) { return Math.min(300 * Math.pow(1.12, Math.floor(t / 10)), 1150); }
   function nivel(t) { return Math.floor(t / 10) + 1; }
@@ -106,7 +140,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function add(tipo, lane, d) { var o = { tipo: tipo, lane: lane, d: d, w: TAM[tipo][0], h: TAM[tipo][1], aberta: false, pego: false, batido: false, id: Math.random() }; s.obst.push(o); return o; }
   function gerarLinha(d) {
     var r = rnd();
-    if (s.t > 10 && s.t - s.ultPraca > 12 && r < 0.3) {
+    if (s.t > 10 && s.t - s.ultPraca > 12 && r < 0.3 && d > s.capLivreAte + 300) {
       // praça de pedágio: fecha todas as faixas; com tag passa direto, sem tag paga penalidade
       s.ultPraca = s.t; s.pracas++;
       for (var l = 0; l < N; l++) add('cancela', l, d);
@@ -114,7 +148,14 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (rnd() < 0.7) add('tag', Math.floor(rnd() * N), d - 130);
       return;
     }
-    var faixas = Logica.shuffle([0, 1, 2, 3, 4], rnd);
+    if (s.t > 14 && s.t - s.ultCap > 18 && r < 0.42 && d > s.capLivreAte) {
+      // entrada do CAP Porto na faixa da direita, um pouco à frente; a faixa da direita fica livre até lá
+      s.ultCap = s.t; s.caps++;
+      add('cap', N - 1, d + 640);
+      s.capLivreAte = d + 640 + TAM.cap[1] + 40;
+    }
+    var semDireita = d <= s.capLivreAte;
+    var faixas = Logica.shuffle(semDireita ? [0, 1, 2, 3] : [0, 1, 2, 3, 4], rnd);
     var x = rnd(), qtd = x < 0.35 ? 1 : x < 0.75 ? 2 : 3;
     for (var i = 0; i < qtd; i++) { var y = rnd(); add(y < 0.42 ? 'cone' : y < 0.74 ? 'buraco' : 'carro', faixas[i], d); }
     var livres = faixas.slice(qtd);
@@ -127,9 +168,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (s.invul > 0) s.invul -= dt;
     if (s.tremor > 0) s.tremor -= dt;
     if (s.parada > 0) { s.parada -= dt; return; }
+    if (s.revisao > 0) s.revisao -= dt;
+    s.pneu -= GASTO_PNEU * dt;
+    if (s.pneu <= 0) {
+      if (s.vidas > 0) { s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
+      else { s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
+    }
     var v = vel(s.t);
     s.dist += v * dt;
-    var alvo = CENTRO[s.lane], mv = 950 * dt;
+    var alvo = CENTRO[s.lane], mv = (s.pneu < PNEU_GASTO ? 560 : 950) * ATR.faixa * dt;
     if (Math.abs(alvo - s.x) <= mv) s.x = alvo; else s.x += alvo > s.x ? mv : -mv;
     while (s.prox < s.dist + HORIZ) { gerarLinha(s.prox); s.prox += Math.max(260, v * 0.65) + rnd() * 160; }
     var cx0 = s.x - CARW / 2 + 5, cx1 = s.x + CARW / 2 - 5;
@@ -140,6 +187,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (!(a < -6 && a > -(CARH - 6) - o.h)) continue;
       var ox = CENTRO[o.lane], ox0 = ox - o.w / 2 + 4, ox1 = ox + o.w / 2 - 4;
       if (!(ox1 > cx0 && ox0 < cx1)) continue;
+      if (o.tipo === 'cap') {
+        o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
+        s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
+        continue;
+      }
+      if (o.tipo === 'buraco' && s.revisao > 0) continue;
       if (o.tipo === 'tag') { o.pego = true; s.tag = true; s.msg = { txt: 'Tag ativada', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
       if (o.tipo === 'seguro') {
         o.pego = true;
@@ -155,7 +208,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
       if (s.invul > 0) continue;
       if (s.vidas > 0) {
-        s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35;
+        s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
         s.msg = { txt: 'Seguro acionado! Segue o jogo', cor: '#9FD3FF', ate: s.t + 1.6 };
         continue;
       }
@@ -175,6 +228,18 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-1, 5); ctx.lineTo(6, -5); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
     ctx.restore();
   }
+  // piso do CAP Porto (2D): faixa azul com "CAP PORTO" e setas
+  function capPiso(ctx, cx, bot, w, h, real) {
+    ctx.save();
+    ctx.fillStyle = real ? 'rgba(73,158,242,.82)' : '#499EF2'; rr(ctx, cx - w / 2, bot - h, w, h, 10); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); rr(ctx, cx - w / 2 + 4, bot - h + 4, w - 8, h - 8, 8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 26px Montserrat, Arial, sans-serif'; ctx.fillText('CAP', cx, bot - h + 34);
+    ctx.font = '800 13px Montserrat, Arial, sans-serif'; ctx.fillText('PORTO', cx, bot - h + 56);
+    ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (var i = 0; i < 2; i++) { var y = bot - 50 + i * 20; ctx.beginPath(); ctx.moveTo(cx - 14, y + 8); ctx.lineTo(cx, y - 4); ctx.lineTo(cx + 14, y + 8); ctx.stroke(); }
+    ctx.restore();
+  }
   function desenharHUD(limpar) {
     var ctx = hctx;
     ctx.setTransform(hs, 0, 0, hs, 0, 0);
@@ -191,7 +256,17 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.fillStyle = '#14235E'; rr(ctx, ix + 74, iy - 12, 40, 24, 6); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#EC7000'; ctx.font = '900 12px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('TAG', ix + 94, iy + 1);
     ctx.globalAlpha = 1;
-    if (s.msg && s.t < s.msg.ate) { ctx.fillStyle = 'rgba(13,24,64,.85)'; rr(ctx, HW / 2 - 130, 104, 260, 44, 12); ctx.fill(); ctx.fillStyle = s.msg.cor; ctx.textAlign = 'center'; ctx.font = '900 18px Montserrat, Arial, sans-serif'; ctx.fillText(s.msg.txt, HW / 2, 127); }
+    // pneu
+    var px = HW - 112, py = 64, pw = 102, gasto = s.pneu < PNEU_GASTO, pisca = gasto && Math.floor(s.t * 3) % 2 === 0;
+    ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py, pw, 34, 10); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + 15, py + 17, 9, 0, 7); ctx.fillStyle = '#20232B'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = pisca ? '#FFB27A' : '#C9CDD3'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(px + 15, py + 17, 3.5, 0, 7); ctx.fillStyle = '#C9CDD3'; ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(ctx, px + 30, py + 12, pw - 40, 10, 5); ctx.fill();
+    ctx.fillStyle = s.pneu > 60 ? '#7CE0B0' : s.pneu > PNEU_GASTO ? '#FFD07A' : '#FF9C5A';
+    rr(ctx, px + 30, py + 12, Math.max(6, (pw - 40) * Math.max(0, s.pneu) / 100), 10, 5); ctx.fill();
+    if (s.revisao > 0) { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py + 40, pw, 24, 8); ctx.fill(); ctx.fillStyle = '#9FD3FF'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('REVISÃO ' + Math.ceil(s.revisao) + ' s', px + pw / 2, py + 52); }
+    else if (gasto && s.fase === 'rodando') { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py + 40, pw, 24, 8); ctx.fill(); ctx.fillStyle = pisca ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PARE NO CAP', px + pw / 2, py + 52); }
+    if (s.msg && s.t < s.msg.ate) { ctx.fillStyle = 'rgba(13,24,64,.85)'; rr(ctx, HW / 2 - 140, 140, 280, 44, 12); ctx.fill(); ctx.fillStyle = s.msg.cor; ctx.textAlign = 'center'; ctx.font = '900 17px Montserrat, Arial, sans-serif'; ctx.fillText(s.msg.txt, HW / 2, 163); }
     if (s.fase === 'contagem') {
       ctx.fillStyle = 'rgba(13,24,64,.55)'; ctx.fillRect(0, 0, HW, HH);
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 120px Montserrat, Arial, sans-serif'; ctx.fillText(String(Math.ceil(s.cont)), HW / 2, HH / 2 - 40);
@@ -199,7 +274,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     }
     if (s.fase === 'batida') {
       ctx.fillStyle = 'rgba(226,59,59,' + (0.5 * s.flash) + ')'; ctx.fillRect(0, 0, HW, HH);
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 46px Montserrat, Arial, sans-serif'; ctx.fillText('BATEU!', HW / 2, HH / 2 - 20);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 46px Montserrat, Arial, sans-serif'; ctx.fillText(s.furou ? 'FUROU!' : 'BATEU!', HW / 2, HH / 2 - 20);
       ctx.font = '900 30px Montserrat, Arial, sans-serif'; ctx.fillText(fmtSeg(placar()), HW / 2, HH / 2 + 26);
     } else if (s.invul > 0 && Math.floor(s.invul * 8) % 2 === 0) {
       ctx.strokeStyle = 'rgba(73,158,242,.8)'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, HW - 6, HH - 6);
@@ -209,7 +284,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   // ---------- RENDER 3D ----------
   var R3 = null;
   if (box3d && window.THREE) {
-    try { R3 = visual === '3dreal' ? criar3DReal({ s: s, N: N, LANE: LANE, ROAD: ROAD, CENTRO: CENTRO, CARH: CARH, cssW: cssW, cssH: cssH, dpr: dpr, box3d: box3d, carro: (CR && CR.carro) || carroPreferido() }) : criar3D(); }
+    try { R3 = visual === '3dreal' ? criar3DReal({ s: s, N: N, LANE: LANE, ROAD: ROAD, CENTRO: CENTRO, CARH: CARH, cssW: cssW, cssH: cssH, dpr: dpr, box3d: box3d, sel: SEL }) : criar3D(); }
     catch (e) { console.warn('3D indisponível', e); R3 = null; }
   }
   function criar3D() {
@@ -298,7 +373,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       g.add(sombra(2.4, 3.6));
       return g;
     }
-    var meu = carro(0x2F7FE0, 0x1F5FB5); scene.add(meu);
+    var meu = carro(COR_EU, escurecer(COR_EU, 0.7)); scene.add(meu);
     // texturas dos itens
     var texTag = canvasTex(128, 96, function (g, w, h) { g.fillStyle = '#14235E'; rr(g, 4, 4, w - 8, h - 8, 16); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke(); g.fillStyle = '#EC7000'; g.font = '900 44px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAG', w / 2, h / 2 + 2); });
     var texSeg = canvasTex(128, 160, function (g, w, h) {
@@ -308,6 +383,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       g.fillStyle = '#14235E'; rr(g, 8, 122, w - 16, 32, 10); g.fill(); g.fillStyle = '#fff'; g.font = '800 19px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SEGURO', w / 2, 139);
     });
     var texAviso = canvasTex(512, 96, function (g, w, h) { g.fillStyle = '#F4F1EA'; g.font = '900 64px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PEDÁGIO', w / 2, h / 2); });
+    var texCap = canvasTex(256, 416, function (g, w, h) { capTextura(g, w, h); });
     var texBarra = canvasTex(256, 32, function (g, w, h) { for (var i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#F4F1EA' : '#E23B3B'; g.fillRect(i * w / 8, 0, w / 8, h); } });
     var matCone = new T.MeshLambertMaterial({ color: 0xFF7A1A }), matBranco = new T.MeshLambertMaterial({ color: 0xF4F1EA });
     var matBuraco = new T.MeshBasicMaterial({ color: 0x1A1C22 }), matBordaB = new T.MeshLambertMaterial({ color: 0x555B69 });
@@ -340,6 +416,9 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         var sp = new T.Sprite(new T.SpriteMaterial({ map: o.tipo === 'tag' ? texTag : texSeg, transparent: true, depthWrite: false }));
         if (o.tipo === 'tag') sp.scale.set(1.3, 0.98, 1); else sp.scale.set(1.25, 1.56, 1);
         sp.position.y = 1.0; g.add(sp); g.userData.sp = sp; g.add(sombra(1.0, 1.0));
+      } else if (o.tipo === 'cap') {
+        var cp = new T.Mesh(new T.PlaneGeometry(wm, lm), new T.MeshBasicMaterial({ map: texCap, transparent: true, depthWrite: false }));
+        cp.rotation.x = -Math.PI / 2; cp.position.y = 0.014; g.add(cp);
       } else if (o.tipo === 'aviso') {
         var av = new T.Mesh(new T.PlaneGeometry(RW * 0.7, RW * 0.7 * 96 / 512), new T.MeshBasicMaterial({ map: texAviso, transparent: true, depthWrite: false }));
         av.rotation.x = -Math.PI / 2; av.position.y = 0.012; g.add(av);
@@ -360,7 +439,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         if (!o._mesh) o._mesh = criarMesh(o);
         var g = o._mesh, a = o.d - s.dist + o.h / 2;
         g.position.set(o.tipo === 'aviso' ? 0 : lx(CENTRO[o.lane]), 0, -a * K);
-        g.visible = !(o.pego) && !(o.batido && o.tipo !== 'buraco');
+        g.visible = !(o.pego && o.tipo !== 'cap') && !(o.batido && o.tipo !== 'buraco');
         if (g.userData.piv) { var alvo = o.aberta ? -1.25 : 0; g.userData.piv.rotation.z += (alvo - g.userData.piv.rotation.z) * 0.18; }
         if (g.userData.sp) { g.userData.sp.position.y = 1.0 + Math.sin(tempoReal * 4 + o.lane) * 0.12; }
         if (g.userData.pisca) { var on = Math.floor(tempoReal * 3) % 2 === 0; g.userData.pisca.forEach(function (l) { l.material.color.setHex(on ? 0xFFB020 : 0x7A4A00); }); }
@@ -403,7 +482,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var fo = s.dist % 70; ctx.fillStyle = 'rgba(255,255,255,.75)';
     for (var f = -70; f < H + 70; f += 70) for (var l = 1; l < N; l++) ctx.fillRect(R0 + l * LANE - 2, f + fo, 4, 36);
     s.obst.forEach(function (o) {
-      if (o.pego || (o.batido && o.tipo !== 'buraco')) return;
+      if ((o.pego && o.tipo !== 'cap') || (o.batido && o.tipo !== 'buraco')) return;
       var bot = CY - (o.d - s.dist), top = bot - o.h, cx = R0 + CENTRO[o.lane];
       if (bot < -40 || top > H + 40) return;
       if (o.tipo === 'cone') {
@@ -414,7 +493,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillStyle = '#23262E'; ctx.beginPath(); ctx.ellipse(cx, bot - o.h / 2, o.w / 2, o.h / 2, 0, 0, 7); ctx.fill();
         ctx.strokeStyle = '#555B69'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = '#15171C'; ctx.beginPath(); ctx.ellipse(cx + 4, bot - o.h / 2 + 3, o.w / 3, o.h / 3.2, 0, 0, 7); ctx.fill();
-      } else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#9AA1AC', '#666C76', true);
+      } else if (o.tipo === 'cap') capPiso(ctx, cx, bot, o.w, o.h, false);
+      else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#9AA1AC', '#666C76', true);
       else if (o.tipo === 'cancela') {
         if (o.lane === 0) { ctx.fillStyle = '#14235E'; rr(ctx, 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); rr(ctx, W - R0 + 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.fillRect(2, top - 18, R0 - 4, 6); ctx.fillRect(W - R0 + 2, top - 18, R0 - 4, 6); }
         ctx.fillStyle = '#C9CED8'; rr(ctx, cx - 50, top - 6, 10, o.h + 12, 3); ctx.fill();
@@ -433,7 +513,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillText('PEDÁGIO', W / 2, bot - 20); ctx.fillRect(R0 + 12, bot - 2, ROAD - 24, 4); ctx.restore();
       }
     });
-    if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) carroClassico(ctx, R0 + s.x, CY, '#2F7FE0', '#1F5FB5', false);
+    if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) carroClassico(ctx, R0 + s.x, CY, hexCss(COR_EU), hexCss(COR_EU, 0.7), false);
     if (s.tag) { ctx.fillStyle = '#14235E'; rr(ctx, R0 + s.x - 11, CY + 30, 22, 14, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 8px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', R0 + s.x, CY + 37); }
   }
 
@@ -570,6 +650,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.strokeStyle = 'rgba(15,16,19,.7)'; ctx.lineWidth = 1.2; ctx.beginPath();
         for (var t = 0; t < 4; t++) { var a = rn() * 6.28, r1 = o.w / 2, r2 = r1 + 8 + rn() * 14; ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * 0.7); ctx.lineTo(cx + Math.cos(a + 0.2) * r2, cy + Math.sin(a + 0.2) * r2 * 0.7); }
         ctx.stroke();
+      } else if (o.tipo === 'cap') {
+        capPiso(ctx, cx, bot, o.w, o.h, true);
       } else if (o.tipo === 'aviso') {
         ctx.save(); ctx.globalAlpha = 0.85; ctx.fillStyle = '#F4F1EA'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 40px Montserrat, Arial, sans-serif';
         ctx.fillText('PEDÁGIO', R0 + ROAD / 2, bot - 22); ctx.fillRect(R0 + 14, bot - 2, ROAD - 28, 5); ctx.restore();
@@ -577,7 +659,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     });
     // objetos com altura (sombras + corpo)
     s.obst.forEach(function (o) {
-      if (o.pego || (o.batido && o.tipo !== 'buraco') || o.tipo === 'buraco' || o.tipo === 'aviso') return;
+      if (o.pego || (o.batido && o.tipo !== 'buraco') || o.tipo === 'buraco' || o.tipo === 'aviso' || o.tipo === 'cap') return;
       var bot = CY - (o.d - s.dist), top = bot - o.h, cx = R0 + CENTRO[o.lane];
       if (bot < -60 || top > H + 60) return;
       if (o.tipo === 'cone') {
@@ -629,7 +711,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) {
       ctx.save(); ctx.translate(px, CY + 46); ctx.rotate(inclin);
       ctx.drawImage(REAL.sombraCarro, -26 - 9 + 5, -46 - 6 + 6, 66, 106);
-      var spEu = imgCima(CARRO_ID); ctx.drawImage(spEu || REAL.carros.eu, -26, -46, 52, 92);
+      var spEu = SEL.cat === 'aura' ? null : imgCima(SEL.cat); ctx.drawImage(spEu || REAL.carros.eu, -26, -46, 52, 92);
       if (s.tag) { ctx.fillStyle = '#14235E'; rr(ctx, -10, -4, 20, 12, 3); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 7px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', 0, 2); }
       ctx.restore();
     }
@@ -652,7 +734,6 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.drawImage(REAL.vinheta, 0, 0, W, H);
   }
 
-  var CARRO_ID = (CR && CR.carro) || carroPreferido();
   var VISUAL = ((visual === '3d' || visual === '3dreal') && R3) ? visual : (visual === 'realista' ? 'realista' : 'classico');
   function desenhar(tempoReal) {
     if (VISUAL === '3d' || VISUAL === '3dreal') { R3.render(tempoReal); desenharHUD(true); }

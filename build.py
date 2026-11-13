@@ -5,7 +5,8 @@ import json, os
 src = 'src/'
 logica = open('functions/logica.js').read()
 placa = open('functions/placa.js').read()
-partes = ''.join(open(src + f).read() + '\n' for f in ['a0-logo.js', 'a0b-fotos.js', 'a1-base.js', 'a2-dados.js', 'a3-telas.js', 'a4-jogos.js', 'a4b-motor.js', 'a4c-real3d.js', 'a4d-placa.js', 'a5-adm.js', 'a6-acoes.js'])
+garagem = open('functions/garagem.js').read()
+partes = ''.join(open(src + f).read() + '\n' for f in ['a0-logo.js', 'a0b-fotos.js', 'a1-base.js', 'a2-dados.js', 'a3-telas.js', 'a4-jogos.js', 'a4b-motor.js', 'a4c-real3d.js', 'a4d-placa.js', 'a4e-garagem.js', 'a5-adm.js', 'a6-acoes.js'])
 head = open(src + 'head.html').read()
 
 def montar(banco, modelos=None):
@@ -13,6 +14,7 @@ def montar(banco, modelos=None):
     h += '<script>var MODELOS_EMBUTIDOS = ' + json.dumps(modelos or {}) + ';</script>\n'
     h += '<script>\n/* ===== LOGICA (idêntica a functions/logica.js) ===== */\n' + logica + '\n</script>\n'
     h += '<script>\n/* ===== PLACA (idêntico a functions/placa.js) ===== */\n' + placa + '\n</script>\n'
+    h += '<script>\n/* ===== GARAGEM (idêntico a functions/garagem.js) ===== */\n' + garagem + '\n</script>\n'
     h += '<script>\nvar BANCO_INICIAL = ' + json.dumps(banco, ensure_ascii=False) + ';\n</script>\n'
     h += '<script>\n' + partes + '</script>\n</body>\n</html>\n'
     return h

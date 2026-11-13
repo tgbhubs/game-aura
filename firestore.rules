@@ -60,5 +60,10 @@ service cloud.firestore {
     match /maos/{id} { allow read: if signed() && id.matches('.+_' + request.auth.uid); allow write: if false; }
     match /montes/{id} { allow read, write: if false; }
     match /placaPartidas/{id} { allow read: if isAtivo(); allow write: if false; }
+    // Garagem: créditos, carros e anúncios são gravados só pelo servidor (Cloud Function "garagem")
+    match /garagens/{uid} { allow read: if isAtivo(); allow write: if false; }
+    match /carteira/{uid} { allow read: if signed() && request.auth.uid == uid; allow write: if false; }
+    match /estoque/{id} { allow read: if isAtivo(); allow write: if false; }
+    match /anuncios/{id} { allow read: if isAtivo(); allow write: if false; }
   }
 }

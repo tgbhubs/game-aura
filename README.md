@@ -3,7 +3,7 @@
 Jogo interno de integração: **quiz + corrida** toda semana, com ranking individual, por área e conquistas para compartilhar.
 
 - `index.html`: o app inteiro (GitHub Pages). Sem configuração, abre em **modo demonstração**, com dados fictícios salvos só no navegador.
-- `functions/`: Cloud Functions que corrigem o quiz, validam a corrida e controlam as mesas do Placa! (monte e mãos ficam no servidor). O gabarito nunca vai para o navegador do jogador.
+- `functions/`: Cloud Functions que corrigem o quiz, validam a corrida e controlam as mesas do Placa! (monte e mãos ficam no servidor) e a Garagem (créditos, compras e mercado). O gabarito nunca vai para o navegador do jogador.
 - `firestore.rules`: regras de segurança.
 - `.github/workflows/deploy-rules.yml`: publica as regras sozinho a cada envio (mesmo padrão do Fute da Firma).
 - `src/` + `build.py`: código-fonte em partes. O `index.html` é gerado com `python3 build.py`.

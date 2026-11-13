@@ -324,6 +324,7 @@ var A = {
   gerarQeq: function (v) { gerarQeq(v); }
 };
 Object.keys(A_PLACA).forEach(function (k) { A[k] = A_PLACA[k]; });
+Object.keys(A_GAR).forEach(function (k) { A[k] = A_GAR[k]; });
 document.addEventListener('click', function (e) {
   var el = e.target.closest && e.target.closest('[data-a]');
   if (!el || el.disabled) return;

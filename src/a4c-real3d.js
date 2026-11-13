@@ -189,12 +189,24 @@ function criar3DReal(E) {
       var l = new T.Mesh(new T.BoxGeometry(0.38, 0.12, 0.06), m); l.position.set(x, 0.62, 1.52); g.add(l); g.userData.lant.push(l);
       var b = brilho(0xFF5A3C, 0.55); b.position.set(x, 0.62, 1.6); b.visible = !!opts.freio; g.add(b); l.userData.glow = b;
     });
+    // variações de carroceria a partir do sedã
+    if (opts.forma === 'hatch') { g.scale.set(1, 1.04, 0.86); }
+    else if (opts.forma === 'suv') {
+      g.scale.set(1.04, 1.2, 1.04);
+      [-0.45, 0.45].forEach(function (x) { var bar = new T.Mesh(new T.BoxGeometry(0.05, 0.05, 1.3), matPreto); bar.position.set(x, 1.2, 0.1); g.add(bar); });
+      var prot = new T.Mesh(new T.BoxGeometry(LARG + 0.16, 0.18, 3.2), matPreto); prot.position.set(0, 0.26, 0); g.add(prot);
+    } else if (opts.forma === 'picape') {
+      g.scale.set(1.04, 1.14, 1.1);
+      var cac = new T.Mesh(new T.BoxGeometry(LARG + 0.02, 0.5, 1.25), matPreto); cac.position.set(0, 0.86, 0.86); cac.castShadow = true; g.add(cac);
+      var borda = new T.Mesh(new T.BoxGeometry(LARG + 0.06, 0.08, 1.3), new T.MeshStandardMaterial({ color: cor(corHex), metalness: 0.55, roughness: 0.28 })); borda.position.set(0, 1.12, 0.86); g.add(borda);
+      var arco = new T.Mesh(new T.BoxGeometry(LARG - 0.1, 0.07, 0.07), matPreto); arco.position.set(0, 1.35, 0.3); g.add(arco);
+    }
     return g;
   }
-  var meu = carro(0x2F7FE0, { farois: true }); scene.add(meu);
+  var SEL = E.sel || { modelo: 'aura', cor: 0x2F7FE0 }, cfgCarro = CARROS[SEL.modelo] || CARROS.aura;
+  var meu = carro(SEL.cor == null ? 0x2F7FE0 : SEL.cor, { farois: true, forma: cfgCarro.forma }); scene.add(meu);
   // carro escolhido na garagem: troca o modelo do Aura pelo modelo 3D quando ele terminar de carregar
-  var cfgCarro = CARROS[E.carro] || CARROS.aura;
-  if (cfgCarro.arquivo) carregarModeloCarro(E.carro, function (modelo) {
+  if (cfgCarro.arquivo) carregarModeloCarro(SEL.modelo, function (modelo) {
     if (!modelo) return;
     var manter = [bolha];
     meu.children.slice().forEach(function (ch) { if (manter.indexOf(ch) < 0) meu.remove(ch); });
@@ -206,7 +218,7 @@ function criar3DReal(E) {
     var somb = new T.Mesh(new T.PlaneGeometry(2.4, 3.8), new T.MeshBasicMaterial({ map: texGlow, color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false })); somb.rotation.x = -Math.PI / 2; somb.position.y = 0.012; meu.add(somb);
     meu.userData.somb = somb; meu.userData.modelo = true;
     meu.userData.rodas = []; meu.userData.lant = [];
-  });
+  }, SEL.cor);
   var bolha = new T.Mesh(new T.SphereGeometry(2.1, 24, 16), new T.MeshStandardMaterial({ color: cor(0x499EF2), transparent: true, opacity: 0.18, emissive: cor(0x499EF2), emissiveIntensity: 0.6, depthWrite: false }));
   bolha.scale.set(0.75, 0.55, 1); bolha.visible = false; meu.add(bolha); bolha.position.y = 0.6;
   // fotografa o carro escolhido sem cenário (usado para gerar as fotos da garagem e o carro da vista de cima)
@@ -240,6 +252,12 @@ function criar3DReal(E) {
     g.fillStyle = '#14235E'; rr(g, 8, 122, w - 16, 32, 10); g.fill(); g.fillStyle = '#fff'; g.font = '800 19px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SEGURO', w / 2, 139);
   });
   var texAviso = canvasTex(512, 96, function (g, w, h) { g.fillStyle = 'rgba(237,235,228,.92)'; g.font = '900 64px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PEDÁGIO', w / 2, h / 2); });
+  var texCap = canvasTex(256, 416, function (g, w, h) { capTextura(g, w, h); });
+  var texPlacaCap = canvasTex(512, 192, function (g, w, h) {
+    g.fillStyle = '#14235E'; g.fillRect(0, 0, w, h); g.fillStyle = '#499EF2'; g.fillRect(0, 0, w, 26); g.fillRect(0, h - 26, w, 26);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 64px Montserrat, Arial, sans-serif'; g.fillText('CAP PORTO', w / 2, 84);
+    g.font = '700 30px Montserrat, Arial, sans-serif'; g.fillStyle = '#9FD3FF'; g.fillText('troca de pneus  →', w / 2, 138);
+  });
   var texBarra = canvasTex(256, 32, function (g, w, h) { for (var i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#F4F1EA' : '#D8342B'; g.fillRect(i * w / 8, 0, w / 8, h); } });
   var texBuraco = canvasTex(256, 256, function (g, w, h) {
     var rn = Logica.rng(77), pts = [];
@@ -293,6 +311,14 @@ function criar3DReal(E) {
       if (o.tipo === 'tag') sp.scale.set(1.3, 0.98, 1); else sp.scale.set(1.25, 1.56, 1);
       sp.position.y = 1.05; g.add(sp); g.userData.sp = sp;
       var gl = brilho(o.tipo === 'tag' ? 0xFFB27A : 0x7FB6F5, 2.6); gl.position.y = 1.05; g.add(gl); g.userData.gl = gl;
+    } else if (o.tipo === 'cap') {
+      var cp = new T.Mesh(new T.PlaneGeometry(wm, lm), new T.MeshStandardMaterial({ map: texCap, transparent: true, roughness: 0.6, depthWrite: false }));
+      cp.rotation.x = -Math.PI / 2; cp.position.y = 0.01; cp.receiveShadow = true; g.add(cp);
+      // placa na beira da pista
+      var pl = new T.Group(); pl.position.set(LANE * K / 2 + 1.3, 0, -lm * 0.2);
+      [-0.9, 0.9].forEach(function (dx) { var pp = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 2.4, 8), matPoste); pp.position.set(dx, 1.2, 0); pp.castShadow = true; pl.add(pp); });
+      var bd = new T.Mesh(new T.BoxGeometry(2.2, 0.82, 0.08), [matCabine, matCabine, matCabine, matCabine, new T.MeshStandardMaterial({ map: texPlacaCap, roughness: 0.5 }), matCabine]);
+      bd.position.y = 2.25; bd.castShadow = true; pl.add(bd); g.add(pl); g.userData.placa = pl;
     } else if (o.tipo === 'aviso') {
       var av = new T.Mesh(new T.PlaneGeometry(RW * 0.72, RW * 0.72 * 96 / 512), new T.MeshStandardMaterial({ map: texAviso, transparent: true, roughness: 0.8, depthWrite: false }));
       av.rotation.x = -Math.PI / 2; av.position.y = 0.008; av.receiveShadow = true; g.add(av);
@@ -338,7 +364,7 @@ function criar3DReal(E) {
       if (!o._mesh3r) o._mesh3r = criarMesh(o);
       var g = o._mesh3r, a = o.d - s.dist + o.h / 2;
       g.position.set(o.tipo === 'aviso' ? 0 : lx(CENTRO[o.lane]), 0, -a * K);
-      g.visible = !o.pego && !(o.batido && o.tipo !== 'buraco');
+      g.visible = !(o.pego && o.tipo !== 'cap') && !(o.batido && o.tipo !== 'buraco');
       if (g.userData.piv) { var alvo = o.aberta ? -1.3 : 0; g.userData.piv.rotation.z += (alvo - g.userData.piv.rotation.z) * 0.15; }
       if (g.userData.sp) { var yy = 1.05 + Math.sin(tempoReal * 4 + o.lane) * 0.12; g.userData.sp.position.y = yy; g.userData.gl.position.y = yy; g.userData.gl.material.opacity = 0.6 + Math.sin(tempoReal * 6) * 0.25; }
       if (g.userData.pisca) { var on = Math.floor(tempoReal * 2.5) % 2 === 0; g.userData.pisca.forEach(function (l) { l.material.emissive.setHex(on ? 0xFF9A1A : 0x200800); l.material.emissiveIntensity = on ? 2.4 : 0.2; l.userData.glow.visible = on; l.userData.glow.material.color.setHex(0xFFA030); }); }
