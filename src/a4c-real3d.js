@@ -315,7 +315,7 @@ function criar3DReal(E) {
       var cp = new T.Mesh(new T.PlaneGeometry(wm, lm), new T.MeshStandardMaterial({ map: texCap, transparent: true, roughness: 0.6, depthWrite: false }));
       cp.rotation.x = -Math.PI / 2; cp.position.y = 0.01; cp.receiveShadow = true; g.add(cp);
       // placa na beira da pista
-      var pl = new T.Group(); pl.position.set(LANE * K / 2 + 1.3, 0, -lm * 0.2);
+      var pl = new T.Group(); pl.position.set((o.lane === 0 ? -1 : 1) * (LANE * K / 2 + 1.3), 0, -lm * 0.2);
       [-0.9, 0.9].forEach(function (dx) { var pp = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 2.4, 8), matPoste); pp.position.set(dx, 1.2, 0); pp.castShadow = true; pl.add(pp); });
       var bd = new T.Mesh(new T.BoxGeometry(2.2, 0.82, 0.08), [matCabine, matCabine, matCabine, matCabine, new T.MeshStandardMaterial({ map: texPlacaCap, roughness: 0.5 }), matCabine]);
       bd.position.y = 2.25; bd.castShadow = true; pl.add(bd); g.add(pl); g.userData.placa = pl;

@@ -159,7 +159,7 @@
     var maxT = (c.now - t.iniciadaEm) / 1000 + 2;
     var susp = false;
     if (tempo > maxT) { tempo = maxT; susp = true; }
-    if (tempo > 600) susp = true;
+    if (tempo > 900) susp = true;
     tempo = Math.round(tempo * 100) / 100;
     var d = L.clone(t);
     d.status = 'finalizada'; d.tempo = tempo; d.finalizadaEm = c.now; d.suspeita = susp;

@@ -120,7 +120,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   // ---------- constantes da simulação ----------
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
-  var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5;
+  var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3;
   var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
@@ -132,9 +132,11 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
-    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1 };
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
-  function vel(t) { return Math.min(300 * Math.pow(1.12, Math.floor(t / 10)), 1150); }
+  // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
+  function extra(t) { return Math.max(0, (t - 120) / 60); }
+  function vel(t) { return Math.min(300 * Math.pow(1.12, Math.floor(t / 10)), 1150 + Math.min(350, 45 * extra(t))); }
   function nivel(t) { return Math.floor(t / 10) + 1; }
   function placar() { return Math.max(0, s.t - s.pen); }
   function add(tipo, lane, d) { var o = { tipo: tipo, lane: lane, d: d, w: TAM[tipo][0], h: TAM[tipo][1], aberta: false, pego: false, batido: false, id: Math.random() }; s.obst.push(o); return o; }
@@ -148,19 +150,22 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (rnd() < 0.7) add('tag', Math.floor(rnd() * N), d - 130);
       return;
     }
-    if (s.t > 14 && s.t - s.ultCap > 18 && r < 0.42 && d > s.capLivreAte) {
-      // entrada do CAP Porto na faixa da direita, um pouco à frente; a faixa da direita fica livre até lá
-      s.ultCap = s.t; s.caps++;
-      add('cap', N - 1, d + 640);
+    var ex = extra(s.t);
+    if (s.t > 14 && s.t - s.ultCap > 18 + 4 * ex && r < 0.42 && d > s.capLivreAte) {
+      // entrada do CAP Porto na faixa da direita ou da esquerda, um pouco à frente; essa faixa fica livre até lá
+      s.ultCap = s.t; s.caps++; s.capLane = rnd() < 0.5 ? 0 : N - 1;
+      add('cap', s.capLane, d + 640);
       s.capLivreAte = d + 640 + TAM.cap[1] + 40;
     }
-    var semDireita = d <= s.capLivreAte;
-    var faixas = Logica.shuffle(semDireita ? [0, 1, 2, 3] : [0, 1, 2, 3, 4], rnd);
+    var reservada = d <= s.capLivreAte ? s.capLane : -1;
+    var faixas = Logica.shuffle([0, 1, 2, 3, 4].filter(function (l) { return l !== reservada; }), rnd);
     var x = rnd(), qtd = x < 0.35 ? 1 : x < 0.75 ? 2 : 3;
+    if (ex > 0 && rnd() < Math.min(0.75, 0.25 * ex)) qtd++;          // reta final: mais obstáculos por linha
+    qtd = Math.min(qtd, faixas.length - 1);                           // sempre sobra uma faixa livre
     for (var i = 0; i < qtd; i++) { var y = rnd(); add(y < 0.42 ? 'cone' : y < 0.74 ? 'buraco' : 'carro', faixas[i], d); }
     var livres = faixas.slice(qtd);
     var z = rnd();
-    if (s.t > 6 && s.t - s.ultSeguro > 18 && z < 0.14) { s.ultSeguro = s.t; add('seguro', livres[Math.floor(rnd() * livres.length)], d + 170); }
+    if (s.t > 6 && s.t - s.ultSeguro > 18 + 10 * ex && z < 0.14) { s.ultSeguro = s.t; add('seguro', livres[Math.floor(rnd() * livres.length)], d + 170); }
     else if (z > 0.91) add('tag', livres[Math.floor(rnd() * livres.length)], d + 170);
   }
   function passo(dt) {
@@ -169,7 +174,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (s.tremor > 0) s.tremor -= dt;
     if (s.parada > 0) { s.parada -= dt; return; }
     if (s.revisao > 0) s.revisao -= dt;
-    s.pneu -= GASTO_PNEU * dt;
+    s.pneu -= GASTO_PNEU * (1 + 0.2 * extra(s.t)) * dt;
     if (s.pneu <= 0) {
       if (s.vidas > 0) { som('furou'); s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
       else { som('furou'); som('batida'); s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
@@ -178,7 +183,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     s.dist += v * dt;
     var alvo = CENTRO[s.lane], mv = (s.pneu < PNEU_GASTO ? 560 : 950) * ATR.faixa * dt;
     if (Math.abs(alvo - s.x) <= mv) s.x = alvo; else s.x += alvo > s.x ? mv : -mv;
-    while (s.prox < s.dist + HORIZ) { gerarLinha(s.prox); s.prox += Math.max(260, v * 0.65) + rnd() * 160; }
+    while (s.prox < s.dist + HORIZ) { var ex2 = Math.min(1, extra(s.t) / 3); gerarLinha(s.prox); s.prox += Math.max(260 - 50 * ex2, v * (0.65 - 0.17 * ex2)) + rnd() * 160 * (1 - 0.4 * ex2); }
     var cx0 = s.x - CARW / 2 + 5, cx1 = s.x + CARW / 2 - 5;
     for (var i = 0; i < s.obst.length; i++) {
       var o = s.obst[i];
@@ -199,7 +204,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         s.msg = { txt: 'Buraco! Pneu −' + BURACO + '%', cor: '#FFD07A', ate: s.t + 1.3 };
         continue;
       }
-      if (o.tipo === 'tag') { o.pego = true; s.tag = true; s.msg = { txt: 'Tag ativada', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
+      if (o.tipo === 'tag') { o.pego = true; if (s.tags < MAX_TAGS) { s.tags++; s.msg = { txt: 'Tag: +1 mensalidade (' + s.tags + ')', cor: '#9FD3FF', ate: s.t + 1.1 }; } else s.msg = { txt: 'Tag em dia (' + MAX_TAGS + ' mensalidades)', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
@@ -208,7 +213,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
       if (o.tipo === 'cancela') {
         s.obst.forEach(function (q) { if (q.tipo === 'cancela' && q.d === o.d) q.aberta = true; });
-        if (s.tag) { s.tag = false; s.msg = { txt: 'Tag! Passou direto', cor: '#7CE0B0', ate: s.t + 1.4 }; }
+        if (s.tags > 0) { s.tags--; s.msg = { txt: 'Tag! Passou direto' + (s.tags ? ' (restam ' + s.tags + ')' : ''), cor: '#7CE0B0', ate: s.t + 1.4 }; }
         else { s.pen += PENALIDADE; s.parada = PARADA; s.msg = { txt: 'Sem tag: −' + PENALIDADE + ' s', cor: '#FF9C9C', ate: s.t + PARADA + 0.8 }; }
         continue;
       }
@@ -259,9 +264,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     // itens: vidas (seguro) e tag
     var ix = 14, iy = 76;
     for (var i = 0; i < MAX_VIDAS; i++) { ctx.globalAlpha = i < s.vidas ? 1 : 0.25; escudo(ctx, ix + 14 + i * 32, iy, 26, '#499EF2'); }
-    ctx.globalAlpha = s.tag ? 1 : 0.25;
-    ctx.fillStyle = '#14235E'; rr(ctx, ix + 74, iy - 12, 40, 24, 6); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#EC7000'; ctx.font = '900 12px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('TAG', ix + 94, iy + 1);
+    ctx.globalAlpha = s.tags ? 1 : 0.25;
+    ctx.fillStyle = '#14235E'; rr(ctx, ix + 74, iy - 12, 58, 24, 6); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#EC7000'; ctx.font = '900 12px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('TAG', ix + 96, iy + 1);
+    ctx.fillStyle = '#fff'; ctx.font = '900 11px Montserrat, Arial, sans-serif'; ctx.fillText('×' + s.tags, ix + 120, iy + 1);
     ctx.globalAlpha = 1;
     // pneu
     var px = HW - 112, py = 64, pw = 102, gasto = s.pneu < PNEU_GASTO, pisca = gasto && Math.floor(s.t * 3) % 2 === 0;
@@ -521,7 +527,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
     });
     if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) carroClassico(ctx, R0 + s.x, CY, hexCss(COR_EU), hexCss(COR_EU, 0.7), false);
-    if (s.tag) { ctx.fillStyle = '#14235E'; rr(ctx, R0 + s.x - 11, CY + 30, 22, 14, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 8px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', R0 + s.x, CY + 37); }
+    if (s.tags) { ctx.fillStyle = '#14235E'; rr(ctx, R0 + s.x - 11, CY + 30, 22, 14, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 8px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', R0 + s.x, CY + 37); }
   }
 
   // ---------- RENDER 2D: REALISTA (vista de cima com texturas, sombras e iluminação) ----------
@@ -719,7 +725,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       ctx.save(); ctx.translate(px, CY + 46); ctx.rotate(inclin);
       ctx.drawImage(REAL.sombraCarro, -26 - 9 + 5, -46 - 6 + 6, 66, 106);
       var spEu = SEL.cat === 'aura' ? null : imgCima(SEL.cat); ctx.drawImage(spEu || REAL.carros.eu, -26, -46, 52, 92);
-      if (s.tag) { ctx.fillStyle = '#14235E'; rr(ctx, -10, -4, 20, 12, 3); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 7px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', 0, 2); }
+      if (s.tags) { ctx.fillStyle = '#14235E'; rr(ctx, -10, -4, 20, 12, 3); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 7px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', 0, 2); }
       ctx.restore();
     }
     // cobertura da praça de pedágio (por cima dos carros)

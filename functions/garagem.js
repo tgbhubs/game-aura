@@ -158,7 +158,7 @@
     var doc = L.clone(c.doc || {}), ss = doc.sessao;
     if (!ss) L.erro('Treino não encontrado. Comece de novo.');
     var tempo = Number(c.tempo); if (!(tempo >= 0)) tempo = 0;
-    var maxT = (c.now - ss.inicio) / 1000 + 2, valido = tempo <= maxT && tempo <= 600;
+    var maxT = (c.now - ss.inicio) / 1000 + 2, valido = tempo <= maxT;
     tempo = Math.round(Math.min(tempo, maxT) * 100) / 100;
     delete doc.sessao;
     doc.treinos = (doc.treinos || 0) + 1;
