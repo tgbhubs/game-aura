@@ -977,7 +977,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-12h';
+var BUILD = '2026-11-12i';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -3536,8 +3536,8 @@ function mesaJogo(m, me) {
   var larg = Math.min(560, window.innerWidth) - 52, ov = nMao > 1 ? Math.max(-38, Math.min(6, Math.floor((larg - nMao * 58) / (nMao - 1)))) : 0;
   h += '<div class="pmao" style="--ov:' + ov + 'px">' + mao.map(function (c) {
     var ok = validas.indexOf(c) >= 0, nova = (PL.novas || []).indexOf(c) >= 0;
-    return cartaHTML(c, (minhaVez ? (ok ? 'ok' : 'off') : '') + (nova ? ' nova' : '') + (c === m.comprou ? ' comprada' : ''), 'data-a="placaJogar" data-v="' + c + '"');
-  }).join('') + '</div><div class="tiny" style="opacity:.6;text-align:center;margin-top:4px">' + nMao + ' carta' + (nMao === 1 ? '' : 's') + ' na mão' + (minhaVez && !validas.length && !m.comprou ? ' · nenhuma combina: toque no monte' : '') + '</div></div>';
+    return cartaHTML(c, (nova ? ' nova' : '') + (c === m.comprou ? ' comprada' : ''), 'data-a="placaJogar" data-v="' + c + '"');
+  }).join('') + '</div><div class="tiny" style="opacity:.6;text-align:center;margin-top:4px">' + nMao + ' carta' + (nMao === 1 ? '' : 's') + ' na mão' +  + '</div></div>';
   if (PL.escolherCor) h += escolhaCor();
   if (PL.menu) h += menuMesa(m, me);
   return h;
@@ -3611,7 +3611,11 @@ var A_PLACA = {
     var m = PL && PL.mesa; if (!m) return;
     var me = S.user.uid;
     if (m.status !== 'jogando' || !m.jogadores[m.vez] || m.jogadores[m.vez].uid !== me) { toast(m.status === 'pausada' ? 'A partida está pausada.' : 'Espere a sua vez.'); return; }
-    if (!Placa.podeJogar(estadoCliente(m), v)) { som('erro'); el.classList.remove('nao'); void el.offsetWidth; el.classList.add('nao'); return; }
+    if (!Placa.podeJogar(estadoCliente(m), v)) {
+      som('erro'); el.classList.remove('nao'); void el.offsetWidth; el.classList.add('nao');
+      toast(m.acumulo ? 'Agora só vale responder com Guincho +2, ou compre ' + m.acumulo + '.' : m.comprou ? 'Agora só dá para jogar a carta que você comprou, ou passar.' : 'Essa carta não pode ser jogada: precisa combinar a cor, o número ou o símbolo da mesa.');
+      return;
+    }
     if (Placa.carta(v).curinga) { PL.escolherCor = v; desenharMesa(); return; }
     placaChamar('jogar', { carta: v });
   },
