@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-13d';
+var BUILD = '2026-11-13f';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v4';
+  var CH = 'gameicarros_demo_v5';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -274,16 +274,16 @@ function criarDemo() {
   function demoSaldo(uid) {
     var plac = Object.keys(col('placar')).map(function (k) { return col('placar')[k]; });
     var vit = Object.keys(col('placaPartidas')).filter(function (k) { var p = col('placaPartidas')[k]; return p.vencedor === uid && !p.temRobo; }).length;
-    var ganhos = Garagem.ganhos(uid, plac, col('temporadas'), vit), carteira = lerDoc('carteira/' + uid) || {};
+    var ganhos = Garagem.ganhos(uid, plac, col('temporadas'), vit, (lerDoc('treinos/' + uid) || {}).creditos || 0), carteira = lerDoc('carteira/' + uid) || {};
     return { uid: uid, ganhos: ganhos, carteira: carteira, garagem: lerDoc('garagens/' + uid) || { carros: {} }, saldo: Garagem.saldo(ganhos, carteira) };
   }
   function demoGaragem(uid, jog, d, now) {
     var sid = Garagem.semana(now), op = d.op;
     if (op === 'saldo') { var st = demoSaldo(uid); return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] }; }
     if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, Garagem.lote(now)); return { semana: sid }; }
-    if (op === 'comprar0km') { var st1 = demoSaldo(uid), r1 = Garagem.comprar0km(st1, String(d.cat || ''), now); gravar('garagens/' + uid, r1.garagem); gravar('carteira/' + uid, r1.carteira); return { iid: r1.iid }; }
+    if (op === 'comprar0km') { var st1 = demoSaldo(uid); st1.apelido = jog.apelido || jog.nome; var r1 = Garagem.comprar0km(st1, String(d.cat || ''), now); gravar('garagens/' + uid, r1.garagem); gravar('carteira/' + uid, r1.carteira); gravar('transacoes/T' + now.toString(36), r1.transacao); return { iid: r1.iid }; }
     if (op === 'comprarRetomado') {
-      var lote = lerDoc('estoque/' + sid) || Garagem.lote(now), st2 = demoSaldo(uid), r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now);
+      var lote = lerDoc('estoque/' + sid) || Garagem.lote(now), st2 = demoSaldo(uid); st2.apelido = jog.apelido || jog.nome; var r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now); gravar('transacoes/T' + now.toString(36), r2.transacao);
       gravar('estoque/' + sid, r2.lote); gravar('garagens/' + uid, r2.garagem); gravar('carteira/' + uid, r2.carteira); return { iid: r2.iid };
     }
     if (op === 'anunciar') {
@@ -298,7 +298,7 @@ function criarDemo() {
     if (op === 'comprarUsado') {
       var a2 = lerDoc('anuncios/' + d.anuncioId); if (!a2) Logica.erro('Anúncio não encontrado.');
       var vend = { uid: a2.vendedor, garagem: lerDoc('garagens/' + a2.vendedor) || { carros: {} }, carteira: lerDoc('carteira/' + a2.vendedor) || {} };
-      var r3 = Garagem.comprarUsado(demoSaldo(uid), vend, a2, now);
+      var cp3 = demoSaldo(uid); cp3.apelido = jog.apelido || jog.nome; var r3 = Garagem.comprarUsado(cp3, vend, a2, now); gravar('transacoes/T' + now.toString(36), r3.transacao);
       gravar('garagens/' + uid, r3.garagemComprador); gravar('garagens/' + a2.vendedor, r3.garagemVendedor);
       gravar('carteira/' + uid, r3.carteiraComprador); gravar('carteira/' + a2.vendedor, r3.carteiraVendedor);
       gravar('anuncios/' + d.anuncioId, r3.anuncio); return { iid: r3.iid, taxa: r3.taxa };
@@ -460,6 +460,15 @@ function semearDemo(db) {
       P[p[0]] = { a: p[3], ap: p[2], nm: primeiroNome(p[1]), q: q, qms: Math.round(q * (3000 + r() * 6000)), qf: true, c: c, tn: c ? 1 + Math.floor(r() * 3) : 0 };
     });
     put('placar', rid2, { temporadaId: tid, rodadaId: rid2, p: P });
+  }
+  // Histórico fictício de compras e vendas (para o Preço Aura já ter referência)
+  var tcats = ['hatch-verde', 'sedan-prata', 'suv-porto', 'picape-laranja', 'hatch-branco', 'suv-areia', 'sedan-grafite'];
+  for (var ti = 0; ti < 34; ti++) {
+    var tc = tcats[ti % tcats.length], tp = Garagem.CATALOGO[tc].preco, tipo = ti % 5 === 0 ? '0km' : ti % 3 === 0 ? 'retomado' : 'usado';
+    var km = tipo === '0km' ? 0 : Math.round(15 + r() * 70) * 1000, preco = tipo === '0km' ? tp : Math.round(tp * (tipo === 'retomado' ? 0.55 : 0.62 + r() * 0.25) * (1 - 0.003 * (km - 30000) / 1000) / 5) * 5;
+    var pc = pessoas[1 + (ti % (pessoas.length - 1))], pv = pessoas[1 + ((ti + 3) % (pessoas.length - 1))];
+    put('transacoes', 'Tdemo' + ti, { tipo: tipo, cat: tc, modelo: Garagem.CATALOGO[tc].modelo, km: km, preco: preco, taxa: tipo === 'usado' ? Garagem.taxa(preco) : 0, comprador: pc[0], compradorAp: pc[2],
+      vendedor: tipo === 'usado' ? pv[0] : '', vendedorAp: tipo === 'usado' ? pv[2] : tipo === '0km' ? 'Concessionária' : 'Porto', em: agora - (34 - ti) * 9 * 3600000, semana: Garagem.semana(agora - (34 - ti) * 9 * 3600000) });
   }
   // Treinos: recordes fictícios desta semana e gerais
   var sidT = Garagem.semana(agora);

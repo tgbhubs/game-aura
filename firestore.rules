@@ -65,6 +65,8 @@ service cloud.firestore {
     match /carteira/{uid} { allow read: if signed() && request.auth.uid == uid; allow write: if false; }
     match /estoque/{id} { allow read: if isAtivo(); allow write: if false; }
     match /anuncios/{id} { allow read: if isAtivo(); allow write: if false; }
+    // Histórico público de compras e vendas (base do Preço Aura)
+    match /transacoes/{id} { allow read: if isAtivo(); allow write: if false; }
     // Treinos: recordes gravados só pelo servidor (Cloud Function "treino")
     match /treinos/{uid} { allow read: if isAtivo(); allow write: if false; }
   }

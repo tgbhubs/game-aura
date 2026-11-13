@@ -209,17 +209,18 @@ exports.placa = onCall((req) => {
 const G = require('./garagem');
 
 async function lerSaldo(tx, uid) {
-  const [plac, temps, vit, cart, gar] = await Promise.all([
+  const [plac, temps, vit, cart, gar, trn] = await Promise.all([
     tx.get(db.collection('placar')),
     tx.get(db.collection('temporadas')),
     tx.get(db.collection('placaPartidas').where('vencedor', '==', uid)),
     tx.get(db.doc('carteira/' + uid)),
-    tx.get(db.doc('garagens/' + uid))
+    tx.get(db.doc('garagens/' + uid)),
+    tx.get(db.doc('treinos/' + uid))
   ]);
   const tmap = {};
   temps.forEach((d) => { tmap[d.id] = d.data(); });
   const vitorias = vit.docs.filter((d) => !d.data().temRobo).length;
-  const ganhos = G.ganhos(uid, plac.docs.map((d) => d.data()), tmap, vitorias);
+  const ganhos = G.ganhos(uid, plac.docs.map((d) => d.data()), tmap, vitorias, (dados(trn) || {}).creditos || 0);
   const carteira = dados(cart) || {};
   return { uid, ganhos, carteira, garagem: dados(gar) || { carros: {} }, saldo: G.saldo(ganhos, carteira) };
 }
@@ -244,17 +245,19 @@ exports.garagem = onCall((req) => {
       return { semana: lt.id };
     }
     if (op === 'comprar0km') {
-      const st = await lerSaldo(tx, uid);
+      const st = await lerSaldo(tx, uid); st.apelido = eu.apelido || eu.nome || '';
       const r = G.comprar0km(st, String(d.cat || ''), now);
+      tx.set(db.collection('transacoes').doc(), r.transacao);
       tx.set(db.doc('garagens/' + uid), r.garagem);
       tx.set(db.doc('carteira/' + uid), r.carteira);
       return { iid: r.iid, saldo: st.saldo - G.CATALOGO[d.cat].preco };
     }
     if (op === 'comprarRetomado') {
       const lt = await tx.get(loteRef);
-      const st = await lerSaldo(tx, uid);
+      const st = await lerSaldo(tx, uid); st.apelido = eu.apelido || eu.nome || '';
       const lote = dados(lt) || G.lote(now);
       const r = G.comprarRetomado(st, lote, String(d.item || ''), now);
+      tx.set(db.collection('transacoes').doc(), r.transacao);
       tx.set(loteRef, r.lote);
       tx.set(db.doc('garagens/' + uid), r.garagem);
       tx.set(db.doc('carteira/' + uid), r.carteira);
@@ -280,7 +283,7 @@ exports.garagem = onCall((req) => {
       const ref = db.doc('anuncios/' + String(d.anuncioId || ''));
       const an = dados(await tx.get(ref));
       if (!an) throw new HttpsError('not-found', 'Anúncio não encontrado.');
-      const comprador = await lerSaldo(tx, uid);
+      const comprador = await lerSaldo(tx, uid); comprador.apelido = eu.apelido || eu.nome || '';
       const [gv, cv] = await Promise.all([tx.get(db.doc('garagens/' + an.vendedor)), tx.get(db.doc('carteira/' + an.vendedor))]);
       const vendedor = { uid: an.vendedor, garagem: dados(gv) || { carros: {} }, carteira: dados(cv) || {} };
       const r = G.comprarUsado(comprador, vendedor, an, now);
@@ -289,6 +292,7 @@ exports.garagem = onCall((req) => {
       tx.set(db.doc('carteira/' + uid), r.carteiraComprador);
       tx.set(db.doc('carteira/' + an.vendedor), r.carteiraVendedor);
       tx.set(ref, r.anuncio);
+      tx.set(db.collection('transacoes').doc(), r.transacao);
       return { iid: r.iid, taxa: r.taxa };
     }
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');

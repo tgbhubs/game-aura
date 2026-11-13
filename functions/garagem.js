@@ -24,20 +24,23 @@
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
   G.VENDA = Object.keys(G.CATALOGO).filter(function (k) { return G.BASE.indexOf(k) < 0; });
   G.PONTOS_VITORIA_PLACA = 30;
+  G.TREINO_PROP = 0.2;          // treino rende 20% dos pontos que o tempo valeria na rodada
+  G.TREINO_LIMITE_DIA = Infinity; // sem limite: créditos não mexem no ranking e incentivam compra e venda
+  G.dia = function (now) { return new Date(now - 3 * 3600000).toISOString().slice(0, 10); };
   G.LOTE = 5;
   G.PRECO_MIN = 50; G.PRECO_MAX = 5000;
   G.taxa = function (preco) { return Math.max(5, Math.round(preco * 0.05)); };
 
   // ---------- créditos ----------
   // ganhos = pontos de todas as rodadas jogadas (quiz + corrida) + 30 por vitória no Placa! contra pessoas
-  G.ganhos = function (uid, placares, temporadas, vitoriasPlaca) {
+  G.ganhos = function (uid, placares, temporadas, vitoriasPlaca, creditosTreino) {
     var total = 0;
     (placares || []).forEach(function (p) {
       var e = p && p.p && p.p[uid]; if (!e) return;
       var k = ((temporadas || {})[p.temporadaId] || {}).k || 40;
       total += (e.q || 0) * 10 + L.curva(e.c || 0, k);
     });
-    return total + (vitoriasPlaca || 0) * G.PONTOS_VITORIA_PLACA;
+    return total + (vitoriasPlaca || 0) * G.PONTOS_VITORIA_PLACA + (creditosTreino || 0);
   };
   G.saldo = function (ganhos, carteira) { var c = carteira || {}; return ganhos + (c.recebido || 0) - (c.gasto || 0); };
   function mov(c, m) { c.mov = [m].concat(c.mov || []).slice(0, 30); }
@@ -63,6 +66,31 @@
     gar.carros[iid] = { cat: cat, origem: origem, km: km || 0, compradoEm: now, de: de || '' };
     return iid;
   }
+  // ---------- histórico de transações e Preço Aura ----------
+  // cada compra vira um registro público (sem dados pessoais além do apelido): base para o Preço Aura
+  function transacao(tipo, cat, km, preco, taxa, comprador, vendedor, now) {
+    return { tipo: tipo, cat: cat, modelo: G.CATALOGO[cat].modelo, km: km || 0, preco: preco, taxa: taxa || 0,
+      comprador: comprador.uid, compradorAp: comprador.apelido || '', vendedor: vendedor ? vendedor.uid : '', vendedorAp: vendedor ? (vendedor.apelido || '') : (tipo === '0km' ? 'Concessionária' : 'Porto'),
+      em: now, semana: G.semana(now) };
+  }
+  // Preço Aura de um modelo: mediana das últimas vendas de usados e retomados, ajustada para 30 mil km.
+  // Com menos de 3 vendas, vira estimativa: 70% do preço 0 km.
+  G.KM_REF = 30000; G.DEPREC_KM = 0.004; // 0,4% por mil km de diferença
+  G.precoAura = function (cat, transacoes) {
+    var c = G.CATALOGO[cat]; if (!c) return null;
+    var l = (transacoes || []).filter(function (t) { return t.cat === cat && (t.tipo === 'usado' || t.tipo === 'retomado'); })
+      .sort(function (a, b) { return b.em - a.em; }).slice(0, 15)
+      .map(function (t) { return t.preco * (1 + G.DEPREC_KM * ((t.km || 0) - G.KM_REF) / 1000); }).sort(function (a, b) { return a - b; });
+    var ultima = (transacoes || []).filter(function (t) { return t.cat === cat; }).sort(function (a, b) { return b.em - a.em; })[0];
+    if (l.length < 3) return { valor: c.preco ? Math.round(c.preco * 0.7 / 5) * 5 : 0, n: l.length, estimado: true, ultima: ultima || null };
+    var m = l.length % 2 ? l[(l.length - 1) / 2] : (l[l.length / 2 - 1] + l[l.length / 2]) / 2;
+    return { valor: Math.round(m / 5) * 5, n: l.length, estimado: false, ultima: ultima || null };
+  };
+  // Preço Aura para um carro específico (ajusta pela quilometragem)
+  G.precoAuraCarro = function (cat, km, transacoes) {
+    var p = G.precoAura(cat, transacoes); if (!p) return 0;
+    return Math.max(G.PRECO_MIN, Math.round(p.valor * (1 - G.DEPREC_KM * ((km || 0) - G.KM_REF) / 1000) / 5) * 5);
+  };
   G.comprar0km = function (st, cat, now) {
     var c = G.CATALOGO[cat];
     if (!c || G.BASE.indexOf(cat) >= 0) L.erro('Carro indisponível.');
@@ -70,7 +98,7 @@
     var gar = L.clone(st.garagem || {}), cart = L.clone(st.carteira || {});
     var iid = novaInst(gar, cat, '0km', 0, now);
     cart.gasto = (cart.gasto || 0) + c.preco; mov(cart, { t: now, v: -c.preco, d: '0 km: ' + c.nome });
-    return { garagem: gar, carteira: cart, iid: iid };
+    return { garagem: gar, carteira: cart, iid: iid, transacao: transacao('0km', cat, 0, c.preco, 0, st, null, now) };
   };
   G.comprarRetomado = function (st, lote, itemId, now) {
     var it = (lote.itens || []).filter(function (x) { return x.id === itemId; })[0];
@@ -81,7 +109,7 @@
     var iid = novaInst(gar, it.cat, 'retomado', it.km, now);
     lt.itens.forEach(function (x) { if (x.id === itemId) x.vendidoPara = st.uid; });
     cart.gasto = (cart.gasto || 0) + it.preco; mov(cart, { t: now, v: -it.preco, d: 'Retomado Porto: ' + G.CATALOGO[it.cat].nome });
-    return { garagem: gar, carteira: cart, lote: lt, iid: iid };
+    return { garagem: gar, carteira: cart, lote: lt, iid: iid, transacao: transacao('retomado', it.cat, it.km, it.preco, 0, st, null, now) };
   };
   G.anunciar = function (st, iid, preco, anuncios, now) {
     var car = (st.garagem && st.garagem.carros || {})[iid];
@@ -107,7 +135,8 @@
     cc.gasto = (cc.gasto || 0) + total; mov(cc, { t: now, v: -total, d: 'Usado de ' + (anuncio.vendedorAp || 'colega') + ': ' + nome + ' (taxa ' + tx + ')' });
     cv.recebido = (cv.recebido || 0) + anuncio.preco; mov(cv, { t: now, v: anuncio.preco, d: 'Venda: ' + nome });
     var an = L.clone(anuncio); an.status = 'vendido'; an.compradoPor = comprador.uid; an.vendidoEm = now;
-    return { garagemComprador: gc, garagemVendedor: gv, carteiraComprador: cc, carteiraVendedor: cv, anuncio: an, iid: iid, taxa: tx };
+    return { garagemComprador: gc, garagemVendedor: gv, carteiraComprador: cc, carteiraVendedor: cv, anuncio: an, iid: iid, taxa: tx,
+      transacao: transacao('usado', anuncio.cat, car.km || 0, anuncio.preco, tx, comprador, { uid: anuncio.vendedor, apelido: anuncio.vendedorAp }, now) };
   };
 
   // ---------- treino com recorde (validado como a corrida da rodada) ----------
@@ -133,15 +162,19 @@
     tempo = Math.round(Math.min(tempo, maxT) * 100) / 100;
     delete doc.sessao;
     doc.treinos = (doc.treinos || 0) + 1;
-    var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false;
+    var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false, creditos = 0;
     if (valido) {
       if (!doc.melhor || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
       doc.semanas = doc.semanas || {};
       if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+      // créditos do treino, com limite diário
+      var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
+      creditos = Math.max(0, Math.min(Math.round(L.curva(tempo, 40) * G.TREINO_PROP), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
+      doc.hoje.creditos += creditos; doc.creditos = (doc.creditos || 0) + creditos;
       // guarda só as últimas 12 semanas
       Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
     }
-    return { doc: doc, resp: { tempo: tempo, valido: valido, recorde: recorde, recordeSemana: recordeSemana, melhor: doc.melhor ? doc.melhor.t : 0, melhorSemana: doc.semanas && doc.semanas[sid] ? doc.semanas[sid].t : 0 } };
+    return { doc: doc, resp: { creditos: creditos, creditosHoje: doc.hoje ? doc.hoje.creditos : 0, tempo: tempo, valido: valido, recorde: recorde, recordeSemana: recordeSemana, melhor: doc.melhor ? doc.melhor.t : 0, melhorSemana: doc.semanas && doc.semanas[sid] ? doc.semanas[sid].t : 0 } };
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = G; else root.Garagem = G;

@@ -7,7 +7,7 @@ var S = {
 };
 var D = {
   config: null, configOk: false, areas: {}, temporadas: {}, rodadas: {}, placares: {}, jogadores: {},
-  meusQuiz: {}, minhasCorridas: {}, perguntas: {}, segredo: null, admCorridas: null, outrasTemp: {}, mesas: {}, partidas: {}, treinos: {}, garagem: null, carteira: null, anuncios: {}
+  meusQuiz: {}, minhasCorridas: {}, perguntas: {}, segredo: null, admCorridas: null, outrasTemp: {}, mesas: {}, partidas: {}, treinos: {}, transacoes: {}, garagem: null, carteira: null, anuncios: {}
 };
 var subUser = [], subTemp = [], subAdm = [];
 function limpar(lista) { lista.forEach(function (u) { try { u(); } catch (e) { } }); lista.length = 0; }
@@ -55,7 +55,7 @@ function assinarBase() {
   B.onAuth(function (u) {
     limpar(subUser); limpar(subTemp); limpar(subAdm);
     S.user = u; S.me = null; S.meOk = false; S.ativoAssinado = false; S.tidAssinado = null;
-    D.jogadores = {}; D.meusQuiz = {}; D.minhasCorridas = {}; D.placares = {}; D.rodadas = {}; D.perguntas = {}; D.mesas = {}; D.partidas = {}; D.treinos = {}; D.garagem = null; D.carteira = null; D.anuncios = {};
+    D.jogadores = {}; D.meusQuiz = {}; D.minhasCorridas = {}; D.placares = {}; D.rodadas = {}; D.perguntas = {}; D.mesas = {}; D.partidas = {}; D.treinos = {}; D.transacoes = {}; D.garagem = null; D.carteira = null; D.anuncios = {};
     if (u) {
       subUser.push(B.ouvirDoc('jogadores/' + u.uid, function (d) {
         S.me = d; S.meOk = true;
@@ -74,6 +74,7 @@ function assinarAtivo() {
   subUser.push(B.ouvirDoc('carteira/' + S.user.uid, function (d) { var mudou = D.carteira && d && JSON.stringify(d) !== JSON.stringify(D.carteira); D.carteira = d; if (mudou && typeof atualizarSaldo === 'function') atualizarSaldo(); render(); }));
   subUser.push(B.ouvirCol('anuncios', [['status', '==', 'ativo']], function (m) { D.anuncios = m; render(); }));
   subUser.push(B.ouvirCol('treinos', null, function (m) { D.treinos = m; render(); }));
+  subUser.push(B.ouvirCol('transacoes', null, function (m) { D.transacoes = m; render(); }));
   subUser.push(B.ouvirCol('mesas', [['aberta', '==', true]], function (m) { D.mesas = m; render(); if (typeof placaAtualizarLista === 'function') placaAtualizarLista(); }));
   reassinarTemporada();
   assinarAdm();
