@@ -171,8 +171,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (s.revisao > 0) s.revisao -= dt;
     s.pneu -= GASTO_PNEU * dt;
     if (s.pneu <= 0) {
-      if (s.vidas > 0) { s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
-      else { s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
+      if (s.vidas > 0) { som('furou'); s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
+      else { som('furou'); som('batida'); s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
     }
     var v = vel(s.t);
     s.dist += v * dt;
@@ -188,7 +188,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       var ox = CENTRO[o.lane], ox0 = ox - o.w / 2 + 4, ox1 = ox + o.w / 2 - 4;
       if (!(ox1 > cx0 && ox0 < cx1)) continue;
       if (o.tipo === 'cap') {
-        o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
+        som('pit'); o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
         s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
         continue;
       }
@@ -208,14 +208,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
       if (s.invul > 0) continue;
       if (s.vidas > 0) {
-        s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
+        som('seguro'); s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
         s.msg = { txt: 'Seguro acionado! Segue o jogo', cor: '#9FD3FF', ate: s.t + 1.6 };
         continue;
       }
-      s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return;
+      som('batida'); s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return;
     }
     s.obst = s.obst.filter(function (o) { var fora = s.dist - o.d > 400; if (fora && o._rm) o._rm(); return !fora; });
   }
+  function som(t) { if (window.Musica && !parado) Musica.efeito(t); }
   function mover(d) { if (s.fase !== 'rodando' || !s.vivo) return; s.lane = Math.max(0, Math.min(N - 1, s.lane + d)); }
 
   // ---------- HUD (canvas 2D por cima) ----------

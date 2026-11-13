@@ -2,7 +2,7 @@
    Música original no estilo dos jogos de corrida 8/16 bits (chiptune), gerada na hora com Web Audio:
    sem arquivo de áudio. Lá menor, ~150 BPM, duas partes (A e B) em loop; acelera um pouco a cada nível. */
 var Musica = (function () {
-  var ctx = null, master = null, ruido = null, timer = null, tocando = false;
+  var ctx = null, master = null, sfx = null, ruido = null, timer = null, tocando = false;
   var passo16 = 0, proxT = 0, tempoBase = 150, fator = 1;
   function ligada() { return lerLS('gi_musica', '1') !== '0'; }
   function preparar() {
@@ -11,6 +11,7 @@ var Musica = (function () {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
         master = ctx.createGain(); master.gain.value = 0.34; master.connect(comp); comp.connect(ctx.destination);
+        sfx = ctx.createGain(); sfx.gain.value = 0.5; sfx.connect(comp);
         var n = ctx.sampleRate * 0.5, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
         for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
         ruido = buf;
@@ -125,6 +126,33 @@ var Musica = (function () {
     var t = ctx.currentTime + 0.01; osc('square', final ? 81 : 69, t, final ? 0.35 : 0.14, 0.12);
   }
   function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) parar(); return on; }
+  // ---------- efeitos sonoros ----------
+  function efeito(tipo) {
+    if (!ligada()) return; preparar(); if (!ctx || !sfx) return;
+    // efeitos saem por um canal próprio: não somem quando a música baixa no fim da corrida
+    var m0 = master; master = sfx;
+    try { efeitoEm(tipo, ctx.currentTime + 0.005); } finally { master = m0; }
+  }
+  function efeitoEm(tipo, t) {
+    if (tipo === 'batida') {
+      // pancada grave + estilhaço metálico + chiado de vidro
+      var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.35);
+      env(g, t, 0.003, 1.2, 0.45); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5);
+      chiado(t, 0.5, 300, 0.9); chiado(t + 0.04, 0.7, 4000, 0.45);
+      [311, 466, 587, 740].forEach(function (f, i) { var m = ctx.createOscillator(), mg = ctx.createGain(); m.type = 'square'; m.frequency.setValueAtTime(f, t); m.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.4); env(mg, t + i * 0.012, 0.002, 0.07, 0.42); m.connect(mg); mg.connect(master); m.start(t); m.stop(t + 0.5); });
+    } else if (tipo === 'seguro') {
+      // batida mais leve + escudo (acorde subindo)
+      chiado(t, 0.22, 500, 0.6); var o2 = ctx.createOscillator(), g2 = ctx.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(110, t); o2.frequency.exponentialRampToValueAtTime(40, t + 0.2); env(g2, t, 0.003, 0.8, 0.25); o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 0.3);
+      [76, 81, 88].forEach(function (m, i) { osc('triangle', m, t + 0.12 + i * 0.07, 0.25, 0.12); });
+    } else if (tipo === 'furou') {
+      // estouro + ar escapando
+      chiado(t, 0.08, 800, 1.0); chiado(t + 0.06, 0.9, 2500, 0.25);
+    } else if (tipo === 'pit') {
+      // parafusadeira pneumática: rajadas curtas
+      for (var i = 0; i < 4; i++) { var tt = t + i * 0.22; chiado(tt, 0.12, 3000, 0.22); osc('sawtooth', 52 + (i % 2), tt, 0.12, 0.06); }
+    }
+  }
   // gera um trecho da trilha offline (usado para testes e prévias)
   function gravar(seg) {
     var sr = 44100, off = new OfflineAudioContext(2, sr * seg, sr), salvo = [ctx, master, ruido, filtroBaixo];
@@ -137,5 +165,5 @@ var Musica = (function () {
     ctx = salvo[0]; master = salvo[1]; ruido = salvo[2]; filtroBaixo = salvo[3];
     return pr;
   }
-  return { gravar: gravar, preparar: preparar, tocar: tocar, parar: parar, ritmo: ritmo, bip: bip, ligada: ligada, alternar: alternar, tocando: function () { return tocando; } };
+  return { efeito: efeito, gravar: gravar, preparar: preparar, tocar: tocar, parar: parar, ritmo: ritmo, bip: bip, ligada: ligada, alternar: alternar, tocando: function () { return tocando; } };
 })();

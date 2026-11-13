@@ -234,7 +234,7 @@ var A = {
     var on = Musica.alternar(), b = $('#btMusica');
     if (b) b.innerHTML = on ? '♫' : '<s>♫</s>';
     if (on && CR && CR.motor && CR.motor.estado && CR.motor.estado.fase === 'rodando' && CR.motor.estado.vivo) Musica.tocar();
-    toast(on ? 'Música ligada' : 'Música desligada', 1200);
+    toast(on ? 'Música e sons ligados' : 'Música e sons desligados', 1200);
   },
   carro: function (v) { gravarLS('gi_carro', v); if (CR) { CR.carro = v; desenharCorrida(); } },
   visual: function (v) { gravarLS('gi_visual', v); if (CR) { CR.visual = v; desenharCorrida(); } },

@@ -1117,7 +1117,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-13b';
+var BUILD = '2026-11-13c';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -2325,7 +2325,7 @@ function abrirCorrida(treino) {
 function desenharCorrida() {
   if (!CR) return;
   var k = (tempAtiva() || {}).k || 40;
-  var h = '<div class="ovw" style="padding-bottom:12px"><div class="ovtop"><div class="row" style="align-items:center">' + wm(22) + '<span class="pill-game">' + (CR.treino ? 'TREINO' : 'CORRIDA') + '</span></div><div class="row" style="gap:8px"><button class="xbtn" id="btMusica" data-a="musica" aria-label="Ligar ou desligar a música" title="Música">' + (Musica.ligada() ? '♫' : '<s>♫</s>') + '</button><button class="xbtn" data-a="fecharCorrida">✕</button></div></div>';
+  var h = '<div class="ovw" style="padding-bottom:12px"><div class="ovtop"><div class="row" style="align-items:center">' + wm(22) + '<span class="pill-game">' + (CR.treino ? 'TREINO' : 'CORRIDA') + '</span></div><div class="row" style="gap:8px"><button class="xbtn" id="btMusica" data-a="musica" aria-label="Ligar ou desligar música e sons" title="Música e sons">' + (Musica.ligada() ? '♫' : '<s>♫</s>') + '</button><button class="xbtn" data-a="fecharCorrida">✕</button></div></div>';
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
@@ -2566,8 +2566,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (s.revisao > 0) s.revisao -= dt;
     s.pneu -= GASTO_PNEU * dt;
     if (s.pneu <= 0) {
-      if (s.vidas > 0) { s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
-      else { s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
+      if (s.vidas > 0) { som('furou'); s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
+      else { som('furou'); som('batida'); s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
     }
     var v = vel(s.t);
     s.dist += v * dt;
@@ -2583,7 +2583,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       var ox = CENTRO[o.lane], ox0 = ox - o.w / 2 + 4, ox1 = ox + o.w / 2 - 4;
       if (!(ox1 > cx0 && ox0 < cx1)) continue;
       if (o.tipo === 'cap') {
-        o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
+        som('pit'); o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
         s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
         continue;
       }
@@ -2603,14 +2603,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
       if (s.invul > 0) continue;
       if (s.vidas > 0) {
-        s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
+        som('seguro'); s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
         s.msg = { txt: 'Seguro acionado! Segue o jogo', cor: '#9FD3FF', ate: s.t + 1.6 };
         continue;
       }
-      s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return;
+      som('batida'); s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return;
     }
     s.obst = s.obst.filter(function (o) { var fora = s.dist - o.d > 400; if (fora && o._rm) o._rm(); return !fora; });
   }
+  function som(t) { if (window.Musica && !parado) Musica.efeito(t); }
   function mover(d) { if (s.fase !== 'rodando' || !s.vivo) return; s.lane = Math.max(0, Math.min(N - 1, s.lane + d)); }
 
   // ---------- HUD (canvas 2D por cima) ----------
@@ -4098,7 +4099,7 @@ var A_GAR = {
    Música original no estilo dos jogos de corrida 8/16 bits (chiptune), gerada na hora com Web Audio:
    sem arquivo de áudio. Lá menor, ~150 BPM, duas partes (A e B) em loop; acelera um pouco a cada nível. */
 var Musica = (function () {
-  var ctx = null, master = null, ruido = null, timer = null, tocando = false;
+  var ctx = null, master = null, sfx = null, ruido = null, timer = null, tocando = false;
   var passo16 = 0, proxT = 0, tempoBase = 150, fator = 1;
   function ligada() { return lerLS('gi_musica', '1') !== '0'; }
   function preparar() {
@@ -4107,6 +4108,7 @@ var Musica = (function () {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
         master = ctx.createGain(); master.gain.value = 0.34; master.connect(comp); comp.connect(ctx.destination);
+        sfx = ctx.createGain(); sfx.gain.value = 0.5; sfx.connect(comp);
         var n = ctx.sampleRate * 0.5, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
         for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
         ruido = buf;
@@ -4221,6 +4223,33 @@ var Musica = (function () {
     var t = ctx.currentTime + 0.01; osc('square', final ? 81 : 69, t, final ? 0.35 : 0.14, 0.12);
   }
   function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) parar(); return on; }
+  // ---------- efeitos sonoros ----------
+  function efeito(tipo) {
+    if (!ligada()) return; preparar(); if (!ctx || !sfx) return;
+    // efeitos saem por um canal próprio: não somem quando a música baixa no fim da corrida
+    var m0 = master; master = sfx;
+    try { efeitoEm(tipo, ctx.currentTime + 0.005); } finally { master = m0; }
+  }
+  function efeitoEm(tipo, t) {
+    if (tipo === 'batida') {
+      // pancada grave + estilhaço metálico + chiado de vidro
+      var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.35);
+      env(g, t, 0.003, 1.2, 0.45); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5);
+      chiado(t, 0.5, 300, 0.9); chiado(t + 0.04, 0.7, 4000, 0.45);
+      [311, 466, 587, 740].forEach(function (f, i) { var m = ctx.createOscillator(), mg = ctx.createGain(); m.type = 'square'; m.frequency.setValueAtTime(f, t); m.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.4); env(mg, t + i * 0.012, 0.002, 0.07, 0.42); m.connect(mg); mg.connect(master); m.start(t); m.stop(t + 0.5); });
+    } else if (tipo === 'seguro') {
+      // batida mais leve + escudo (acorde subindo)
+      chiado(t, 0.22, 500, 0.6); var o2 = ctx.createOscillator(), g2 = ctx.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(110, t); o2.frequency.exponentialRampToValueAtTime(40, t + 0.2); env(g2, t, 0.003, 0.8, 0.25); o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 0.3);
+      [76, 81, 88].forEach(function (m, i) { osc('triangle', m, t + 0.12 + i * 0.07, 0.25, 0.12); });
+    } else if (tipo === 'furou') {
+      // estouro + ar escapando
+      chiado(t, 0.08, 800, 1.0); chiado(t + 0.06, 0.9, 2500, 0.25);
+    } else if (tipo === 'pit') {
+      // parafusadeira pneumática: rajadas curtas
+      for (var i = 0; i < 4; i++) { var tt = t + i * 0.22; chiado(tt, 0.12, 3000, 0.22); osc('sawtooth', 52 + (i % 2), tt, 0.12, 0.06); }
+    }
+  }
   // gera um trecho da trilha offline (usado para testes e prévias)
   function gravar(seg) {
     var sr = 44100, off = new OfflineAudioContext(2, sr * seg, sr), salvo = [ctx, master, ruido, filtroBaixo];
@@ -4233,7 +4262,7 @@ var Musica = (function () {
     ctx = salvo[0]; master = salvo[1]; ruido = salvo[2]; filtroBaixo = salvo[3];
     return pr;
   }
-  return { gravar: gravar, preparar: preparar, tocar: tocar, parar: parar, ritmo: ritmo, bip: bip, ligada: ligada, alternar: alternar, tocando: function () { return tocando; } };
+  return { efeito: efeito, gravar: gravar, preparar: preparar, tocar: tocar, parar: parar, ritmo: ritmo, bip: bip, ligada: ligada, alternar: alternar, tocando: function () { return tocando; } };
 })();
 
 /* ================== ADMINISTRAÇÃO ================== */
@@ -4829,7 +4858,7 @@ var A = {
     var on = Musica.alternar(), b = $('#btMusica');
     if (b) b.innerHTML = on ? '♫' : '<s>♫</s>';
     if (on && CR && CR.motor && CR.motor.estado && CR.motor.estado.fase === 'rodando' && CR.motor.estado.vivo) Musica.tocar();
-    toast(on ? 'Música ligada' : 'Música desligada', 1200);
+    toast(on ? 'Música e sons ligados' : 'Música e sons desligados', 1200);
   },
   carro: function (v) { gravarLS('gi_carro', v); if (CR) { CR.carro = v; desenharCorrida(); } },
   visual: function (v) { gravarLS('gi_visual', v); if (CR) { CR.visual = v; desenharCorrida(); } },
