@@ -42,6 +42,9 @@ Arquivos originais e versões otimizadas ficam fora do repositório até entrare
 - Concept Car 006 (Unity Fan, domínio público): veio com animações e peças extras; precisa de limpeza.
 - Dodge Viper RT/10 e GTS (CC BY): vieram dentro de uma garagem/cenário; separar só o carro. O GTS chegou com upload incompleto (faltou 1 textura).
 - Mitsubishi Lancer Evo IX: licença CC BY-NC (não comercial). Fica de fora.
+- Segundo lote (CC BY): Fusca, Kombi, Opala Diplomata, Jaguar C-X75 prontos (0,9 a 1,3 MB); Caravan veio com 4 versões no mesmo arquivo (escolher uma). Kombi tem o logotipo VW na frente (tirar).
+- Ferrari SF90 Stradale: licença CC BY-NC-SA. Fica de fora.
+- Mini Tsura: upload incompleto (só chegou a licença). Reenviar.
 - Decidir: marcas reais (Lamborghini, Ferrari, Maserati, Mercedes, Dodge) com nome fictício no jogo e sem logotipos.
 
 ## Feito recentemente
