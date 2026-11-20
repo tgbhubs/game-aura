@@ -350,7 +350,7 @@ function criar3DReal(E) {
     rolam.forEach(function (g) { var z = ((g.userData.base - s.dist * K) % LOOP + LOOP) % LOOP; g.position.z = -(z - 18); });
     var cx = lx(s.x), v = s.parada > 0 ? 0 : Math.min(300 * Math.pow(1.12, Math.floor(s.t / 10)), 1150) * K;
     meu.position.set(cx, 0, (CARH / 2) * K);
-    var inc = (CENTRO[s.lane] - s.x) * 0.004;
+    var inc = -(CENTRO[s.lane] - s.x) * 0.004;   // a frente aponta para a faixa de destino
     meu.rotation.y = inc; meu.rotation.z = -inc * 0.35;
     meu.userData.rodas.forEach(function (r) { r.rotation.x -= v * dt / 0.34; });
     var piscaInv = s.invul > 0;

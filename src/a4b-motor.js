@@ -228,7 +228,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     s.obst = s.obst.filter(function (o) { var fora = s.dist - o.d > 400; if (fora && o._rm) o._rm(); return !fora; });
   }
   function som(t) { if (window.Musica && !parado) Musica.efeito(t); }
-  function mover(d) { if (s.fase !== 'rodando' || !s.vivo) return; s.lane = Math.max(0, Math.min(N - 1, s.lane + d)); }
+  function mover(d) { if (s.fase !== 'rodando' || !s.vivo || s.parada > 0) return; s.lane = Math.max(0, Math.min(N - 1, s.lane + d)); }
 
   // ---------- HUD (canvas 2D por cima) ----------
   var hctx = hud.getContext('2d'), HW = 360, HH = 640, hs = hud.width / HW;
@@ -446,7 +446,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       cenario.forEach(function (g) { var z = ((g.userData.base - s.dist * K) % LOOP + LOOP) % LOOP; g.position.z = -(z - 12); });
       var cx = lx(s.x);
       meu.position.set(cx, 0, (CARH / 2) * K);
-      meu.rotation.y = (CENTRO[s.lane] - s.x) * 0.0035;
+      meu.rotation.y = -(CENTRO[s.lane] - s.x) * 0.0035;   // a frente aponta para a faixa de destino
       meu.visible = !(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0);
       s.obst.forEach(function (o) {
         if (!o._mesh) o._mesh = criarMesh(o);
@@ -717,12 +717,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
     });
     // carro do jogador (sombra, faróis e corpo)
-    var px = R0 + s.x, inclin = (CENTRO[s.lane] - s.x) * -0.004;
+    var px = R0 + s.x, inclin = (CENTRO[s.lane] - s.x) * 0.004;   // a frente aponta para a faixa de destino; gira em torno do eixo traseiro
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     var fg = ctx.createRadialGradient(px, CY - 60, 4, px, CY - 60, 90); fg.addColorStop(0, 'rgba(255,240,190,.22)'); fg.addColorStop(1, 'rgba(255,240,190,0)');
     ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(px - 18, CY + 2); ctx.lineTo(px - 70, CY - 150); ctx.lineTo(px + 70, CY - 150); ctx.lineTo(px + 18, CY + 2); ctx.closePath(); ctx.fill(); ctx.restore();
     if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) {
-      ctx.save(); ctx.translate(px, CY + 46); ctx.rotate(inclin);
+      ctx.save(); ctx.translate(px, CY + 72); ctx.rotate(inclin); ctx.translate(0, -26);
       ctx.drawImage(REAL.sombraCarro, -26 - 9 + 5, -46 - 6 + 6, 66, 106);
       var spEu = SEL.cat === 'aura' ? null : imgCima(SEL.cat); ctx.drawImage(spEu || REAL.carros.eu, -26, -46, 52, 92);
       if (s.tags) { ctx.fillStyle = '#14235E'; rr(ctx, -10, -4, 20, 12, 3); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.font = '900 7px Montserrat, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TAG', 0, 2); }
