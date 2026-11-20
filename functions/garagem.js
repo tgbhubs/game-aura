@@ -170,10 +170,12 @@
 
   // ---------- multas por evasão de pedágio (free flow sem TAG) ----------
   // A multa fica no carro usado; não mexe no tempo nem no ranking, só nos créditos.
-  G.MULTA = { valor: 40, desconto: 0.2, juros: 0.5, prazoDias: 7, guardar: 60 };
+  G.MULTA = { valor: 10, desconto: 0.2, juros: 0.5, prazoDias: 7, guardar: 60 };
   G.multasPendentes = function (cart) { return ((cart && cart.multas) || []).filter(function (m) { return !m.pago; }); };
   G.valorMulta = function (m, now) {
-    return now <= m.vence ? Math.round(m.valor * (1 - G.MULTA.desconto)) : Math.round(m.valor * (1 + G.MULTA.juros));
+    // usa sempre o valor atual da tabela: multas antigas acompanham mudanças de preço
+    var base = G.MULTA.valor;
+    return now <= m.vence ? Math.round(base * (1 - G.MULTA.desconto)) : Math.round(base * (1 + G.MULTA.juros));
   };
   // máximo plausível: uma praça a cada 12 s de corrida
   G.maxMultas = function (tempo) { return Math.max(0, Math.floor((Number(tempo) || 0) / 12) + 1); };
