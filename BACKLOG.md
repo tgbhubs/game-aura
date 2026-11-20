@@ -19,12 +19,15 @@ Melhorias anotadas para fazer juntas no próximo pacote.
    - Cada carro do lote mostra a origem com selo próprio (Itaú ou Porto); textos, confirmação de compra, histórico de transações e Preço Aura passam a citar a origem certa.
    - O Mercado entre colegas (usados de PF) continua como está.
 
-4. **Multas (proposta, a validar)**
-   - Na corrida: pórtico de *free flow* atravessando a pista. Passar sem TAG gera multa por evasão de pedágio; com TAG, a passagem é cobrada normalmente e não tem multa. Outras fontes possíveis: radar em trecho de velocidade, faixa exclusiva de ônibus.
-   - A multa não muda o tempo nem os pontos do ranking; vale só na Garagem, em créditos.
-   - Fica em "Multas pendentes" com vencimento (ex.: 7 dias). Pagou antes do vencimento, tem desconto (ex.: 20%); venceu, o valor sobe.
+4. **Multas (só no treino)**
+   - Pedágio vira praça com *free flow* nas laterais:
+     - **Faixas laterais (free flow):** com TAG, passa sem perder tempo e sem multa; sem TAG, passa sem perder tempo, mas leva multa por evasão de pedágio.
+     - **Três faixas do meio (cancelas):** com TAG, passa direto; sem TAG, perde tempo. Nenhum dos dois leva multa.
+   - Multa só existe no treino; não muda tempo nem ranking, vale só em créditos na Garagem.
+   - Fica em "Multas pendentes" com vencimento (ex.: 7 dias). Pagou antes, tem desconto (ex.: 20%); venceu, o valor sobe.
    - Carro com multa pendente não pode ser anunciado no Mercado até quitar (como na transferência real de veículo).
    - Histórico das multas pagas entra nas transações.
+   - A decidir: na corrida da rodada (sem multa), o que acontece nas faixas laterais sem TAG; e se passar no free flow com TAG gasta uma mensalidade.
 
 5. **Mais carros detalhados (no nível do cyberpunk e do conceito)**
    - Trocar a ideia de carros genéricos por modelos 3D detalhados: ex. esportivo, SUV premium, picape, elétrico, clássico, hatch moderno.
