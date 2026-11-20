@@ -19,6 +19,18 @@ Melhorias anotadas para fazer juntas no próximo pacote.
    - Cada carro do lote mostra a origem com selo próprio (Itaú ou Porto); textos, confirmação de compra, histórico de transações e Preço Aura passam a citar a origem certa.
    - O Mercado entre colegas (usados de PF) continua como está.
 
+4. **Multas (proposta, a validar)**
+   - Na corrida: pórtico de *free flow* atravessando a pista. Passar sem TAG gera multa por evasão de pedágio; com TAG, a passagem é cobrada normalmente e não tem multa. Outras fontes possíveis: radar em trecho de velocidade, faixa exclusiva de ônibus.
+   - A multa não muda o tempo nem os pontos do ranking; vale só na Garagem, em créditos.
+   - Fica em "Multas pendentes" com vencimento (ex.: 7 dias). Pagou antes do vencimento, tem desconto (ex.: 20%); venceu, o valor sobe.
+   - Carro com multa pendente não pode ser anunciado no Mercado até quitar (como na transferência real de veículo).
+   - Histórico das multas pagas entra nas transações.
+
+5. **Mais carros detalhados (no nível do cyberpunk e do conceito)**
+   - Trocar a ideia de carros genéricos por modelos 3D detalhados: ex. esportivo, SUV premium, picape, elétrico, clássico, hatch moderno.
+   - Origem: modelos com licença livre (CC0 ou CC-BY, com crédito ao autor), como os dois atuais, que vieram do Sketchfab. O download exige login, então o Tarcísio baixa os .glb escolhidos e eu otimizo, gero foto e visão de cima e encaixo no catálogo.
+   - Cada carro novo ganha preço e atributos (faixa, pneu, seguro) no catálogo da Garagem.
+
 ## Feito recentemente
 
 - 2026-11-20b: carro vira de frente para a faixa de destino; não troca de faixa parado no CAP ou no pedágio.
