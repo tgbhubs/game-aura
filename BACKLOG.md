@@ -4,50 +4,12 @@ Melhorias anotadas para fazer juntas no próximo pacote.
 
 ## Pendentes
 
-1. **Canal de sugestões, melhorias e problemas**
-   - Botão no app (Perfil ou Regras) para enviar sugestão, melhoria ou problema, com tipo, texto e opcionalmente a tela onde aconteceu.
-   - Envio pela Function (gravando quem enviou, versão do app e aparelho); leitura e status (novo, em análise, feito) na área de administração.
-
-2. **Foto obrigatória no cadastro**
-   - O objetivo é interação: todo jogador precisa ter foto.
-   - Quem entra com Google usa a foto da conta; quem não tem foto (ou entrou com e-mail e senha) precisa enviar uma antes de concluir o cadastro.
-   - Quem já está cadastrado sem foto recebe um aviso para colocar foto antes de jogar.
-   - Não deixar remover a foto sem colocar outra.
-
-3. **Retomados Itaú e Porto**
-   - A aba Retomados (hoje só "Retomados Porto") passa a ter carros de origem Itaú (retomada de financiamento) e Porto (recuperados do seguro).
-   - Cada carro do lote mostra a origem com selo próprio (Itaú ou Porto); textos, confirmação de compra, histórico de transações e Preço Aura passam a citar a origem certa.
-   - O Mercado entre colegas (usados de PF) continua como está.
-
-4. **Multas (treino e corrida da rodada, mesma regra)**
-   - Pedágio vira praça com *free flow* nas laterais:
-     - **Faixas laterais (free flow):** com TAG, passa sem perder tempo e sem multa (gasta 1 mensalidade da TAG); sem TAG, passa sem perder tempo, mas leva multa por evasão de pedágio.
-     - **Três faixas do meio (cancelas):** com TAG, passa direto (gasta 1 mensalidade); sem TAG, perde tempo. Nenhum dos dois leva multa.
-   - Mesma regra no treino e na corrida da rodada. A multa não muda tempo nem ranking: vale só em créditos na Garagem.
-   - Fica em "Multas pendentes" com vencimento (ex.: 7 dias). Pagou antes, tem desconto (ex.: 20%); venceu, o valor sobe.
-   - Carro com multa pendente não pode ser anunciado no Mercado até quitar (como na transferência real de veículo).
-   - Histórico das multas pagas entra nas transações.
-
-5. **Mais carros detalhados (no nível do cyberpunk e do conceito)**
-   - Trocar a ideia de carros genéricos por modelos 3D detalhados: ex. esportivo, SUV premium, picape, elétrico, clássico, hatch moderno.
-   - Origem: modelos com licença livre (CC0 ou CC-BY, com crédito ao autor), como os dois atuais, que vieram do Sketchfab. O download exige login, então o Tarcísio baixa os .glb escolhidos e eu otimizo, gero foto e visão de cima e encaixo no catálogo.
-   - Cada carro novo ganha preço e atributos (faixa, pneu, seguro) no catálogo da Garagem.
-
-### Modelos recebidos em 20/11 (status)
-Arquivos originais e versões otimizadas ficam fora do repositório até entrarem no jogo.
-- Lamborghini Diablo SV (CC BY): ótimo, 1,1 MB.
-- Fórmula 1 2027 (CC BY): ótimo, 1,3 MB.
-- Ferrari 488 Pista, Maserati Alfieri, Mercedes SLS (CC BY): bons; tirar os fachos de farol que vieram como peças.
-- Concept Car 050 (Unity Fan, domínio público): bom; tirar a sombra embutida.
-- Concept Car 006 (Unity Fan, domínio público): veio com animações e peças extras; precisa de limpeza.
-- Dodge Viper RT/10 e GTS (CC BY): vieram dentro de uma garagem/cenário; separar só o carro. O GTS chegou com upload incompleto (faltou 1 textura).
-- Mitsubishi Lancer Evo IX: licença CC BY-NC (não comercial). Fica de fora.
-- Segundo lote (CC BY): Fusca, Kombi, Opala Diplomata, Jaguar C-X75 prontos (0,9 a 1,3 MB); Caravan veio com 4 versões no mesmo arquivo (escolher uma). Kombi tem o logotipo VW na frente (tirar).
-- Ferrari SF90 Stradale: licença CC BY-NC-SA. Fica de fora.
-- Mini Tsura: upload incompleto (só chegou a licença). Reenviar.
-- Decidir: marcas reais (Lamborghini, Ferrari, Maserati, Mercedes, Dodge) com nome fictício no jogo e sem logotipos.
+- Mini Tsura: reenviar o arquivo (o upload chegou sem o modelo).
+- Modelos que ficaram de fora por qualidade: Concept Car 006 (rodas quebram ao otimizar), Viper RT/10 (pesado demais para o celular) e Caravan (arquivo com 4 carros desmontados).
 
 ## Feito recentemente
+
+- 2026-11-20c: pacote do backlog — 11 carros detalhados com nomes fictícios e sem logotipos (créditos na aba Regras); showroom com os lançamentos do mês no 0 km; pedágio com free flow nas laterais e multas por evasão (treino e rodada), pagas em créditos com desconto até o vencimento e bloqueio de anúncio; Retomados Itaú e Porto com selo de origem; canal de sugestões com aba na administração; foto obrigatória no cadastro e para jogar.
 
 - 2026-11-20b: carro vira de frente para a faixa de destino; não troca de faixa parado no CAP ou no pedágio.
 - 2026-11-20a: compartilhar imagem (foto do Google com CORS; share direto no toque no iPhone).
