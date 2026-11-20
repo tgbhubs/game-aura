@@ -217,6 +217,13 @@
     doc.sessao = { inicio: c.now, seed: seed, cat: G.catDoCarro(c.carro, c.garagem), carro: G.catDoCarro(c.carro, c.garagem) === 'aura' && c.carro !== 'aura' ? 'aura' : c.carro };
     return { doc: doc, resp: { seed: seed } };
   };
+  // melhores tempos por carro de um documento de treino (usa porCarro e, para dados antigos, melhor e semanas)
+  G.porCarroDe = function (doc) {
+    var m = {}, add = function (r) { if (r && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = { t: r.t, em: r.em }; };
+    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em }); });
+    add(doc && doc.melhor); Object.keys((doc && doc.semanas) || {}).forEach(function (k) { add(doc.semanas[k]); });
+    return m;
+  };
   G.finalizarTreino = function (c) {
     var doc = L.clone(c.doc || {}), ss = doc.sessao;
     if (!ss) L.erro('Treino não encontrado. Comece de novo.');
@@ -230,6 +237,9 @@
       if (!doc.melhor || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
       doc.semanas = doc.semanas || {};
       if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+      // melhor tempo com cada carro (ranking por carro); na primeira vez, aproveita os recordes já gravados
+      doc.porCarro = doc.porCarro || G.porCarroDe(doc);
+      if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(Math.round(L.curva(tempo, 40) * G.TREINO_PROP), G.TREINO_LIMITE_DIA - doc.hoje.creditos));

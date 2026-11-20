@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-20d';
+var BUILD = '2026-11-20e';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v5';
+  var CH = 'gameicarros_demo_v6';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -487,7 +487,9 @@ function semearDemo(db) {
     if (r() < 0.25) return;
     var tg = Math.round((40 + r() * 140) * 100) / 100, ts = Math.round(tg * (0.55 + r() * 0.45) * 100) / 100, cats = ['aura', 'conceito', 'cyberpunk', 'suv-porto', 'hatch-verde'];
     var semanas = {}; if (r() < 0.75) semanas[sidT] = { t: ts, cat: cats[i % cats.length], em: agora - i * 3600000 };
-    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas });
+    var pcar = {}, catsN = ['monoposto', 'touro', 'veloce', 'neon', 'felino', 'gaivota', 'besouro', 'perua', 'diplomata', 'serpente', 'granturismo'];
+    for (var q = 0; q < 3; q++) { var cq = catsN[(i * 3 + q) % catsN.length]; pcar[cq] = { t: Math.round(tg * (0.5 + r() * 0.5) * 100) / 100, em: agora - 86400000 * q }; }
+    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas, porCarro: pcar });
   });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {

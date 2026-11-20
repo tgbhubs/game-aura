@@ -257,6 +257,7 @@ var A = {
     else fecharOv();
   },
   rankModo: function (v) { S.rankModo = v; R(); },
+  rankCarro: function (v) { S.rankCarroAberto = S.rankCarroAberto === v ? '' : v; S.manterScroll = true; R(); },
   rankRodada: function (v) { S.rankRodada = v; R(); },
   compartilharRanking: function () { imagemRanking(); },
   compartilharBadge: function (v) { var p = v.split('|'); imagemBadge(p[0], p[1], p[2] ? parseInt(p[2], 10) : null); },

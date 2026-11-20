@@ -96,7 +96,8 @@ function imgCima(id) {
   if (!im) { im = _imgsCima[id] = new Image(); im.src = FOTOS_CARROS[id].cima; }
   return im.complete && im.naturalWidth ? im : null;
 }
-function visualPreferido() { var v = lerLS('gi_visual', '3dreal'); return ['3dreal', '3d', 'classico', 'realista'].indexOf(v) >= 0 ? v : '3dreal'; }
+// só os visuais realistas: 3D realista e de cima realista (quem tinha escolhido um dos simples vai para o 3D realista)
+function visualPreferido() { var v = lerLS('gi_visual', '3dreal'); return v === 'realista' ? 'realista' : '3dreal'; }
 function webglOk() {
   try { var c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch (e) { return false; }
 }
@@ -786,7 +787,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.drawImage(REAL.vinheta, 0, 0, W, H);
   }
 
-  var VISUAL = ((visual === '3d' || visual === '3dreal') && R3) ? visual : (visual === 'realista' ? 'realista' : 'classico');
+  // sem WebGL, o 3D realista cai para o de cima realista
+  var VISUAL = (visual === '3dreal' && R3) ? '3dreal' : 'realista';
   function desenhar(tempoReal) {
     if (VISUAL === '3d' || VISUAL === '3dreal') { R3.render(tempoReal); desenharHUD(true); }
     else if (VISUAL === 'realista') { desenharRealista(); desenharHUD(false); }

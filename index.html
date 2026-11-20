@@ -115,8 +115,8 @@ textarea.inp{min-height:84px;resize:vertical}
 .rk .nm{flex:1;min-width:0}
 .rk .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14.5px}
 .rk .nm span{font-size:12px;color:var(--mut)}
-.rk .pt{text-align:right;font-family:'Montserrat',sans-serif;font-weight:900;font-size:17px;color:var(--navy)}
-.rk .pt small{display:block;font-family:'Public Sans',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--mut)}
+.rk .pt,.rkc-top .pt{text-align:right;font-family:'Montserrat',sans-serif;font-weight:900;font-size:17px;color:var(--navy)}
+.rk .pt small,.rkc-top .pt small{display:block;font-family:'Public Sans',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--mut)}
 .rk.eu{background:#FFF1E3;margin:0 -16px;padding:10px 16px}
 .rk.fora{opacity:.5}
 /* números */
@@ -328,6 +328,16 @@ span.pc{display:flex}
 .gex{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
 .gex-ic{flex:none;font-size:22px;line-height:1}
 .gex-v{display:inline-block;font-size:12px;font-weight:800;background:#EAF3FE;color:#1C398E;border-radius:6px;padding:1px 7px;margin-left:4px}
+.mcar{width:34px;height:18px;object-fit:cover;border-radius:4px;vertical-align:-4px;margin-right:6px;background:#EEF1F7}
+.rk .nm .rkcar{display:flex;align-items:center}
+.rkc{padding:0;overflow:hidden;margin-bottom:10px}
+.rkc-top{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:10px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.rkc-foto{flex:none;width:96px;height:50px;object-fit:cover;border-radius:10px;background:#EEF1F7}
+.rkc-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rkc-info>b{font-size:15px}
+.rkc-rec{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:2px}
+.rkc-rec .av{width:22px;height:22px;font-size:10px}
+.rkc-lista{padding:0 14px 8px;border-top:1px solid var(--line)}
 .gsug{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .ffoto{display:flex;gap:12px;align-items:center;margin-top:4px}
 .ffprev{flex:none;width:64px;height:64px;border-radius:50%;background:#F1EEE6;display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;box-shadow:inset 0 0 0 1.5px var(--line)}
@@ -1228,6 +1238,13 @@ span.pc{display:flex}
     doc.sessao = { inicio: c.now, seed: seed, cat: G.catDoCarro(c.carro, c.garagem), carro: G.catDoCarro(c.carro, c.garagem) === 'aura' && c.carro !== 'aura' ? 'aura' : c.carro };
     return { doc: doc, resp: { seed: seed } };
   };
+  // melhores tempos por carro de um documento de treino (usa porCarro e, para dados antigos, melhor e semanas)
+  G.porCarroDe = function (doc) {
+    var m = {}, add = function (r) { if (r && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = { t: r.t, em: r.em }; };
+    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em }); });
+    add(doc && doc.melhor); Object.keys((doc && doc.semanas) || {}).forEach(function (k) { add(doc.semanas[k]); });
+    return m;
+  };
   G.finalizarTreino = function (c) {
     var doc = L.clone(c.doc || {}), ss = doc.sessao;
     if (!ss) L.erro('Treino não encontrado. Comece de novo.');
@@ -1241,6 +1258,9 @@ span.pc{display:flex}
       if (!doc.melhor || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
       doc.semanas = doc.semanas || {};
       if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+      // melhor tempo com cada carro (ranking por carro); na primeira vez, aproveita os recordes já gravados
+      doc.porCarro = doc.porCarro || G.porCarroDe(doc);
+      if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(Math.round(L.curva(tempo, 40) * G.TREINO_PROP), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
@@ -1286,7 +1306,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-20d';
+var BUILD = '2026-11-20e';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1404,7 +1424,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v5';
+  var CH = 'gameicarros_demo_v6';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -1763,7 +1783,9 @@ function semearDemo(db) {
     if (r() < 0.25) return;
     var tg = Math.round((40 + r() * 140) * 100) / 100, ts = Math.round(tg * (0.55 + r() * 0.45) * 100) / 100, cats = ['aura', 'conceito', 'cyberpunk', 'suv-porto', 'hatch-verde'];
     var semanas = {}; if (r() < 0.75) semanas[sidT] = { t: ts, cat: cats[i % cats.length], em: agora - i * 3600000 };
-    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas });
+    var pcar = {}, catsN = ['monoposto', 'touro', 'veloce', 'neon', 'felino', 'gaivota', 'besouro', 'perua', 'diplomata', 'serpente', 'granturismo'];
+    for (var q = 0; q < 3; q++) { var cq = catsN[(i * 3 + q) % catsN.length]; pcar[cq] = { t: Math.round(tg * (0.5 + r() * 0.5) * 100) / 100, em: agora - 86400000 * q }; }
+    put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas, porCarro: pcar });
   });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
@@ -2326,7 +2348,10 @@ function telaRanking() {
 }
 function rankingTreino() {
   var sem = S.rankTreino !== 'geral', sid = Garagem.semana(Date.now()), uid = S.user.uid, linhas = [], h = '';
-  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (sem ? '' : ' on') + '" data-a="rankTreino" data-v="geral">Geral</button></div>';
+  var porCarro = S.rankTreino === 'carro';
+  if (porCarro) sem = false;
+  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (!sem && !porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="geral">Geral</button><button class="chip' + (porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="carro">Por carro</button></div>';
+  if (porCarro) return h + rankingPorCarro();
   var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return r ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
     .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
   h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos no ranking da temporada; cada treino rende créditos para a Garagem.</p><div class="card" style="padding:6px 16px">';
@@ -2334,11 +2359,42 @@ function rankingTreino() {
   l.forEach(function (x, i) {
     var j = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a }), c = Garagem.CATALOGO[x.r.cat] || Garagem.CATALOGO.aura, pos = i > 0 && l[i - 1].r.t === x.r.t ? linhas[i - 1].pos : i + 1;
     linhas.push({ pos: pos, uid: x.uid, l: { ap: x.d.ap, nm: x.d.nm, a: x.d.a }, pts: fmtSeg(x.r.t), sub: c.nome });
-    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span class="rkcar">' + miniCarro(x.r.cat) + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
   });
   h += '</div>';
   S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
   if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+// miniatura do carro (foto do catálogo) para listas
+function miniCarro(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="mcar" src="' + f.foto + '" alt="">' : ''; }
+// ranking por carro: recorde de cada modelo no treino, com o pódio de quem mais longe foi com ele
+function rankingPorCarro() {
+  var uid = S.user.uid, por = {};
+  Object.keys(D.treinos || {}).forEach(function (k) {
+    var d = D.treinos[k], m = Garagem.porCarroDe(d);
+    Object.keys(m).forEach(function (cat) { (por[cat] = por[cat] || []).push({ uid: k, d: d, t: m[cat].t, em: m[cat].em }); });
+  });
+  var cats = Object.keys(por).map(function (cat) { por[cat].sort(function (a, b) { return b.t - a.t || a.em - b.em; }); return cat; })
+    .sort(function (a, b) { return por[b][0].t - por[a][0].t; });
+  var h = '<p class="small mut">O recorde de cada carro no treino, onde valem os atributos. Toque num carro para ver o pódio completo.</p>';
+  if (!cats.length) return h + '<div class="empty">Ninguém treinou ainda.</div>';
+  cats.forEach(function (cat, i) {
+    var c = Garagem.CATALOGO[cat], l = por[cat], top = l[0], j = jogDe(top.uid, { uid: top.uid, ap: top.d.ap, nm: top.d.nm, a: top.d.a }), aberto = S.rankCarroAberto === cat;
+    var meu = l.filter(function (x) { return x.uid === uid; })[0];
+    h += '<div class="card rkc' + (aberto ? ' on' : '') + '"><button class="rkc-top" data-a="rankCarro" data-v="' + cat + '">' + (window.FOTOS_CARROS && FOTOS_CARROS[cat] ? '<img class="rkc-foto" src="' + FOTOS_CARROS[cat].foto + '" alt="">' : '') +
+      '<div class="rkc-info"><b>' + esc(c.nome) + '</b><span class="tiny mut">' + c.tipo + ' · ' + l.length + (l.length === 1 ? ' piloto' : ' pilotos') + (meu ? ' · você: ' + fmtSeg(meu.t) : '') + '</span>' +
+      '<div class="rkc-rec">' + avatar(j, top.uid, 'sm') + '<span>🏆 <b>' + esc(nomeExib(j)) + '</b></span></div></div><div class="pt">' + fmtSeg(top.t).replace(' s', '') + '<small>recorde</small></div></button>';
+    if (aberto) {
+      h += '<div class="rkc-lista">';
+      l.slice(0, 10).forEach(function (x, k) {
+        var jj = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a });
+        h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + (k + 1) + '">' + (k + 1) + '</span>' + avatar(jj, x.uid) + '<div class="nm"><b>' + esc(nomeExib(jj)) + '</b><span>' + esc(areaNome(jj.areaId || x.d.a)) + '</span></div><div class="pt">' + fmtSeg(x.t).replace(' s', '') + '<small>segundos</small></div></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  });
   return h;
 }
 function rankingPlaca(tid) {
@@ -2562,7 +2618,7 @@ function desenharCorrida() {
     else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto no ranking da rodada, mas rende <b>créditos</b> para a Garagem (20% dos pontos) e o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
     var vis = CR.visual || visualPreferido();
     h += '<div class="ovcard" style="padding:12px 14px"><div class="small" style="opacity:.8;margin-bottom:8px">Visual da pista (não muda a pontuação)</div><div class="seg" style="margin:0;background:rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 1fr">' +
-      [['3dreal', '3D realista'], ['3d', '3D leve'], ['realista', 'De cima realista'], ['classico', 'De cima clássico']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
+      [['3dreal', '3D realista'], ['realista', 'De cima realista']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
     var car = CR.carro || carroPreferido(), sel = carroSel(car), lista = meusCarros(); imgCima(sel.cat);
     h += '<div class="ovcard" style="padding:12px 14px"><div class="row between" style="margin-bottom:8px"><span class="small" style="opacity:.8">Seu carro</span><button class="lnk tiny" style="color:#9FD3FF" data-a="irGaragem">Comprar carros na Garagem →</button></div><div class="garagem rolar">' +
       lista.map(function (x) { var c = Garagem.CATALOGO[x.cat], f = window.FOTOS_CARROS && FOTOS_CARROS[x.cat]; return '<button class="gcar' + (car === x.key ? ' on' : '') + '" data-a="carro" data-v="' + esc(x.key) + '" aria-pressed="' + (car === x.key) + '">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '<b>' + esc(c.nome) + '</b><span>' + (x.origem === 'base' ? 'da casa' : x.origem === 'retomado' ? 'Retomado ' + (Garagem.ORIGENS[x.retomadoDe] || 'Porto') : x.origem === 'usado' ? 'usado' : '0 km') + '</span></button>'; }).join('') +
@@ -2742,7 +2798,8 @@ function imgCima(id) {
   if (!im) { im = _imgsCima[id] = new Image(); im.src = FOTOS_CARROS[id].cima; }
   return im.complete && im.naturalWidth ? im : null;
 }
-function visualPreferido() { var v = lerLS('gi_visual', '3dreal'); return ['3dreal', '3d', 'classico', 'realista'].indexOf(v) >= 0 ? v : '3dreal'; }
+// só os visuais realistas: 3D realista e de cima realista (quem tinha escolhido um dos simples vai para o 3D realista)
+function visualPreferido() { var v = lerLS('gi_visual', '3dreal'); return v === 'realista' ? 'realista' : '3dreal'; }
 function webglOk() {
   try { var c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch (e) { return false; }
 }
@@ -3432,7 +3489,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.drawImage(REAL.vinheta, 0, 0, W, H);
   }
 
-  var VISUAL = ((visual === '3d' || visual === '3dreal') && R3) ? visual : (visual === 'realista' ? 'realista' : 'classico');
+  // sem WebGL, o 3D realista cai para o de cima realista
+  var VISUAL = (visual === '3dreal' && R3) ? '3dreal' : 'realista';
   function desenhar(tempoReal) {
     if (VISUAL === '3d' || VISUAL === '3dreal') { R3.render(tempoReal); desenharHUD(true); }
     else if (VISUAL === 'realista') { desenharRealista(); desenharHUD(false); }
@@ -5305,6 +5363,7 @@ var A = {
     else fecharOv();
   },
   rankModo: function (v) { S.rankModo = v; R(); },
+  rankCarro: function (v) { S.rankCarroAberto = S.rankCarroAberto === v ? '' : v; S.manterScroll = true; R(); },
   rankRodada: function (v) { S.rankRodada = v; R(); },
   compartilharRanking: function () { imagemRanking(); },
   compartilharBadge: function (v) { var p = v.split('|'); imagemBadge(p[0], p[1], p[2] ? parseInt(p[2], 10) : null); },

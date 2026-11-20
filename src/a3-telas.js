@@ -278,7 +278,10 @@ function telaRanking() {
 }
 function rankingTreino() {
   var sem = S.rankTreino !== 'geral', sid = Garagem.semana(Date.now()), uid = S.user.uid, linhas = [], h = '';
-  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (sem ? '' : ' on') + '" data-a="rankTreino" data-v="geral">Geral</button></div>';
+  var porCarro = S.rankTreino === 'carro';
+  if (porCarro) sem = false;
+  h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (!sem && !porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="geral">Geral</button><button class="chip' + (porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="carro">Por carro</button></div>';
+  if (porCarro) return h + rankingPorCarro();
   var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return r ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
     .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
   h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos no ranking da temporada; cada treino rende créditos para a Garagem.</p><div class="card" style="padding:6px 16px">';
@@ -286,11 +289,42 @@ function rankingTreino() {
   l.forEach(function (x, i) {
     var j = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a }), c = Garagem.CATALOGO[x.r.cat] || Garagem.CATALOGO.aura, pos = i > 0 && l[i - 1].r.t === x.r.t ? linhas[i - 1].pos : i + 1;
     linhas.push({ pos: pos, uid: x.uid, l: { ap: x.d.ap, nm: x.d.nm, a: x.d.a }, pts: fmtSeg(x.r.t), sub: c.nome });
-    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span class="rkcar">' + miniCarro(x.r.cat) + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
   });
   h += '</div>';
   S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
   if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+// miniatura do carro (foto do catálogo) para listas
+function miniCarro(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="mcar" src="' + f.foto + '" alt="">' : ''; }
+// ranking por carro: recorde de cada modelo no treino, com o pódio de quem mais longe foi com ele
+function rankingPorCarro() {
+  var uid = S.user.uid, por = {};
+  Object.keys(D.treinos || {}).forEach(function (k) {
+    var d = D.treinos[k], m = Garagem.porCarroDe(d);
+    Object.keys(m).forEach(function (cat) { (por[cat] = por[cat] || []).push({ uid: k, d: d, t: m[cat].t, em: m[cat].em }); });
+  });
+  var cats = Object.keys(por).map(function (cat) { por[cat].sort(function (a, b) { return b.t - a.t || a.em - b.em; }); return cat; })
+    .sort(function (a, b) { return por[b][0].t - por[a][0].t; });
+  var h = '<p class="small mut">O recorde de cada carro no treino, onde valem os atributos. Toque num carro para ver o pódio completo.</p>';
+  if (!cats.length) return h + '<div class="empty">Ninguém treinou ainda.</div>';
+  cats.forEach(function (cat, i) {
+    var c = Garagem.CATALOGO[cat], l = por[cat], top = l[0], j = jogDe(top.uid, { uid: top.uid, ap: top.d.ap, nm: top.d.nm, a: top.d.a }), aberto = S.rankCarroAberto === cat;
+    var meu = l.filter(function (x) { return x.uid === uid; })[0];
+    h += '<div class="card rkc' + (aberto ? ' on' : '') + '"><button class="rkc-top" data-a="rankCarro" data-v="' + cat + '">' + (window.FOTOS_CARROS && FOTOS_CARROS[cat] ? '<img class="rkc-foto" src="' + FOTOS_CARROS[cat].foto + '" alt="">' : '') +
+      '<div class="rkc-info"><b>' + esc(c.nome) + '</b><span class="tiny mut">' + c.tipo + ' · ' + l.length + (l.length === 1 ? ' piloto' : ' pilotos') + (meu ? ' · você: ' + fmtSeg(meu.t) : '') + '</span>' +
+      '<div class="rkc-rec">' + avatar(j, top.uid, 'sm') + '<span>🏆 <b>' + esc(nomeExib(j)) + '</b></span></div></div><div class="pt">' + fmtSeg(top.t).replace(' s', '') + '<small>recorde</small></div></button>';
+    if (aberto) {
+      h += '<div class="rkc-lista">';
+      l.slice(0, 10).forEach(function (x, k) {
+        var jj = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a });
+        h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + (k + 1) + '">' + (k + 1) + '</span>' + avatar(jj, x.uid) + '<div class="nm"><b>' + esc(nomeExib(jj)) + '</b><span>' + esc(areaNome(jj.areaId || x.d.a)) + '</span></div><div class="pt">' + fmtSeg(x.t).replace(' s', '') + '<small>segundos</small></div></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  });
   return h;
 }
 function rankingPlaca(tid) {
