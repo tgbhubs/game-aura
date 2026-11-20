@@ -134,7 +134,9 @@ function processarFoto(input) {
       var ctx = cv.getContext('2d'), m = Math.min(img.width, img.height);
       ctx.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, T, T);
       var url = cv.toDataURL('image/jpeg', 0.72);
-      B.update('jogadores/' + S.user.uid, { foto: url }).then(function () { toast('Foto atualizada.'); }).catch(function (e) { toast(msgErro(e)); });
+      // no cadastro ainda não existe o jogador: guarda para salvar junto e só atualiza a prévia (sem redesenhar o formulário)
+      if (!S.me) { S.fotoCad = url; var pv = $('#fFotoPrev'); if (pv) pv.innerHTML = '<img src="' + url + '" alt="">'; var st = $('#fFotoTxt'); if (st) st.textContent = 'Foto escolhida. Pode trocar se quiser.'; return; }
+      B.update('jogadores/' + S.user.uid, { foto: url }).then(function () { toast('Foto atualizada.'); if ($('#modal').className === 'on' && $('#modalFoto')) fecharModal(); }).catch(function (e) { toast(msgErro(e)); });
     };
     img.src = rd.result;
   };
@@ -151,6 +153,7 @@ function validarCadastro(c) {
   if (!c.apelido) return 'Escolha um apelido para o ranking.';
   if (!c.area) return 'Selecione sua área.';
   if (c.area === '__nova' && c.areaNova.length < 2) return 'Digite o nome da sua área.';
+  if (!S.fotoCad && !(S.user && S.user.foto)) return 'Coloque uma foto: o jogo é para o time se conhecer.';
   return '';
 }
 function salvarCadastro(c) {
@@ -161,7 +164,7 @@ function salvarCadastro(c) {
     areaId = slug(c.areaNova);
     if (!D.areas[areaId]) passos = passos.then(function () { return B.set('areas/' + areaId, { nome: c.areaNova, status: 'pendente', criadaPor: uid, criadaEm: Date.now() }); });
   }
-  var base = { uid: uid, nome: c.nome, apelido: c.apelido.slice(0, 18), email: S.user.email || '', areaId: areaId, foto: S.user.foto || '', curiosidades: [], criadoEm: Date.now(), codigoAcesso: c.codigo || '' };
+  var base = { uid: uid, nome: c.nome, apelido: c.apelido.slice(0, 18), email: S.user.email || '', areaId: areaId, foto: S.fotoCad || S.user.foto || '', curiosidades: [], criadoEm: Date.now(), codigoAcesso: c.codigo || '' };
   var aviso = '';
   return passos.then(function () { return B.get('config/geral'); }).then(function (cfg) {
     if (!cfg || !cfg.masterUid) return B.set('config/geral', { masterUid: uid }).then(function () { return true; }, function () { return false; });
@@ -260,7 +263,6 @@ var A = {
   compartilharPrevia: function () { compartilharPrevia(); },
   vistos: function () { marcarBadgesVistos(); R(); },
   infoBadge: function (v) { var d = BADGES[v]; abrirModal('<div style="text-align:center"><div style="font-size:56px">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p></div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
-  removerFoto: function () { B.update('jogadores/' + S.user.uid, { foto: '' }); },
   editarPerfil: function () {
     var me = S.me;
     abrirModal('<h3>Editar dados</h3><label class="f">Nome completo</label><input class="inp" id="eNome" value="' + esc(me.nome) + '"><label class="f">Apelido</label><input class="inp" id="eApelido" maxlength="18" value="' + esc(me.apelido) + '">' +
@@ -287,6 +289,24 @@ var A = {
   confirmar: function () { var f = S._confirma; fecharModal(); if (f) f(); },
   // admin
   admTab: function (v) { S.admTab = v; R(); },
+  sugFiltro: function (v) { S.sugFiltro = v; R(); },
+  sugStatus: function (v) { var p = v.split('|'); B.update('sugestoes/' + p[0], { status: p[1], atualizadoEm: Date.now() }).catch(function (e) { toast(msgErro(e)); }); },
+  sugerir: function () {
+    S._sugTipo = S._sugTipo || 'sugestao';
+    abrirModal('<h3>Sugestões e problemas</h3><p class="mut small">Conte o que você pensou ou o que aconteceu. Se for um problema, diga em que tela e o que você estava fazendo.</p>' +
+      '<div class="row" style="gap:6px;flex-wrap:wrap">' + [['sugestao', '💡 Sugestão'], ['melhoria', '🛠️ Melhoria'], ['problema', '🐞 Problema']].map(function (t) { return '<button class="chip' + (S._sugTipo === t[0] ? ' on' : '') + '" data-a="sugTipo" data-v="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+      '<label class="f" for="sugTela">Onde? (opcional)</label><select class="inp" id="sugTela"><option value="">—</option>' + ['Quiz', 'Corrida', 'Treino', 'Placa!', 'Garagem', 'Ranking', 'Perfil', 'Cadastro', 'Outra'].map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select>' +
+      '<label class="f" for="sugTexto">Sua mensagem</label><textarea class="inp" id="sugTexto" rows="5" maxlength="1000" placeholder="Escreva aqui…"></textarea>' +
+      '<div class="mact"><button class="btn gh" data-a="fecharModal">Cancelar</button><button class="btn lar" data-a="sugEnviar">Enviar</button></div>');
+  },
+  sugTipo: function (v, el) { S._sugTipo = v; Array.prototype.forEach.call(document.querySelectorAll('#modal [data-a="sugTipo"]'), function (b) { b.classList.toggle('on', b === el); }); },
+  sugEnviar: function () {
+    var tx = ($('#sugTexto').value || '').trim();
+    if (tx.length < 3) { toast('Escreva um pouco mais.'); return; }
+    var now = Date.now(), uid = S.user.uid;
+    var doc = { uid: uid, apelido: (S.me && (S.me.apelido || S.me.nome)) || '', tipo: S._sugTipo || 'sugestao', texto: tx.slice(0, 1000), tela: ($('#sugTela').value || '').slice(0, 30), versao: BUILD, aparelho: (navigator.userAgent || '').slice(0, 200), status: 'nova', criadoEm: now };
+    B.set('sugestoes/' + uid + '_' + now, doc).then(function () { fecharModal(); toast('Recebido! Obrigado por ajudar a melhorar o jogo.'); }).catch(function (e) { toast(msgErro(e)); });
+  },
   editarCodigo: function () {
     abrirModal('<h3>Código de acesso</h3><p class="small mut">Divulgue pelos canais internos. Quem se cadastrar com ele entra aprovado. Deixe vazio para exigir aprovação manual de todos.</p><input class="inp" id="cCod" autocapitalize="characters" value="' + esc((D.segredo && D.segredo.codigo) || '') + '"><div class="mact"><button class="btn gh" data-a="fecharModal">Cancelar</button><button class="btn lar" data-a="salvarCodigo">Salvar</button></div>');
   },
@@ -339,9 +359,17 @@ var A = {
 };
 Object.keys(A_PLACA).forEach(function (k) { A[k] = A_PLACA[k]; });
 Object.keys(A_GAR).forEach(function (k) { A[k] = A_GAR[k]; });
+// foto obrigatória para jogar: o objetivo é interação, todo mundo precisa ser reconhecível no ranking e nas mesas
+function DEMO_SEM_FOTO() { return typeof DEMO !== 'undefined' && DEMO && !S.testeFoto; }
+var ACOES_JOGO = { quiz: 1, corrida: 1, treino: 1, irCorrida: 1, paraValendo: 1, treinoDaqui: 1, comecarQuiz: 1, iniciarCorrida: 1, placaCriar: 1, placaCriarN: 1, placaCriarRobo: 1, placaEntrar: 1 };
+function pedirFoto() {
+  abrirModal('<div id="modalFoto"><h3>Coloque uma foto para jogar 📷</h3><p class="mut small">O Game Aura é para o time se conhecer: sua foto aparece no ranking, nas mesas do Placa! e nas conquistas. Escolha uma foto em que dê para ver seu rosto.</p>' +
+    '<div class="mact"><button class="btn gh" data-a="fecharModal">Agora não</button><label class="btn lar" style="margin:0">Escolher foto<input type="file" accept="image/*" data-c="foto" style="display:none"></label></div></div>');
+}
 document.addEventListener('click', function (e) {
   var el = e.target.closest && e.target.closest('[data-a]');
   if (!el || el.disabled) return;
+  if (ACOES_JOGO[el.getAttribute('data-a')] && S.me && !S.me.foto && !DEMO_SEM_FOTO()) { e.preventDefault(); pedirFoto(); return; }
   var f = A[el.getAttribute('data-a')];
   if (f) { e.preventDefault(); f(el.getAttribute('data-v'), el, e); }
 });

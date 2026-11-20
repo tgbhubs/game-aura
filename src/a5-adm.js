@@ -1,5 +1,5 @@
 /* ================== ADMINISTRAÇÃO ================== */
-var ADM_ABAS = [['temporada', 'Temporada'], ['perguntas', 'Perguntas'], ['pessoas', 'Pessoas'], ['areas', 'Áreas'], ['corrida', 'Corrida'], ['qeq', 'Quem é quem']];
+var ADM_ABAS = [['temporada', 'Temporada'], ['perguntas', 'Perguntas'], ['pessoas', 'Pessoas'], ['areas', 'Áreas'], ['corrida', 'Corrida'], ['qeq', 'Quem é quem'], ['sugestoes', 'Sugestões']];
 function telaAdm() {
   var h = '<div class="row between" style="margin-top:16px"><h2 style="font-size:22px;font-weight:900">Administração</h2>' + (ehMaster() ? '<span class="tag gold">Master</span>' : '<span class="tag nv">Adm</span>') + '</div><div class="chips">';
   ADM_ABAS.forEach(function (a) { h += '<button class="chip' + (S.admTab === a[0] ? ' on' : '') + '" data-a="admTab" data-v="' + a[0] + '">' + a[1] + '</button>'; });
@@ -11,6 +11,28 @@ function telaAdm() {
   else if (t === 'areas') h += admAreas();
   else if (t === 'corrida') h += admCorrida();
   else if (t === 'qeq') h += admQeq();
+  else if (t === 'sugestoes') h += admSugestoes();
+  return h;
+}
+
+/* ---------- Sugestões, melhorias e problemas enviados pelo time ---------- */
+var SUG_TIPOS = { sugestao: '💡 Sugestão', melhoria: '🛠️ Melhoria', problema: '🐞 Problema' };
+var SUG_STATUS = [['nova', 'Nova'], ['analise', 'Em análise'], ['feito', 'Feito'], ['descartada', 'Descartada']];
+function admSugestoes() {
+  if (!S.subSug) { D.sugestoes = null; S.subSug = B.ouvirCol('sugestoes', null, function (m) { D.sugestoes = m; if (S.tab === 'adm') R(); }); }
+  if (!D.sugestoes) return carregando('Carregando sugestões…');
+  var f = S.sugFiltro || 'abertas';
+  var l = Object.keys(D.sugestoes).map(function (k) { var x = D.sugestoes[k]; x._id = k; return x; }).sort(function (a, b) { return (b.criadoEm || 0) - (a.criadoEm || 0); });
+  var abertas = l.filter(function (x) { return x.status === 'nova' || x.status === 'analise'; });
+  var mostra = f === 'abertas' ? abertas : l;
+  var h = '<div class="row" style="gap:6px;margin:12px 0">' + [['abertas', 'Abertas (' + abertas.length + ')'], ['todas', 'Todas (' + l.length + ')']].map(function (a) { return '<button class="chip' + (f === a[0] ? ' on' : '') + '" data-a="sugFiltro" data-v="' + a[0] + '">' + a[1] + '</button>'; }).join('') + '</div>';
+  if (!mostra.length) return h + '<div class="empty">Nada por aqui.</div>';
+  mostra.forEach(function (x) {
+    h += '<div class="card"><div class="row between" style="gap:8px"><b>' + (SUG_TIPOS[x.tipo] || x.tipo) + '</b><span class="tiny mut">' + fmtDia(x.criadoEm) + '</span></div>' +
+      '<p style="margin:8px 0;white-space:pre-wrap">' + esc(x.texto) + '</p>' +
+      '<div class="tiny mut">' + esc(x.apelido || '') + (x.tela ? ' · tela: ' + esc(x.tela) : '') + ' · versão ' + esc(x.versao || '?') + '<br>' + esc((x.aparelho || '').slice(0, 120)) + '</div>' +
+      '<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">' + SUG_STATUS.map(function (st) { return '<button class="chip' + (x.status === st[0] ? ' on' : '') + '" data-a="sugStatus" data-v="' + x._id + '|' + st[0] + '">' + st[1] + '</button>'; }).join('') + '</div></div>';
+  });
   return h;
 }
 

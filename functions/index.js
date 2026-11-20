@@ -73,10 +73,19 @@ exports.finalizarCorrida = onCall((req) => {
   return rodar(() => db.runTransaction(async (tx) => {
     const tr = refsTentativas(rid, uid);
     const snaps = await Promise.all([db.doc('jogadores/' + uid), db.doc('rodadas/' + rid)].concat(tr).map((x) => tx.get(x)));
+    const multas = Math.floor(Number(req.data.multas) || 0);
+    const [cart, gar] = multas > 0 ? await Promise.all([tx.get(db.doc('carteira/' + uid)), tx.get(db.doc('garagens/' + uid))]) : [null, null];
     const rodada = dados(snaps[1]); if (rodada) rodada.id = rid;
-    const res = L.finalizarCorrida({ now: Date.now(), uid, jog: dados(snaps[0]), rodada, tent: snaps.slice(2).map(dados), n, tempo: req.data.tempo });
+    const now = Date.now();
+    const res = L.finalizarCorrida({ now, uid, jog: dados(snaps[0]), rodada, tent: snaps.slice(2).map(dados), n, tempo: req.data.tempo });
     tx.set(tr[n - 1], res.doc);
     gravarPlacar(tx, rodada, uid, res.placar);
+    if (multas > 0) {
+      const carro = String(req.data.carro || 'aura'), cat = G.catDoCarro(carro, dados(gar));
+      const m = G.registrarMultas(dados(cart), Math.min(multas, G.maxMultas(res.resp.tempo)), cat === 'aura' && carro !== 'aura' ? 'aura' : carro, cat, 'corrida', now);
+      if (m.novas) tx.set(db.doc('carteira/' + uid), m.carteira);
+      res.resp.multas = m.novas;
+    }
     return res.resp;
   }));
 });
@@ -239,6 +248,12 @@ exports.garagem = onCall((req) => {
       const st = await lerSaldo(tx, uid);
       return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] };
     }
+    if (op === 'pagarMulta') {
+      const st = await lerSaldo(tx, uid);
+      const r = G.pagarMulta(st, String(d.id || ''), now);
+      tx.set(db.doc('carteira/' + uid), r.carteira);
+      return { valor: r.valor, saldo: st.saldo - r.valor };
+    }
     if (op === 'vitrine') {
       const lt = await tx.get(loteRef);
       if (!lt.exists) { const novo = G.lote(now); tx.set(loteRef, novo); return { semana: novo.semana }; }
@@ -264,8 +279,8 @@ exports.garagem = onCall((req) => {
       return { iid: r.iid };
     }
     if (op === 'anunciar') {
-      const [gar, ans] = await Promise.all([tx.get(db.doc('garagens/' + uid)), tx.get(db.collection('anuncios').where('vendedor', '==', uid))]);
-      const st = { uid, apelido: eu.apelido || eu.nome || '', garagem: dados(gar) || { carros: {} } };
+      const [gar, ans, cart] = await Promise.all([tx.get(db.doc('garagens/' + uid)), tx.get(db.collection('anuncios').where('vendedor', '==', uid)), tx.get(db.doc('carteira/' + uid))]);
+      const st = { uid, apelido: eu.apelido || eu.nome || '', garagem: dados(gar) || { carros: {} }, carteira: dados(cart) || {} };
       const an = G.anunciar(st, String(d.iid || ''), d.preco, ans.docs.map((x) => x.data()), now);
       const ref = db.collection('anuncios').doc();
       tx.set(ref, an);
@@ -306,7 +321,7 @@ exports.treino = onCall((req) => {
   const d = req.data || {};
   return rodar(() => db.runTransaction(async (tx) => {
     const ref = db.doc('treinos/' + uid);
-    const [j, t, g] = await Promise.all([tx.get(db.doc('jogadores/' + uid)), tx.get(ref), tx.get(db.doc('garagens/' + uid))]);
+    const [j, t, g, cart] = await Promise.all([tx.get(db.doc('jogadores/' + uid)), tx.get(ref), tx.get(db.doc('garagens/' + uid)), tx.get(db.doc('carteira/' + uid))]);
     const now = Date.now();
     if (d.op === 'iniciar') {
       const r = G.iniciarTreino({ now, uid, jog: dados(j), doc: dados(t), carro: String(d.carro || ''), garagem: dados(g) });
@@ -316,6 +331,11 @@ exports.treino = onCall((req) => {
     if (d.op === 'finalizar') {
       const r = G.finalizarTreino({ now, doc: dados(t), tempo: d.tempo });
       tx.set(ref, r.doc);
+      if (r.resp.valido && Number(d.multas) > 0) {
+        const m = G.registrarMultas(dados(cart), Math.min(Number(d.multas), G.maxMultas(r.resp.tempo)), r.sessao.carro || r.sessao.cat, r.sessao.cat, 'treino', now);
+        if (m.novas) tx.set(db.doc('carteira/' + uid), m.carteira);
+        r.resp.multas = m.novas;
+      }
       return r.resp;
     }
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');

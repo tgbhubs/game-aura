@@ -25,7 +25,7 @@ if os.path.exists(src + 'banco-perguntas.json'):
     banco = json.load(open(src + 'banco-perguntas.json'))
     B = [[q['ID'], q['Tema'], q['Dificuldade'], q['Pergunta'], [q['A'], q['B'], q['C'], q['D']], 'ABCD'.index(q['Correta']), q['Observação'] or ''] for q in banco]
     import base64, glob
-    mods = {os.path.basename(f)[:-4]: 'data:model/gltf-binary;base64,' + base64.b64encode(open(f, 'rb').read()).decode() for f in glob.glob('assets/carros/*.glb')}
+    mods = {os.path.basename(f)[:-4]: 'data:model/gltf-binary;base64,' + base64.b64encode(open(f, 'rb').read()).decode() for f in glob.glob('assets/carros/*.glb') if os.path.basename(f)[:-4] in ('conceito', 'cyberpunk')}
     d = montar(B, mods).replace('var DEMO = !FIREBASE_CONFIG.apiKey;', 'var DEMO = true;  // demonstração sempre local')
     assert 'var DEMO = true;' in d
     open('demo.html', 'w').write(d)

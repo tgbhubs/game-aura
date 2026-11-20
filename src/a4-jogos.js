@@ -107,7 +107,7 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">🏎️</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b> todas as faixas fecham: cada <b>tag</b> vale 1 mensalidade (acumula até 3) e você passa direto; sem tag, o carro para e perde 5 s</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>No <b>pedágio</b>, as 3 faixas do meio têm cancela: com <b>tag</b> você passa direto (cada tag vale 1 mensalidade, acumula até 3); sem tag, o carro para e perde 5 s. As 2 faixas laterais são <b>free flow</b>: com tag passa e paga; sem tag passa sem parar, mas leva <b>multa</b> (paga em créditos na Garagem)</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
     if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
     else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto no ranking da rodada, mas rende <b>créditos</b> para a Garagem (20% dos pontos) e o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
     var vis = CR.visual || visualPreferido();
@@ -115,7 +115,7 @@ function desenharCorrida() {
       [['3dreal', '3D realista'], ['3d', '3D leve'], ['realista', 'De cima realista'], ['classico', 'De cima clássico']].map(function (v) { return '<button class="' + (vis === v[0] ? 'on' : '') + '" style="' + (vis === v[0] ? '' : 'color:#F4F1EA') + '" data-a="visual" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div></div>';
     var car = CR.carro || carroPreferido(), sel = carroSel(car), lista = meusCarros(); imgCima(sel.cat);
     h += '<div class="ovcard" style="padding:12px 14px"><div class="row between" style="margin-bottom:8px"><span class="small" style="opacity:.8">Seu carro</span><button class="lnk tiny" style="color:#9FD3FF" data-a="irGaragem">Comprar carros na Garagem →</button></div><div class="garagem rolar">' +
-      lista.map(function (x) { var c = Garagem.CATALOGO[x.cat], f = window.FOTOS_CARROS && FOTOS_CARROS[x.cat]; return '<button class="gcar' + (car === x.key ? ' on' : '') + '" data-a="carro" data-v="' + esc(x.key) + '" aria-pressed="' + (car === x.key) + '">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '<b>' + esc(c.nome) + '</b><span>' + (x.origem === 'base' ? 'da casa' : x.origem === 'retomado' ? 'Retomado Porto' : x.origem === 'usado' ? 'usado' : '0 km') + '</span></button>'; }).join('') +
+      lista.map(function (x) { var c = Garagem.CATALOGO[x.cat], f = window.FOTOS_CARROS && FOTOS_CARROS[x.cat]; return '<button class="gcar' + (car === x.key ? ' on' : '') + '" data-a="carro" data-v="' + esc(x.key) + '" aria-pressed="' + (car === x.key) + '">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '<b>' + esc(c.nome) + '</b><span>' + (x.origem === 'base' ? 'da casa' : x.origem === 'retomado' ? 'Retomado ' + (Garagem.ORIGENS[x.retomadoDe] || 'Porto') : x.origem === 'usado' ? 'usado' : '0 km') + '</span></button>'; }).join('') +
       '</div>' + barrasAtr(sel.atr, CR.treino) + '</div>';
     h += '</div>';
     if (CR.treino) h += '<button class="btn lar full" data-a="iniciarCorrida">Começar treino</button>';
@@ -144,6 +144,8 @@ function desenharCorrida() {
         (rt.valido ? '' : '<div class="tiny" style="opacity:.7;margin-top:6px">Esse tempo não entrou no ranking (não bateu com o tempo real da partida).</div>') +
         '<button class="btn wh sm" style="margin-top:10px" data-a="verRankingTreino">Ver ranking de treinos</button></div>';
     }
+    var nm = (CR.treino ? CR.resTreino : CR.res) ? ((CR.treino ? CR.resTreino : CR.res).multas || 0) : 0;
+    if (nm) h += '<div class="ovcard" style="margin-top:10px;text-align:left"><b style="color:#FFD07A">' + (nm === 1 ? '1 multa' : nm + ' multas') + ' por evasão de pedágio</b><div class="tiny" style="opacity:.8;margin-top:4px">Passou no free flow sem TAG. Pague na Garagem até ' + Garagem.MULTA.prazoDias + ' dias com ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto. O tempo e o ranking não mudam.</div><button class="btn wh sm" style="margin-top:10px" data-a="verMultas">Ver multas</button></div>';
     h += '</div>';
     if (CR.treino) h += '<button class="btn lar full" data-a="iniciarCorrida">Treinar de novo</button>' + (CR.rid && m && m.restantes > 0 ? '<button class="btn wh full" style="margin-top:10px" data-a="paraValendo">Correr valendo</button>' : '');
     else if (CR.res && CR.res.restantes > 0) h += '<button class="btn lar full" data-a="iniciarCorrida">Usar a tentativa ' + (4 - CR.res.restantes) + ' de 3</button>';
@@ -168,19 +170,20 @@ function iniciarCorrida() {
     CR.tn = r.n; CR.seed = r.seed; CR.fase = 'jogo'; desenharCorrida();
   }).catch(function (e) { if (!CR) return; CR.fase = 'erro'; CR.erro = msgErro(e); desenharCorrida(); });
 }
-function fimCorrida(t) {
+function fimCorrida(t, info) {
   if (!CR) return;
-  CR.tempo = t; CR.motor = null;
+  CR.tempo = t; CR.motor = null; CR.multas = (info && info.multas) || 0;
+  var carroUsado = CR.carro || carroPreferido();
   if (CR.treino) {
     if (CR.semRecorde) { CR.fase = 'fim'; desenharCorrida(); return; }
     CR.fase = 'salvando'; desenharCorrida();
-    B.chamar('treino', { op: 'finalizar', tempo: t }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+    B.chamar('treino', { op: 'finalizar', tempo: t, multas: CR.multas }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
       .catch(function () { if (!CR) return; CR.fase = 'fim'; desenharCorrida(); });
     return;
   }
   CR.fase = 'salvando'; desenharCorrida();
   var tentar = function (n) {
-    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t }).then(function (r) {
+    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t, multas: CR.multas, carro: carroUsado }).then(function (r) {
       if (!CR) return; CR.res = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida();
     }).catch(function (e) {
       if (!CR) return;

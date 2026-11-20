@@ -273,6 +273,8 @@ function criar3DReal(E) {
   var matCone = new T.MeshStandardMaterial({ color: cor(0xFF6A10), roughness: 0.55 });
   var matRefl = new T.MeshStandardMaterial({ color: cor(0xF4F4F4), roughness: 0.25, metalness: 0.2, emissive: cor(0x555555) });
   var matCabine = new T.MeshStandardMaterial({ color: cor(0x14235E), roughness: 0.5, metalness: 0.2 });
+  var texFF = canvasTex(512, 128, function (g, w, h) { g.fillStyle = '#1C5FB8'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '900 64px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FREE FLOW', w / 2, h / 2 + 4); });
+  var texPisoFF = canvasTex(256, 256, function (g, w, h) { g.fillStyle = 'rgba(73,158,242,.55)'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '900 54px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FREE', w / 2, h / 2 - 30); g.fillText('FLOW', w / 2, h / 2 + 34); });
   var matCobertura = new T.MeshStandardMaterial({ color: cor(0x1B2C70), roughness: 0.45, metalness: 0.3 });
   var matLaranja = new T.MeshStandardMaterial({ color: cor(0xEC7000), roughness: 0.5, emissive: cor(0x6A2E00), emissiveIntensity: 0.4 });
   var matVidroCab = new T.MeshStandardMaterial({ color: cor(0x9CC9FF), metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.65 });
@@ -289,20 +291,27 @@ function criar3DReal(E) {
       b.rotation.x = -Math.PI / 2; b.rotation.z = (o.d % 7) * 0.4; b.position.y = 0.006; b.receiveShadow = true; g.add(b);
     } else if (o.tipo === 'carro') {
       var cc = carro(CORES_PARADOS[Logica.hash('p' + Math.floor(o.d) + o.lane) % CORES_PARADOS.length], { freio: true }); g.add(cc); g.userData.pisca = cc.userData.lant;
+    } else if (o.tipo === 'cancela' && o.ff) {
+      // faixa de free flow: piso azul e pórtico com leitor de TAG, sem cancela
+      var pf = new T.Mesh(new T.PlaneGeometry(LANE * K - 0.2, 3.4), new T.MeshStandardMaterial({ map: texPisoFF, transparent: true, roughness: 0.7, depthWrite: false }));
+      pf.rotation.x = -Math.PI / 2; pf.position.y = 0.012; pf.receiveShadow = true; g.add(pf);
+      [-1, 1].forEach(function (lado) { var pp = new T.Mesh(new T.CylinderGeometry(0.1, 0.12, 5.2, 10), matPoste); pp.position.set(lado * (LANE * K / 2 - 0.05), 2.6, 0); pp.castShadow = true; g.add(pp); });
+      var vg = new T.Mesh(new T.BoxGeometry(LANE * K + 0.2, 0.62, 0.26), [matCabine, matCabine, matCabine, matCabine, new T.MeshStandardMaterial({ map: texFF, roughness: 0.5 }), matCabine]); vg.position.y = 5.0; vg.castShadow = true; g.add(vg);
+      [-0.6, 0.6].forEach(function (dx) { var sen = new T.Mesh(new T.BoxGeometry(0.36, 0.2, 0.34), matLaranja); sen.position.set(dx, 4.6, 0.06); g.add(sen); });
     } else if (o.tipo === 'cancela') {
       var poste = new T.Mesh(new T.BoxGeometry(0.22, 1.1, 0.22), matCabine); poste.position.set(-LANE * K / 2 + 0.16, 0.55, 0); poste.castShadow = true; g.add(poste);
       var piv = new T.Group(); piv.position.set(-LANE * K / 2 + 0.16, 0.98, 0); g.add(piv);
       var barra = new T.Mesh(new T.BoxGeometry(LANE * K - 0.32, 0.13, 0.08), new T.MeshStandardMaterial({ map: texBarra, roughness: 0.4 })); barra.position.x = (LANE * K - 0.32) / 2; barra.castShadow = true; piv.add(barra);
       g.userData.piv = piv;
-      if (o.lane === 0) {
-        var praca = new T.Group();
-        var cob = new T.Mesh(new T.BoxGeometry(RW + 7, 0.35, 4.2), matCobertura); cob.position.set(RW / 2 - LANE * K / 2, 4.6, 0.6); cob.castShadow = true; praca.add(cob);
-        var fx = new T.Mesh(new T.BoxGeometry(RW + 7.05, 0.32, 0.06), matLaranja); fx.position.set(RW / 2 - LANE * K / 2, 4.6, 2.72); praca.add(fx);
+      if (o.lane === 1) {
+        // cobertura só sobre as 3 faixas do meio; cabines finas entre a praça e o free flow
+        var praca = new T.Group(), larg = LANE * K * 3;
+        var cob = new T.Mesh(new T.BoxGeometry(larg + 1, 0.35, 4.2), matCobertura); cob.position.set(LANE * K, 4.0, 0.6); cob.castShadow = true; praca.add(cob);
+        var fx = new T.Mesh(new T.BoxGeometry(larg + 1.05, 0.32, 0.06), matLaranja); fx.position.set(LANE * K, 4.0, 2.72); praca.add(fx);
         [-1, 1].forEach(function (lado) {
-          var bx = (lado < 0 ? -LANE * K / 2 - 1.6 : RW - LANE * K / 2 + 1.6);
-          var cab = new T.Mesh(new T.BoxGeometry(1.8, 2.5, 2.6), matCabine); cab.position.set(bx, 1.25, 0.6); cab.castShadow = true; praca.add(cab);
-          var vd = new T.Mesh(new T.BoxGeometry(1.84, 0.8, 1.8), matVidroCab); vd.position.set(bx, 1.6, 0.6); praca.add(vd);
-          var col = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 4.5, 10), matPoste); col.position.set(bx, 2.25, 2.2); col.castShadow = true; praca.add(col);
+          var bx = lado < 0 ? -LANE * K / 2 : LANE * K * 2 + LANE * K / 2;
+          var cab = new T.Mesh(new T.BoxGeometry(0.55, 2.5, 2.6), matCabine); cab.position.set(bx, 1.25, 0.6); cab.castShadow = true; praca.add(cab);
+          var col = new T.Mesh(new T.CylinderGeometry(0.14, 0.14, 3.9, 10), matPoste); col.position.set(bx, 1.95, 2.2); col.castShadow = true; praca.add(col);
         });
         g.add(praca);
       }

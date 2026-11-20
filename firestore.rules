@@ -69,5 +69,21 @@ service cloud.firestore {
     match /transacoes/{id} { allow read: if isAtivo(); allow write: if false; }
     // Treinos: recordes gravados só pelo servidor (Cloud Function "treino")
     match /treinos/{uid} { allow read: if isAtivo(); allow write: if false; }
+    // sugestões, melhorias e problemas: a própria pessoa cria; só a administração lê tudo e muda o status
+    match /sugestoes/{id} {
+      allow create: if isAtivo() && id.matches(request.auth.uid + '_[0-9]+')
+        && request.resource.data.keys().hasOnly(['uid', 'apelido', 'tipo', 'texto', 'tela', 'versao', 'aparelho', 'status', 'criadoEm'])
+        && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'nova'
+        && request.resource.data.tipo in ['sugestao', 'melhoria', 'problema']
+        && request.resource.data.texto is string && request.resource.data.texto.size() >= 3 && request.resource.data.texto.size() <= 1000
+        && request.resource.data.apelido is string && request.resource.data.apelido.size() <= 40
+        && request.resource.data.tela is string && request.resource.data.tela.size() <= 30
+        && request.resource.data.versao is string && request.resource.data.versao.size() <= 20
+        && request.resource.data.aparelho is string && request.resource.data.aparelho.size() <= 200
+        && request.resource.data.criadoEm is int;
+      allow read: if isAdm() || (signed() && resource.data.uid == request.auth.uid);
+      allow update: if isAdm() && soMuda(['status', 'atualizadoEm']) && request.resource.data.status in ['nova', 'analise', 'feito', 'descartada'];
+      allow delete: if isAdm();
+    }
   }
 }

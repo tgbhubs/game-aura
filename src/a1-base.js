@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-20b';
+var BUILD = '2026-11-20c';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -249,6 +249,11 @@ function criarDemo() {
       r = Logica.finalizarCorrida({ now: now, uid: uid, jog: jog, rodada: rod3, tent: tentativas(d.rodadaId, uid), n: d.n, tempo: d.tempo });
       gravar('corrida/' + d.rodadaId + '_' + uid + '_' + d.n, r.doc);
       placarSet(rod3, uid, r.placar);
+      if (Number(d.multas) > 0) {
+        var carroM = String(d.carro || 'aura'), catM = Garagem.catDoCarro(carroM, lerDoc('garagens/' + uid));
+        var mm = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(r.resp.tempo)), catM === 'aura' && carroM !== 'aura' ? 'aura' : carroM, catM, 'corrida', now);
+        if (mm.novas) gravar('carteira/' + uid, mm.carteira); r.resp.multas = mm.novas;
+      }
       return r.resp;
     }
     if (nome === 'anularTentativa') {
@@ -266,7 +271,12 @@ function criarDemo() {
       var tr0 = lerDoc('treinos/' + uid);
       var rt = d.op === 'iniciar' ? Garagem.iniciarTreino({ now: now, uid: uid, jog: jog, doc: tr0, carro: String(d.carro || ''), garagem: lerDoc('garagens/' + uid) })
         : Garagem.finalizarTreino({ now: now, doc: tr0, tempo: d.tempo });
-      gravar('treinos/' + uid, rt.doc); return rt.resp;
+      gravar('treinos/' + uid, rt.doc);
+      if (d.op === 'finalizar' && rt.resp.valido && Number(d.multas) > 0) {
+        var mt = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(rt.resp.tempo)), rt.sessao.carro || rt.sessao.cat, rt.sessao.cat, 'treino', now);
+        if (mt.novas) gravar('carteira/' + uid, mt.carteira); rt.resp.multas = mt.novas;
+      }
+      return rt.resp;
     }
     Logica.erro('Função desconhecida: ' + nome);
   }
@@ -280,6 +290,7 @@ function criarDemo() {
   function demoGaragem(uid, jog, d, now) {
     var sid = Garagem.semana(now), op = d.op;
     if (op === 'saldo') { var st = demoSaldo(uid); return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] }; }
+    if (op === 'pagarMulta') { var sm = demoSaldo(uid), rm = Garagem.pagarMulta(sm, String(d.id || ''), now); gravar('carteira/' + uid, rm.carteira); return { valor: rm.valor, saldo: sm.saldo - rm.valor }; }
     if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, Garagem.lote(now)); return { semana: sid }; }
     if (op === 'comprar0km') { var st1 = demoSaldo(uid); st1.apelido = jog.apelido || jog.nome; var r1 = Garagem.comprar0km(st1, String(d.cat || ''), now); gravar('garagens/' + uid, r1.garagem); gravar('carteira/' + uid, r1.carteira); gravar('transacoes/T' + now.toString(36), r1.transacao); return { iid: r1.iid }; }
     if (op === 'comprarRetomado') {
@@ -288,7 +299,7 @@ function criarDemo() {
     }
     if (op === 'anunciar') {
       var meus = Object.keys(col('anuncios')).map(function (k) { return col('anuncios')[k]; }).filter(function (a) { return a.vendedor === uid; });
-      var an = Garagem.anunciar({ uid: uid, apelido: jog.apelido || jog.nome, garagem: lerDoc('garagens/' + uid) || { carros: {} } }, String(d.iid || ''), d.preco, meus, now);
+      var an = Garagem.anunciar({ uid: uid, apelido: jog.apelido || jog.nome, garagem: lerDoc('garagens/' + uid) || { carros: {} }, carteira: lerDoc('carteira/' + uid) || {} }, String(d.iid || ''), d.preco, meus, now);
       var aid = 'A' + now.toString(36); gravar('anuncios/' + aid, an); return { anuncioId: aid };
     }
     if (op === 'cancelarAnuncio') {

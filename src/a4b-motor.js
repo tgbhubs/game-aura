@@ -15,7 +15,18 @@ function carregarThree(cb) {
 var CARROS = {
   aura: { forma: 'sedan' }, hatch: { forma: 'hatch' }, suv: { forma: 'suv' }, picape: { forma: 'picape' },
   conceito: { arquivo: 'assets/carros/conceito.glb', rotY: Math.PI, pintura: 'body' },
-  cyberpunk: { arquivo: 'assets/carros/cyberpunk.glb', rotY: 0 }
+  cyberpunk: { arquivo: 'assets/carros/cyberpunk.glb', rotY: 0 },
+  besouro: { arquivo: 'assets/carros/besouro.glb', rotY: 0 },
+  perua: { arquivo: 'assets/carros/perua.glb', rotY: Math.PI },
+  diplomata: { arquivo: 'assets/carros/diplomata.glb', rotY: -Math.PI / 2 },
+  serpente: { arquivo: 'assets/carros/serpente.glb', rotY: Math.PI },
+  granturismo: { arquivo: 'assets/carros/granturismo.glb', rotY: Math.PI },
+  gaivota: { arquivo: 'assets/carros/gaivota.glb', rotY: Math.PI },
+  felino: { arquivo: 'assets/carros/felino.glb', rotY: 0 },
+  neon: { arquivo: 'assets/carros/neon.glb', rotY: Math.PI },
+  veloce: { arquivo: 'assets/carros/veloce.glb', rotY: Math.PI },
+  touro: { arquivo: 'assets/carros/touro.glb', rotY: 0 },
+  monoposto: { arquivo: 'assets/carros/monoposto.glb', rotY: Math.PI }
 };
 var GLTF_URL = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
 var _modelosCache = {};
@@ -23,7 +34,7 @@ var _modelosCache = {};
 function meusCarros() {
   var l = Garagem.BASE.map(function (cat) { return { key: cat, cat: cat, origem: 'base', km: 0 }; });
   var g = (typeof D !== 'undefined' && D.garagem && D.garagem.carros) || {};
-  Object.keys(g).sort(function (a, b) { return (g[a].compradoEm || 0) - (g[b].compradoEm || 0); }).forEach(function (iid) { if (Garagem.CATALOGO[g[iid].cat]) l.push({ key: iid, cat: g[iid].cat, origem: g[iid].origem, km: g[iid].km || 0, de: g[iid].de || '' }); });
+  Object.keys(g).sort(function (a, b) { return (g[a].compradoEm || 0) - (g[b].compradoEm || 0); }).forEach(function (iid) { if (Garagem.CATALOGO[g[iid].cat]) l.push({ key: iid, cat: g[iid].cat, origem: g[iid].origem, retomadoDe: g[iid].retomadoDe || '', km: g[iid].km || 0, de: g[iid].de || '' }); });
   return l;
 }
 function carroPreferido() { var c = lerLS('gi_carro', 'aura'); return meusCarros().some(function (x) { return x.key === c; }) ? c : 'aura'; }
@@ -132,7 +143,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
-    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0 };
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
   function extra(t) { return Math.max(0, (t - 120) / 60); }
@@ -143,9 +154,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function gerarLinha(d) {
     var r = rnd();
     if (s.t > 10 && s.t - s.ultPraca > 12 && r < 0.3 && d > s.capLivreAte + 300) {
-      // praça de pedágio: fecha todas as faixas; com tag passa direto, sem tag paga penalidade
+      // praça de pedágio: cancelas nas 3 faixas do meio (com tag passa direto, sem tag para e perde tempo)
+      // e free flow nas 2 laterais (com tag passa e paga; sem tag passa, mas leva multa por evasão)
       s.ultPraca = s.t; s.pracas++;
-      for (var l = 0; l < N; l++) add('cancela', l, d);
+      for (var l = 0; l < N; l++) add('cancela', l, d).ff = (l === 0 || l === N - 1);
       add('aviso', 2, d - 230);
       if (rnd() < 0.7) add('tag', Math.floor(rnd() * N), d - 130);
       return;
@@ -187,7 +199,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var cx0 = s.x - CARW / 2 + 5, cx1 = s.x + CARW / 2 - 5;
     for (var i = 0; i < s.obst.length; i++) {
       var o = s.obst[i];
-      if (o.pego || o.aberta || o.batido || o.tipo === 'aviso') continue;
+      if (o.pego || o.aberta || o.passou || o.batido || o.tipo === 'aviso') continue;
       var a = o.d - s.dist; // distância à frente do para-choque
       if (!(a < -6 && a > -(CARH - 6) - o.h)) continue;
       var ox = CENTRO[o.lane], ox0 = ox - o.w / 2 + 4, ox1 = ox + o.w / 2 - 4;
@@ -211,8 +223,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         else s.msg = { txt: 'Seguro já no máximo', cor: '#9FD3FF', ate: s.t + 1 };
         continue;
       }
+      if (o.tipo === 'cancela' && o.ff) {
+        // free flow: o pórtico lê a TAG sem parar o carro
+        s.obst.forEach(function (q) { if (q.tipo === 'cancela' && q.d === o.d) q.passou = true; });
+        if (s.tags > 0) { s.tags--; som('seguro'); s.msg = { txt: 'Free flow: TAG cobrada' + (s.tags ? ' (restam ' + s.tags + ')' : ''), cor: '#7CE0B0', ate: s.t + 1.4 }; }
+        else { s.multas++; som('buraco'); s.msg = { txt: 'Sem TAG no free flow: multa!', cor: '#FFD07A', ate: s.t + 1.6 }; }
+        continue;
+      }
       if (o.tipo === 'cancela') {
-        s.obst.forEach(function (q) { if (q.tipo === 'cancela' && q.d === o.d) q.aberta = true; });
+        s.obst.forEach(function (q) { if (q.tipo === 'cancela' && q.d === o.d) { q.aberta = true; q.passou = true; } });
         if (s.tags > 0) { s.tags--; s.msg = { txt: 'Tag! Passou direto' + (s.tags ? ' (restam ' + s.tags + ')' : ''), cor: '#7CE0B0', ate: s.t + 1.4 }; }
         else { s.pen += PENALIDADE; s.parada = PARADA; s.msg = { txt: 'Sem tag: −' + PENALIDADE + ' s', cor: '#FF9C9C', ate: s.t + PARADA + 0.8 }; }
         continue;
@@ -401,6 +420,8 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var matCone = new T.MeshLambertMaterial({ color: 0xFF7A1A }), matBranco = new T.MeshLambertMaterial({ color: 0xF4F1EA });
     var matBuraco = new T.MeshBasicMaterial({ color: 0x1A1C22 }), matBordaB = new T.MeshLambertMaterial({ color: 0x555B69 });
     var matCabine = new T.MeshLambertMaterial({ color: 0x14235E }), matFaixaLar = new T.MeshLambertMaterial({ color: 0xEC7000 });
+    var texFF = canvasTex(512, 128, function (g, w, h) { g.fillStyle = '#1C5FB8'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '900 64px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FREE FLOW', w / 2, h / 2 + 4); });
+    var texPisoFF = canvasTex(256, 256, function (g, w, h) { g.fillStyle = 'rgba(73,158,242,.55)'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '900 54px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FREE', w / 2, h / 2 - 30); g.fillText('FLOW', w / 2, h / 2 + 34); });
     function criarMesh(o) {
       var g = new T.Group(), wm = o.w * K, lm = o.h * K;
       if (o.tipo === 'cone') {
@@ -413,17 +434,24 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         var b2 = new T.Mesh(new T.CircleGeometry(0.42, 20), matBuraco); b2.rotation.x = -Math.PI / 2; b2.scale.set(wm, lm * 1.4, 1); b2.position.y = 0.01; g.add(b2);
       } else if (o.tipo === 'carro') {
         var cc = carro(0x9AA1AC, 0x666C76); cc.rotation.y = 0; g.add(cc); g.userData.pisca = cc.userData.lanternas;
+      } else if (o.tipo === 'cancela' && o.ff) {
+        // faixa de free flow: piso azul e pórtico com leitor de TAG, sem cancela
+        var pf = new T.Mesh(new T.PlaneGeometry(LANE * K - 0.2, 3.2), new T.MeshBasicMaterial({ map: texPisoFF, transparent: true, depthWrite: false }));
+        pf.rotation.x = -Math.PI / 2; pf.position.y = 0.013; g.add(pf);
+        [-1, 1].forEach(function (lado) { var pp = new T.Mesh(new T.BoxGeometry(0.16, 4.2, 0.16), matBranco); pp.position.set(lado * (LANE * K / 2 - 0.1), 2.1, 0); g.add(pp); });
+        var vg = new T.Mesh(new T.BoxGeometry(LANE * K, 0.55, 0.22), [matCabine, matCabine, matCabine, matCabine, new T.MeshBasicMaterial({ map: texFF }), matCabine]); vg.position.y = 4.1; g.add(vg);
+        var sen = new T.Mesh(new T.BoxGeometry(0.5, 0.22, 0.3), matFaixaLar); sen.position.set(0, 3.7, 0.05); g.add(sen);
       } else if (o.tipo === 'cancela') {
         var poste = new T.Mesh(new T.BoxGeometry(0.2, 1.1, 0.2), matBranco); poste.position.set(-LANE * K / 2 + 0.15, 0.55, 0); g.add(poste);
         var piv = new T.Group(); piv.position.set(-LANE * K / 2 + 0.15, 0.95, 0); g.add(piv);
         var barra = new T.Mesh(new T.BoxGeometry(LANE * K - 0.3, 0.14, 0.1), new T.MeshLambertMaterial({ map: texBarra })); barra.position.x = (LANE * K - 0.3) / 2; piv.add(barra);
         g.userData.piv = piv;
-        if (o.lane === 0 || o.lane === N - 1) {
-          var cab = new T.Group(); var corpo = new T.Mesh(new T.BoxGeometry(1.4, 2.4, 2.2), matCabine); corpo.position.y = 1.2; cab.add(corpo);
-          var fx = new T.Mesh(new T.BoxGeometry(1.45, 0.3, 2.25), matFaixaLar); fx.position.y = 2.2; cab.add(fx);
-          var teto = new T.Mesh(new T.BoxGeometry(RW + 4, 0.25, 3), matCabine); teto.position.set(o.lane === 0 ? (RW / 2 + 0.2) : -(RW / 2 + 0.2), 3.6, 0);
-          cab.position.x = (o.lane === 0 ? -1 : 1) * (LANE * K / 2 + 1.1); g.add(cab);
-          if (o.lane === 0) { teto.position.set(RW / 2 - LANE * K / 2, 3.6, 0); g.add(teto); }
+        if (o.lane === 1 || o.lane === N - 2) {
+          // cabines finas entre a praça e as faixas de free flow; cobertura só sobre as 3 faixas do meio
+          var cab = new T.Group(); var corpo = new T.Mesh(new T.BoxGeometry(0.5, 2.4, 2.2), matCabine); corpo.position.y = 1.2; cab.add(corpo);
+          var fx = new T.Mesh(new T.BoxGeometry(0.55, 0.3, 2.25), matFaixaLar); fx.position.y = 2.2; cab.add(fx);
+          cab.position.x = (o.lane === 1 ? -1 : 1) * (LANE * K / 2); g.add(cab);
+          if (o.lane === 1) { var teto = new T.Mesh(new T.BoxGeometry(LANE * K * 3 + 0.6, 0.25, 3), matCabine); teto.position.set(LANE * K, 3.6, 0); g.add(teto); }
         }
       } else if (o.tipo === 'tag' || o.tipo === 'seguro') {
         var sp = new T.Sprite(new T.SpriteMaterial({ map: o.tipo === 'tag' ? texTag : texSeg, transparent: true, depthWrite: false }));
@@ -508,8 +536,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillStyle = '#15171C'; ctx.beginPath(); ctx.ellipse(cx + 4, bot - o.h / 2 + 3, o.w / 3, o.h / 3.2, 0, 0, 7); ctx.fill();
       } else if (o.tipo === 'cap') capPiso(ctx, cx, bot, o.w, o.h, false);
       else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#9AA1AC', '#666C76', true);
-      else if (o.tipo === 'cancela') {
-        if (o.lane === 0) { ctx.fillStyle = '#14235E'; rr(ctx, 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); rr(ctx, W - R0 + 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.fillRect(2, top - 18, R0 - 4, 6); ctx.fillRect(W - R0 + 2, top - 18, R0 - 4, 6); }
+      else if (o.tipo === 'cancela' && o.ff) {
+        ctx.fillStyle = 'rgba(73,158,242,.45)'; ctx.fillRect(cx - LANE / 2 + 4, top - 30, LANE - 8, o.h + 50);
+        ctx.fillStyle = '#1C5FB8'; ctx.fillRect(cx - LANE / 2, top + 4, LANE, 12);
+        ctx.fillStyle = '#F4F1EA'; ctx.font = '900 13px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FREE FLOW', cx, top - 12);
+      } else if (o.tipo === 'cancela') {
+        if (o.lane === 1) { ctx.fillStyle = '#14235E'; rr(ctx, 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); rr(ctx, W - R0 + 2, top - 18, R0 - 4, o.h + 30, 4); ctx.fill(); ctx.fillStyle = '#EC7000'; ctx.fillRect(2, top - 18, R0 - 4, 6); ctx.fillRect(W - R0 + 2, top - 18, R0 - 4, 6); }
         ctx.fillStyle = '#C9CED8'; rr(ctx, cx - 50, top - 6, 10, o.h + 12, 3); ctx.fill();
         if (o.aberta) { ctx.save(); ctx.translate(cx - 45, top + 4); ctx.rotate(-1.2); for (var i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#fff' : '#E23B3B'; ctx.fillRect(i * 15, -5, 15, 10); } ctx.restore(); }
         else for (var j = 0; j < 6; j++) { ctx.fillStyle = j % 2 ? '#fff' : '#E23B3B'; ctx.fillRect(cx - 42 + j * 15, top + 6, 15, 10); }
@@ -690,6 +722,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.drawImage(spr, sx, sy, 52, 92);
         if (Math.floor(s.t * 3) % 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,170,30,.85)'; ctx.shadowColor = '#FFB020'; ctx.shadowBlur = 12;
           [[sx + 9, sy + 5], [sx + 43, sy + 5], [sx + 9, sy + 87], [sx + 43, sy + 87]].forEach(function (q) { ctx.beginPath(); ctx.arc(q[0], q[1], 3.5, 0, 7); ctx.fill(); }); ctx.restore(); }
+      } else if (o.tipo === 'cancela' && o.ff) {
+        // free flow: piso azul e pórtico com leitor de TAG
+        ctx.fillStyle = 'rgba(73,158,242,.42)'; ctx.fillRect(cx - LANE / 2 + 4, top - 40, LANE - 8, o.h + 70);
+        ctx.fillStyle = '#F4F1EA'; ctx.font = '900 15px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('FREE', cx, top - 18); ctx.fillText('FLOW', cx, top + 2);
+        ctx.fillStyle = '#1C5FB8'; ctx.fillRect(cx - LANE / 2, top + 16, LANE, 9); ctx.fillStyle = '#EC7000'; ctx.fillRect(cx - 6, top + 14, 12, 13);
       } else if (o.tipo === 'cancela') {
         var py = top + 10;
         ctx.fillStyle = '#5F646D'; rr(ctx, cx - 50, py - 7, 12, 14, 3); ctx.fill();
@@ -698,9 +736,9 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(4, 3, 88, 8);
         for (var b = 0; b < 8; b++) { ctx.fillStyle = b % 2 ? '#F4F1EA' : '#D8342B'; ctx.fillRect(b * 11, -4, 11, 8); }
         ctx.restore();
-        if (o.lane === 0) {
-          // cabines nas laterais
-          [R0 - 50, R0 + ROAD - 8].forEach(function (bx) {
+        if (o.lane === 1) {
+          // cabines entre a praça e as faixas de free flow
+          [R0 + LANE - 29, R0 + ROAD - LANE - 29].forEach(function (bx) {
             ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(bx + 8, py - 22, 58, 60); ctx.restore();
             ctx.fillStyle = '#14235E'; rr(ctx, bx, py - 30, 58, 58, 6); ctx.fill();
             ctx.fillStyle = '#EC7000'; ctx.fillRect(bx, py - 30, 58, 8);
@@ -730,12 +768,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     }
     // cobertura da praça de pedágio (por cima dos carros)
     s.obst.forEach(function (o) {
-      if (o.tipo !== 'cancela' || o.lane !== 0) return;
+      if (o.tipo !== 'cancela' || o.lane !== 1) return;
       var top = CY - (o.d - s.dist) - o.h;
       if (top < -200 || top > H + 200) return;
-      ctx.fillStyle = 'rgba(20,35,94,.82)'; ctx.fillRect(R0 - 80, top - 70, ROAD + 160, 64);
-      ctx.fillStyle = '#EC7000'; ctx.fillRect(R0 - 80, top - 12, ROAD + 160, 6);
-      ctx.fillStyle = '#F4F1EA'; ctx.font = '800 22px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('PRAÇA DE PEDÁGIO', R0 + ROAD / 2, top - 40);
+      // cobertura só sobre as 3 faixas do meio
+      ctx.fillStyle = 'rgba(20,35,94,.82)'; ctx.fillRect(R0 + LANE - 10, top - 70, LANE * 3 + 20, 64);
+      ctx.fillStyle = '#EC7000'; ctx.fillRect(R0 + LANE - 10, top - 12, LANE * 3 + 20, 6);
+      ctx.fillStyle = '#F4F1EA'; ctx.font = '800 20px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('PEDÁGIO', R0 + ROAD / 2, top - 40);
     });
     // linhas de velocidade em níveis altos
     var nv = nivel(s.t);
@@ -765,7 +804,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     else if (s.fase === 'rodando') { if (window.Musica) Musica.ritmo(nivel(s.t)); s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
     else if (s.fase === 'batida') {
       s.flash = Math.max(0, s.flash - dt * 1.4); if (s.tremor > 0) s.tremor -= dt;
-      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100); }, 1100); }
+      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100, { multas: s.multas }); }, 1100); }
     }
     desenhar(ts / 1000);
     raf = requestAnimationFrame(quadro);
