@@ -33,29 +33,35 @@ function quebrar(ctx, txt, maxW) {
   pal.forEach(function (p) { var t = l ? l + ' ' + p : p; if (ctx.measureText(t).width > maxW && l) { linhas.push(l); l = p; } else l = t; });
   if (l) linhas.push(l); return linhas;
 }
-function carregarImg(src) { return new Promise(function (res) { if (!src) { res(null); return; } var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = src; }); }
+function carregarImg(src) { return new Promise(function (res) { if (!src) { res(null); return; } var i = new Image(); if (!/^data:/.test(src)) i.crossOrigin = 'anonymous'; i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = src; }); }
 function avatarCanvas(ctx, img, j, uid, x, y, d) {
   ctx.save(); ctx.beginPath(); ctx.arc(x + d / 2, y + d / 2, d / 2, 0, 7); ctx.closePath(); ctx.clip();
   if (img) ctx.drawImage(img, x, y, d, d);
   else { ctx.fillStyle = corDe(uid); ctx.fillRect(x, y, d, d); ctx.fillStyle = '#fff'; ctx.font = '800 ' + Math.round(d * 0.38) + 'px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(iniciais(j ? (j.apelido || j.nome) : '?'), x + d / 2, y + d / 2 + 2); }
   ctx.restore(); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
 }
-function compartilharCanvas(cv, nome, texto) {
-  cv.toBlob(function (blob) {
-    if (!blob) { toast('Não consegui gerar a imagem.'); return; }
-    var arq = new File([blob], nome, { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [arq] })) {
-      navigator.share({ files: [arq], text: texto }).catch(function () { });
-    } else {
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-      toast('Imagem baixada. É só postar!');
-    }
-  }, 'image/png');
+// O arquivo é gerado quando a prévia abre; o toque em Compartilhar chama o share na hora (o iPhone exige isso).
+function compartilharPrevia() {
+  var p = S._previa; if (!p) return;
+  if (!p.arq) { toast('Preparando a imagem, toque de novo em instantes.'); return; }
+  if (navigator.canShare && navigator.canShare({ files: [p.arq] })) {
+    navigator.share({ files: [p.arq], text: p.texto }).catch(function (e) {
+      if (e && e.name === 'AbortError') return;
+      baixarArquivo(p.arq);
+    });
+  } else baixarArquivo(p.arq);
+}
+function baixarArquivo(arq) {
+  var a = document.createElement('a'); a.href = URL.createObjectURL(arq); a.download = arq.name; document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast('Imagem baixada. É só postar!');
 }
 function mostrarPrevia(cv, nome, texto) {
-  S._previa = { cv: cv, nome: nome, texto: texto };
-  abrirModal('<h3>Pronto para postar</h3><img src="' + cv.toDataURL('image/png') + '" style="width:100%;border-radius:14px;display:block;margin:8px 0"><div class="mact"><button class="btn gh" data-a="fecharModal">Fechar</button><button class="btn lar" data-a="compartilharPrevia">📤 Compartilhar</button></div>');
+  var url;
+  try { url = cv.toDataURL('image/png'); } catch (e) { toast('Não consegui gerar a imagem.'); return; }
+  var p = S._previa = { nome: nome, texto: texto, arq: null };
+  cv.toBlob(function (blob) { if (blob && S._previa === p) p.arq = new File([blob], nome, { type: 'image/png' }); }, 'image/png');
+  abrirModal('<h3>Pronto para postar</h3><img src="' + url + '" style="width:100%;border-radius:14px;display:block;margin:8px 0"><div class="mact"><button class="btn gh" data-a="fecharModal">Fechar</button><button class="btn lar" data-a="compartilharPrevia">📤 Compartilhar</button></div>');
 }
 function imagemBadge(tipo, rid, n) {
   var d = BADGES[tipo]; if (!d) return;
@@ -251,7 +257,7 @@ var A = {
   rankRodada: function (v) { S.rankRodada = v; R(); },
   compartilharRanking: function () { imagemRanking(); },
   compartilharBadge: function (v) { var p = v.split('|'); imagemBadge(p[0], p[1], p[2] ? parseInt(p[2], 10) : null); },
-  compartilharPrevia: function () { var p = S._previa; if (p) compartilharCanvas(p.cv, p.nome, p.texto); },
+  compartilharPrevia: function () { compartilharPrevia(); },
   vistos: function () { marcarBadgesVistos(); R(); },
   infoBadge: function (v) { var d = BADGES[v]; abrirModal('<div style="text-align:center"><div style="font-size:56px">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p></div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
   removerFoto: function () { B.update('jogadores/' + S.user.uid, { foto: '' }); },
