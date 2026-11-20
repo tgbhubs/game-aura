@@ -14,6 +14,11 @@ Melhorias anotadas para fazer juntas no próximo pacote.
    - Quem já está cadastrado sem foto recebe um aviso para colocar foto antes de jogar.
    - Não deixar remover a foto sem colocar outra.
 
+3. **Retomados Itaú e Porto**
+   - A aba Retomados (hoje só "Retomados Porto") passa a ter carros de origem Itaú (retomada de financiamento) e Porto (recuperados do seguro).
+   - Cada carro do lote mostra a origem com selo próprio (Itaú ou Porto); textos, confirmação de compra, histórico de transações e Preço Aura passam a citar a origem certa.
+   - O Mercado entre colegas (usados de PF) continua como está.
+
 ## Feito recentemente
 
 - 2026-11-20b: carro vira de frente para a faixa de destino; não troca de faixa parado no CAP ou no pedágio.
