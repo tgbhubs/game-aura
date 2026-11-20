@@ -33,6 +33,17 @@ Melhorias anotadas para fazer juntas no próximo pacote.
    - Origem: modelos com licença livre (CC0 ou CC-BY, com crédito ao autor), como os dois atuais, que vieram do Sketchfab. O download exige login, então o Tarcísio baixa os .glb escolhidos e eu otimizo, gero foto e visão de cima e encaixo no catálogo.
    - Cada carro novo ganha preço e atributos (faixa, pneu, seguro) no catálogo da Garagem.
 
+### Modelos recebidos em 20/11 (status)
+Arquivos originais e versões otimizadas ficam fora do repositório até entrarem no jogo.
+- Lamborghini Diablo SV (CC BY): ótimo, 1,1 MB.
+- Fórmula 1 2027 (CC BY): ótimo, 1,3 MB.
+- Ferrari 488 Pista, Maserati Alfieri, Mercedes SLS (CC BY): bons; tirar os fachos de farol que vieram como peças.
+- Concept Car 050 (Unity Fan, domínio público): bom; tirar a sombra embutida.
+- Concept Car 006 (Unity Fan, domínio público): veio com animações e peças extras; precisa de limpeza.
+- Dodge Viper RT/10 e GTS (CC BY): vieram dentro de uma garagem/cenário; separar só o carro. O GTS chegou com upload incompleto (faltou 1 textura).
+- Mitsubishi Lancer Evo IX: licença CC BY-NC (não comercial). Fica de fora.
+- Decidir: marcas reais (Lamborghini, Ferrari, Maserati, Mercedes, Dodge) com nome fictício no jogo e sem logotipos.
+
 ## Feito recentemente
 
 - 2026-11-20b: carro vira de frente para a faixa de destino; não troca de faixa parado no CAP ou no pedágio.
