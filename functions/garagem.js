@@ -31,6 +31,9 @@
     'neon':            { nome: 'Conceito Neon',     modelo: 'neon',      cor: null, preco: 1400, tipo: 'Conceito',  atr: { faixa: 1.40, pneu: 1.05, seguro: 1 }, lancado: '2026-11' },
     'veloce':          { nome: 'Veloce Pista',      modelo: 'veloce',    cor: null, preco: 1500, tipo: 'Superesportivo', atr: { faixa: 1.45, pneu: 1.25, seguro: 0 }, lancado: '2026-11' },
     'touro':           { nome: 'Touro SV',          modelo: 'touro',     cor: null, preco: 1600, tipo: 'Superesportivo', atr: { faixa: 1.50, pneu: 1.30, seguro: 0 }, lancado: '2026-11' },
+    'viajante':        { nome: 'Viajante 88',       modelo: 'viajante',  cor: null, preco: 450,  tipo: 'Clássico',  atr: { faixa: 0.90, pneu: 0.75, seguro: 1 }, lancado: '2026-11' },
+    'roadster':        { nome: 'Serpente Roadster', modelo: 'roadster',  cor: null, preco: 1000, tipo: 'Muscle',    atr: { faixa: 1.30, pneu: 1.15, seguro: 0 }, lancado: '2026-11' },
+    'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.10, pneu: 0.70, seguro: 1 }, lancado: '2026-11' },
     'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.65, pneu: 1.50, seguro: 0 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
