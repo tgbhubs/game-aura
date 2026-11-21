@@ -164,6 +164,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       for (var l = 0; l < N; l++) add('cancela', l, d).ff = (l === 0 || l === N - 1);
       add('aviso', 2, d - 230);
       if (rnd() < 0.7) add('tag', Math.floor(rnd() * N), d - 130);
+      // Seguro Porto perto do free flow (antes ou depois do pórtico) para compensar o risco da multa.
+      // Usa um sorteio próprio, sem mexer na sequência da pista: o resto das pistas continua igual.
+      var hp = (Logica.hash('ff|' + seed + '|' + s.pracas) >>> 0) / 4294967296, hq = (Logica.hash('ffl|' + seed + '|' + s.pracas) >>> 0) / 4294967296;
+      if (hp < Math.max(0.3, 0.55 - 0.08 * extra(s.t))) {
+        var lf = hq < 0.5 ? 0 : N - 1;
+        add('seguro', lf, hq % 0.5 < 0.25 ? d - 200 : d + 150);
+      }
       return;
     }
     var ex = extra(s.t);
