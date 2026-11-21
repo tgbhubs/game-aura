@@ -341,3 +341,91 @@ exports.treino = onCall((req) => {
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');
   }));
 });
+
+/* ================== DUELOS (melhor de 3 corridas, valendo créditos ou carro) ==================
+   Tudo gravado só aqui: o convite, as apostas reservadas, as corridas e a entrega do prêmio. */
+exports.duelo = onCall((req) => {
+  const uid = uidDe(req);
+  const d = req.data || {};
+  const op = String(d.op || '');
+  return rodar(async () => db.runTransaction(async (tx) => {
+    const now = Date.now();
+    const eu = dados(await tx.get(db.doc('jogadores/' + uid)));
+    if (!eu || eu.status !== 'ativo') throw new HttpsError('permission-denied', 'Seu cadastro ainda não foi aprovado.');
+    const apelido = (j) => (j && (j.apelido || String(j.nome || '').split(/\s+/)[0])) || '';
+    const anunciadosDe = async (u) => (await tx.get(db.collection('anuncios').where('vendedor', '==', u))).docs.map((x) => x.data()).filter((a) => a.status === 'ativo').map((a) => a.iid);
+    // lê as carteiras e garagens dos dois lados de um duelo
+    const lerLados = async (du) => {
+      const s = await Promise.all([du.de, du.para].flatMap((u) => [tx.get(db.doc('carteira/' + u)), tx.get(db.doc('garagens/' + u))]));
+      return { carts: { de: dados(s[0]) || {}, para: dados(s[2]) || {} }, gars: { de: dados(s[1]) || { carros: {} }, para: dados(s[3]) || { carros: {} } } };
+    };
+    const gravarLados = (du, carts, gars) => {
+      tx.set(db.doc('carteira/' + du.de), carts.de); tx.set(db.doc('carteira/' + du.para), carts.para);
+      tx.set(db.doc('garagens/' + du.de), gars.de); tx.set(db.doc('garagens/' + du.para), gars.para);
+    };
+
+    if (op === 'desafiar') {
+      const para = String(d.para || '');
+      const outro = dados(await tx.get(db.doc('jogadores/' + para)));
+      const meus = await tx.get(db.collection('duelos').where('uids', 'array-contains', uid));
+      const abertos = meus.docs.map((x) => x.data()).filter((x) => G.duelAtivo(x));
+      const st = await lerSaldo(tx, uid);
+      const anunciados = await anunciadosDe(uid);
+      const ref = db.collection('duelos').doc();
+      const r = G.desafiar({ id: ref.id, now, uid, ap: apelido(eu), para, paraAp: apelido(outro), paraAtivo: !!outro && outro.status === 'ativo', aposta: d.aposta, st, anunciados,
+        meusAtivos: abertos.length, entreNos: abertos.some((x) => x.uids.indexOf(para) >= 0) });
+      tx.set(ref, r.doc); tx.set(db.doc('carteira/' + uid), r.carteira); tx.set(db.doc('garagens/' + uid), r.garagem);
+      return { id: ref.id };
+    }
+    const ref = db.doc('duelos/' + String(d.id || ''));
+    const du = dados(await tx.get(ref));
+    if (!du) throw new HttpsError('not-found', 'Duelo não encontrado.');
+
+    if (op === 'aceitar') {
+      const st = await lerSaldo(tx, uid);
+      const anunciados = await anunciadosDe(uid);
+      const r = G.aceitar({ id: ref.id, now, uid, d: du, aposta: d.aposta, st, anunciados });
+      tx.set(ref, r.doc); tx.set(db.doc('carteira/' + uid), r.carteira); tx.set(db.doc('garagens/' + uid), r.garagem);
+      return { ok: true };
+    }
+    if (op === 'recusar' || op === 'cancelar') {
+      if (op === 'recusar' && du.para !== uid) throw new HttpsError('permission-denied', 'Esse desafio não é para você.');
+      if (op === 'cancelar' && du.de !== uid) throw new HttpsError('permission-denied', 'Só quem desafiou pode cancelar.');
+      const [c, g] = await Promise.all([tx.get(db.doc('carteira/' + du.de)), tx.get(db.doc('garagens/' + du.de))]);
+      const r = G.desfazer({ now, d: du, motivo: op === 'recusar' ? 'recusado' : 'cancelado', cartDe: dados(c), garDe: dados(g) });
+      tx.set(ref, r.doc); tx.set(db.doc('carteira/' + du.de), r.carteira); tx.set(db.doc('garagens/' + du.de), r.garagem);
+      return { ok: true };
+    }
+    if (op === 'iniciar') {
+      const g = dados(await tx.get(db.doc('garagens/' + uid)));
+      const r = G.iniciarDuelo({ now, uid, d: du, n: d.n, carro: String(d.carro || ''), garagem: g });
+      tx.set(ref, r.doc);
+      return r.resp;
+    }
+    if (op === 'finalizar' || op === 'atualizar') {
+      if (!G.lado(du, uid)) throw new HttpsError('permission-denied', 'Esse duelo não é seu.');
+      const lados = await lerLados(du);
+      let doc = du, resp = {};
+      if (op === 'finalizar') {
+        const f = G.finalizarDuelo({ now, uid, d: du, n: d.n, tempo: d.tempo });
+        doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
+        const nm = Math.floor(Number(d.multas) || 0);
+        if (nm > 0 && f.valido) {
+          const lado = G.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
+          const m = G.registrarMultas(lados.carts[lado], Math.min(nm, G.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now);
+          if (m.novas) { lados.carts[lado] = m.carteira; resp.multas = m.novas; }
+        }
+      }
+      if (doc.status === 'pendente' && now > doc.prazo) {
+        const r = G.desfazer({ now, d: doc, motivo: 'expirado', cartDe: lados.carts.de, garDe: lados.gars.de });
+        doc = r.doc; lados.carts.de = r.carteira; lados.gars.de = r.garagem;
+      }
+      const liq = G.liquidarDuelo(doc, lados.carts, lados.gars, now);
+      if (liq) { doc = liq.doc; lados.carts = liq.carteiras; lados.gars = liq.garagens; }
+      tx.set(ref, doc); gravarLados(doc, lados.carts, lados.gars);
+      resp.status = doc.status; resp.vencedor = doc.vencedor || ''; resp.placar = G.placarDuelo(doc, now);
+      return resp;
+    }
+    throw new HttpsError('invalid-argument', 'Operação desconhecida.');
+  }));
+});

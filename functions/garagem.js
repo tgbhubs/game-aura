@@ -10,31 +10,31 @@
     'aura':            { nome: 'Aura',              modelo: 'aura',     cor: 0x2F7FE0, preco: 0,    tipo: 'Sedã',      atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
     'conceito':        { nome: 'Conceito',          modelo: 'conceito', cor: 0xB04600, preco: 0,    tipo: 'Esportivo', atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
     'cyberpunk':       { nome: 'Cyberpunk',         modelo: 'cyberpunk', cor: null,    preco: 0,    tipo: 'Muscle',    atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
-    'hatch-verde':     { nome: 'Hatch Verde',       modelo: 'hatch',    cor: 0x17935F, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.15, pneu: 1.00, seguro: 0 } },
-    'hatch-branco':    { nome: 'Hatch Branco',      modelo: 'hatch',    cor: 0xE9E7E1, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.15, pneu: 1.00, seguro: 0 } },
-    'sedan-grafite':   { nome: 'Sedã Grafite',      modelo: 'aura',     cor: 0x3A3F4B, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.00, pneu: 0.85, seguro: 0 } },
-    'sedan-prata':     { nome: 'Sedã Prata',        modelo: 'aura',     cor: 0xB9BEC6, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.00, pneu: 0.85, seguro: 0 } },
-    'suv-areia':       { nome: 'SUV Areia',         modelo: 'suv',      cor: 0xCDBB98, preco: 550,  tipo: 'SUV',       atr: { faixa: 0.90, pneu: 0.75, seguro: 1 } },
-    'suv-porto':       { nome: 'SUV Azul Porto',    modelo: 'suv',      cor: 0x499EF2, preco: 650,  tipo: 'SUV',       atr: { faixa: 0.95, pneu: 0.75, seguro: 1 } },
-    'picape-laranja':  { nome: 'Picape Laranja',    modelo: 'picape',   cor: 0xEC7000, preco: 600,  tipo: 'Picape',    atr: { faixa: 0.85, pneu: 0.65, seguro: 1 } },
-    'picape-marinho':  { nome: 'Picape Marinho',    modelo: 'picape',   cor: 0x1C398E, preco: 600,  tipo: 'Picape',    atr: { faixa: 0.85, pneu: 0.65, seguro: 1 } },
-    'conceito-marinho':{ nome: 'Conceito Marinho',  modelo: 'conceito', cor: 0x14235E, preco: 900,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.20, seguro: 0 } },
-    'conceito-branco': { nome: 'Conceito Branco',   modelo: 'conceito', cor: 0xE9E7E1, preco: 950,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.20, seguro: 0 } },
+    'hatch-verde':     { nome: 'Hatch Verde',       modelo: 'hatch',    cor: 0x17935F, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
+    'hatch-branco':    { nome: 'Hatch Branco',      modelo: 'hatch',    cor: 0xE9E7E1, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
+    'sedan-grafite':   { nome: 'Sedã Grafite',      modelo: 'aura',     cor: 0x3A3F4B, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 } },
+    'sedan-prata':     { nome: 'Sedã Prata',        modelo: 'aura',     cor: 0xB9BEC6, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 } },
+    'suv-areia':       { nome: 'SUV Areia',         modelo: 'suv',      cor: 0xCDBB98, preco: 550,  tipo: 'SUV',       atr: { faixa: 1.05, pneu: 0.80, seguro: 1 } },
+    'suv-porto':       { nome: 'SUV Azul Porto',    modelo: 'suv',      cor: 0x499EF2, preco: 650,  tipo: 'SUV',       atr: { faixa: 1.10, pneu: 0.80, seguro: 1 } },
+    'picape-laranja':  { nome: 'Picape Laranja',    modelo: 'picape',   cor: 0xEC7000, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
+    'picape-marinho':  { nome: 'Picape Marinho',    modelo: 'picape',   cor: 0x1C398E, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
+    'conceito-marinho':{ nome: 'Conceito Marinho',  modelo: 'conceito', cor: 0x14235E, preco: 900,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.05, seguro: 0 } },
+    'conceito-branco': { nome: 'Conceito Branco',   modelo: 'conceito', cor: 0xE9E7E1, preco: 950,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.05, seguro: 0 } },
     // modelos 3D detalhados (nomes fictícios; créditos dos autores na aba Regras)
-    'besouro':         { nome: 'Besouro',           modelo: 'besouro',   cor: null, preco: 400,  tipo: 'Clássico',  atr: { faixa: 1.05, pneu: 0.80, seguro: 0 }, lancado: '2026-11' },
-    'perua':           { nome: 'Perua Retrô',       modelo: 'perua',     cor: null, preco: 500,  tipo: 'Clássico',  atr: { faixa: 0.80, pneu: 0.70, seguro: 1 }, lancado: '2026-11' },
-    'diplomata':       { nome: 'Diplomata 87',      modelo: 'diplomata', cor: null, preco: 700,  tipo: 'Clássico',  atr: { faixa: 0.95, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
-    'serpente':        { nome: 'Serpente GTS',      modelo: 'serpente',  cor: null, preco: 1100, tipo: 'Muscle',    atr: { faixa: 1.25, pneu: 1.15, seguro: 0 }, lancado: '2026-11' },
-    'granturismo':     { nome: 'Gran Turismo',      modelo: 'granturismo', cor: null, preco: 1200, tipo: 'Esportivo', atr: { faixa: 1.25, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
-    'gaivota':         { nome: 'Asa de Gaivota',    modelo: 'gaivota',   cor: null, preco: 1300, tipo: 'Esportivo', atr: { faixa: 1.35, pneu: 1.10, seguro: 0 }, lancado: '2026-11' },
-    'felino':          { nome: 'Felino X',          modelo: 'felino',    cor: null, preco: 1350, tipo: 'Superesportivo', atr: { faixa: 1.40, pneu: 1.20, seguro: 0 }, lancado: '2026-11' },
-    'neon':            { nome: 'Conceito Neon',     modelo: 'neon',      cor: null, preco: 1400, tipo: 'Conceito',  atr: { faixa: 1.40, pneu: 1.05, seguro: 1 }, lancado: '2026-11' },
-    'veloce':          { nome: 'Veloce Pista',      modelo: 'veloce',    cor: null, preco: 1500, tipo: 'Superesportivo', atr: { faixa: 1.45, pneu: 1.25, seguro: 0 }, lancado: '2026-11' },
-    'touro':           { nome: 'Touro SV',          modelo: 'touro',     cor: null, preco: 1600, tipo: 'Superesportivo', atr: { faixa: 1.50, pneu: 1.30, seguro: 0 }, lancado: '2026-11' },
-    'viajante':        { nome: 'Viajante 88',       modelo: 'viajante',  cor: null, preco: 450,  tipo: 'Clássico',  atr: { faixa: 0.90, pneu: 0.75, seguro: 1 }, lancado: '2026-11' },
-    'roadster':        { nome: 'Serpente Roadster', modelo: 'roadster',  cor: null, preco: 1000, tipo: 'Muscle',    atr: { faixa: 1.30, pneu: 1.15, seguro: 0 }, lancado: '2026-11' },
-    'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.10, pneu: 0.70, seguro: 1 }, lancado: '2026-11' },
-    'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.65, pneu: 1.50, seguro: 0 }, lancado: '2026-11' }
+    'besouro':         { nome: 'Besouro',           modelo: 'besouro',   cor: null, preco: 400,  tipo: 'Clássico',  atr: { faixa: 1.10, pneu: 0.85, seguro: 0 }, lancado: '2026-11' },
+    'perua':           { nome: 'Perua Retrô',       modelo: 'perua',     cor: null, preco: 500,  tipo: 'Clássico',  atr: { faixa: 1.00, pneu: 0.75, seguro: 1 }, lancado: '2026-11' },
+    'diplomata':       { nome: 'Diplomata 87',      modelo: 'diplomata', cor: null, preco: 700,  tipo: 'Clássico',  atr: { faixa: 1.10, pneu: 0.85, seguro: 1 }, lancado: '2026-11' },
+    'serpente':        { nome: 'Serpente GTS',      modelo: 'serpente',  cor: null, preco: 1100, tipo: 'Muscle',    atr: { faixa: 1.40, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
+    'granturismo':     { nome: 'Gran Turismo',      modelo: 'granturismo', cor: null, preco: 1200, tipo: 'Esportivo', atr: { faixa: 1.35, pneu: 0.95, seguro: 1 }, lancado: '2026-11' },
+    'gaivota':         { nome: 'Asa de Gaivota',    modelo: 'gaivota',   cor: null, preco: 1300, tipo: 'Esportivo', atr: { faixa: 1.45, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
+    'felino':          { nome: 'Felino X',          modelo: 'felino',    cor: null, preco: 1350, tipo: 'Superesportivo', atr: { faixa: 1.50, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
+    'neon':            { nome: 'Conceito Neon',     modelo: 'neon',      cor: null, preco: 1400, tipo: 'Conceito',  atr: { faixa: 1.45, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
+    'veloce':          { nome: 'Veloce Pista',      modelo: 'veloce',    cor: null, preco: 1500, tipo: 'Superesportivo', atr: { faixa: 1.55, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
+    'touro':           { nome: 'Touro SV',          modelo: 'touro',     cor: null, preco: 1600, tipo: 'Superesportivo', atr: { faixa: 1.60, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
+    'viajante':        { nome: 'Viajante 88',       modelo: 'viajante',  cor: null, preco: 450,  tipo: 'Clássico',  atr: { faixa: 1.00, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
+    'roadster':        { nome: 'Serpente Roadster', modelo: 'roadster',  cor: null, preco: 1000, tipo: 'Muscle',    atr: { faixa: 1.35, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
+    'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.30, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
+    'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.75, pneu: 0.95, seguro: 1 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
   // showroom do 0 km: lançamentos do mês (campo lancado = 'AAAA-MM'); se o mês não tem lançamento, mostra o mais recente
@@ -47,7 +47,13 @@
   };
   G.VENDA = Object.keys(G.CATALOGO).filter(function (k) { return G.BASE.indexOf(k) < 0; });
   G.PONTOS_VITORIA_PLACA = 30;
-  G.TREINO_PROP = 0.2;          // treino rende 20% dos pontos que o tempo valeria na rodada
+  G.TREINO_PROP = 0.4;          // treino rende 40% dos pontos que o tempo valeria na rodada…
+  G.TREINO_EXTRA_APOS = 180;    // …e, sem teto, +1 crédito a cada 15 s depois dos 3 minutos
+  G.TREINO_EXTRA_CADA = 15;
+  G.creditosTreino = function (tempo) {
+    tempo = Number(tempo) || 0;
+    return Math.round(L.curva(tempo, 40) * G.TREINO_PROP) + Math.max(0, Math.floor((tempo - G.TREINO_EXTRA_APOS) / G.TREINO_EXTRA_CADA));
+  };
   G.TREINO_LIMITE_DIA = Infinity; // sem limite: créditos não mexem no ranking e incentivam compra e venda
   G.dia = function (now) { return new Date(now - 3 * 3600000).toISOString().slice(0, 10); };
   G.LOTE = 5;
@@ -146,6 +152,7 @@
     var car = (st.garagem && st.garagem.carros || {})[iid];
     if (!car) L.erro('Esse carro não está na sua garagem.');
     if (G.multasPendentes(st.carteira).some(function (m) { return m.carro === iid; })) L.erro('Esse carro tem multa pendente. Pague a multa antes de anunciar.');
+    if (car.travado) L.erro('Esse carro está apostado num duelo.');
     preco = Math.round(Number(preco));
     if (!(preco >= G.PRECO_MIN && preco <= G.PRECO_MAX)) L.erro('O preço deve ficar entre ' + G.PRECO_MIN + ' e ' + G.PRECO_MAX + ' créditos.');
     if ((anuncios || []).some(function (a) { return a.iid === iid && a.status === 'ativo'; })) L.erro('Esse carro já está anunciado.');
@@ -169,6 +176,143 @@
     var an = L.clone(anuncio); an.status = 'vendido'; an.compradoPor = comprador.uid; an.vendidoEm = now;
     return { garagemComprador: gc, garagemVendedor: gv, carteiraComprador: cc, carteiraVendedor: cv, anuncio: an, iid: iid, taxa: tx,
       transacao: transacao('usado', anuncio.cat, car.km || 0, anuncio.preco, tx, comprador, { uid: anuncio.vendedor, apelido: anuncio.vendedorAp }, now) };
+  };
+
+  // ---------- duelos: melhor de 3 corridas, cada um no seu tempo, valendo créditos ou um carro ----------
+  // A aposta fica reservada ao desafiar/aceitar e vai inteira para quem vencer; empate devolve tudo.
+  G.DUELO = { minCred: 5, maxCred: 100, prazoAceite: 48 * 3600000, prazoCorridas: 48 * 3600000, maxAtivos: 5 };
+  G.duelAtivo = function (d) { return d && (d.status === 'pendente' || d.status === 'andamento'); };
+  G.lado = function (d, uid) { return d.de === uid ? 'de' : d.para === uid ? 'para' : ''; };
+  G.outro = function (lado) { return lado === 'de' ? 'para' : 'de'; };
+  // valida e normaliza a aposta de um jogador (st: { saldo, garagem, carteira }, anunciados: iids anunciados)
+  G.validarAposta = function (st, ap, anunciados) {
+    ap = ap || {};
+    if (ap.tipo === 'carro') {
+      var iid = String(ap.iid || ''), car = (st.garagem && st.garagem.carros || {})[iid];
+      if (!car) L.erro('Esse carro não está na sua garagem.');
+      if (car.origem === 'base') L.erro('Os carros da casa não podem ser apostados.');
+      if (car.travado) L.erro('Esse carro já está apostado em outro duelo.');
+      if ((anunciados || []).indexOf(iid) >= 0) L.erro('Esse carro está anunciado no mercado. Cancele o anúncio para apostar.');
+      if (G.multasPendentes(st.carteira).some(function (m) { return m.carro === iid; })) L.erro('Esse carro tem multa pendente.');
+      return { tipo: 'carro', iid: iid, cat: car.cat, km: car.km || 0 };
+    }
+    var v = Math.round(Number(ap.valor));
+    if (!(v >= G.DUELO.minCred && v <= G.DUELO.maxCred)) L.erro('A aposta em créditos vai de ' + G.DUELO.minCred + ' a ' + G.DUELO.maxCred + '.');
+    precisa(st.saldo, v);
+    return { tipo: 'creditos', valor: v };
+  };
+  G.apostaTxt = function (a) { return !a ? '—' : a.tipo === 'carro' ? (G.CATALOGO[a.cat] ? G.CATALOGO[a.cat].nome : 'carro') : a.valor + ' créditos'; };
+  function reservar(cart, gar, a, idD, advAp, now) {
+    if (a.tipo === 'carro') gar.carros[a.iid].travado = idD;
+    else { cart.gasto = (cart.gasto || 0) + a.valor; mov(cart, { t: now, v: -a.valor, d: 'Aposta reservada: duelo com ' + advAp }); }
+  }
+  function devolver(cart, gar, a, advAp, now, motivo) {
+    if (a.tipo === 'carro') { if (gar.carros && gar.carros[a.iid]) delete gar.carros[a.iid].travado; }
+    else { cart.recebido = (cart.recebido || 0) + a.valor; mov(cart, { t: now, v: a.valor, d: 'Aposta devolvida (' + motivo + '): duelo com ' + advAp }); }
+  }
+  G.desafiar = function (c) {
+    // c: { now, uid, ap, para, paraAp, paraAtivo, aposta, st, anunciados, meusAtivos, entreNos }
+    if (c.para === c.uid) L.erro('Desafie outra pessoa.');
+    if (!c.paraAtivo) L.erro('Essa pessoa não está ativa no jogo.');
+    if ((c.meusAtivos || 0) >= G.DUELO.maxAtivos) L.erro('Você já tem ' + G.DUELO.maxAtivos + ' duelos em aberto.');
+    if (c.entreNos) L.erro('Já existe um duelo em aberto entre vocês.');
+    var a = G.validarAposta(c.st, c.aposta, c.anunciados);
+    var cart = L.clone(c.st.carteira || {}), gar = L.clone(c.st.garagem || { carros: {} });
+    reservar(cart, gar, a, c.id, c.paraAp, c.now);
+    var doc = { de: c.uid, para: c.para, ap: { de: c.ap, para: c.paraAp }, uids: [c.uid, c.para], status: 'pendente', criadoEm: c.now, prazo: c.now + G.DUELO.prazoAceite,
+      aposta: { de: a, para: null }, seeds: [], corridas: { de: [null, null, null], para: [null, null, null] }, placar: { de: 0, para: 0 }, vencedor: '' };
+    return { doc: doc, carteira: cart, garagem: gar };
+  };
+  G.aceitar = function (c) {
+    // c: { now, uid, d, aposta, st, anunciados }
+    var d = L.clone(c.d);
+    if (!d || d.status !== 'pendente') L.erro('Esse desafio não está mais aberto.');
+    if (d.para !== c.uid) L.erro('Esse desafio não é para você.');
+    if (c.now > d.prazo) L.erro('Esse desafio expirou.');
+    var a = G.validarAposta(c.st, c.aposta, c.anunciados);
+    var cart = L.clone(c.st.carteira || {}), gar = L.clone(c.st.garagem || { carros: {} });
+    reservar(cart, gar, a, c.id, d.ap.de, c.now);
+    d.aposta.para = a; d.status = 'andamento'; d.aceitoEm = c.now; d.prazo = c.now + G.DUELO.prazoCorridas;
+    var r = L.rng(L.hash('duelo|' + c.id + '|' + c.now));
+    d.seeds = [0, 1, 2].map(function () { return (Math.floor(r() * 4294967295) >>> 0) || 1; });
+    return { doc: d, carteira: cart, garagem: gar };
+  };
+  // recusa (convidado), cancelamento (quem desafiou) ou expiração do convite: devolve a aposta de quem desafiou
+  G.desfazer = function (c) {
+    // c: { now, d, motivo, cartDe, garDe }
+    var d = L.clone(c.d), cart = L.clone(c.cartDe || {}), gar = L.clone(c.garDe || { carros: {} });
+    if (d.status !== 'pendente') L.erro('Esse desafio não está mais aberto.');
+    devolver(cart, gar, d.aposta.de, d.ap.para, c.now, c.motivo);
+    d.status = c.motivo === 'recusado' ? 'recusado' : c.motivo === 'cancelado' ? 'cancelado' : 'expirado'; d.fimEm = c.now;
+    return { doc: d, carteira: cart, garagem: gar };
+  };
+  G.iniciarDuelo = function (c) {
+    // c: { now, uid, d, n, carro, garagem }
+    var d = L.clone(c.d), lado = G.lado(d, c.uid), n = Math.floor(Number(c.n));
+    if (!lado) L.erro('Esse duelo não é seu.');
+    if (d.status !== 'andamento') L.erro('Esse duelo não está em andamento.');
+    if (c.now > d.prazo) L.erro('O prazo do duelo acabou.');
+    var cs = d.corridas[lado];
+    if (!(n >= 0 && n <= 2)) L.erro('Corrida inválida.');
+    if (cs[n]) L.erro('Você já usou essa corrida.');
+    if (n > 0 && !cs[n - 1]) L.erro('Corra as corridas na ordem.');
+    var cat = G.catDoCarro(c.carro, c.garagem);
+    cs[n] = { inicio: c.now, cat: cat, carro: cat === 'aura' && c.carro !== 'aura' ? 'aura' : String(c.carro || 'aura') };
+    return { doc: d, resp: { seed: d.seeds[n], n: n } };
+  };
+  // placar parcial e decisão: corrida sem tempo conta 0 quando o prazo acaba; quem vencer 2 leva
+  G.placarDuelo = function (d, now) {
+    var venc = { de: 0, para: 0 }, venceu = [], acabou = now > d.prazo, decididas = 0;
+    for (var i = 0; i < 3; i++) {
+      var a = d.corridas.de[i], b = d.corridas.para[i];
+      var ta = a && a.t != null ? a.t : (acabou ? 0 : null), tb = b && b.t != null ? b.t : (acabou ? 0 : null);
+      if (ta == null || tb == null) { venceu.push(''); continue; }
+      decididas++;
+      var w = ta > tb ? 'de' : tb > ta ? 'para' : '';
+      if (w) venc[w]++; venceu.push(w || 'empate');
+    }
+    var fim = venc.de >= 2 || venc.para >= 2 || decididas === 3 || acabou;
+    var vencedor = venc.de > venc.para ? 'de' : venc.para > venc.de ? 'para' : '';
+    if (fim && !vencedor) {
+      // desempate pela soma dos tempos
+      var soma = function (l) { return l.reduce(function (s, x) { return s + (x && x.t ? x.t : 0); }, 0); };
+      var sa = soma(d.corridas.de), sb = soma(d.corridas.para);
+      vencedor = sa > sb ? 'de' : sb > sa ? 'para' : '';
+    }
+    return { placar: venc, venceu: venceu, fim: fim, vencedor: fim ? vencedor : '' };
+  };
+  G.finalizarDuelo = function (c) {
+    // c: { now, uid, d, n, tempo }
+    var d = L.clone(c.d), lado = G.lado(d, c.uid), n = Math.floor(Number(c.n));
+    if (!lado) L.erro('Esse duelo não é seu.');
+    var x = d.corridas[lado][n];
+    if (!x || x.t != null) L.erro('Essa corrida não foi iniciada.');
+    var tempo = Number(c.tempo); if (!(tempo >= 0)) tempo = 0;
+    var maxT = (c.now - x.inicio) / 1000 + 2, valido = tempo <= maxT;
+    x.t = Math.round(Math.min(tempo, maxT) * 100) / 100; x.fim = c.now; if (!valido) x.ajustado = true;
+    return { doc: d, valido: valido, tempo: x.t };
+  };
+  // entrega as apostas quando o duelo termina (cartas: { de, para } carteiras; gars: { de, para } garagens)
+  G.liquidarDuelo = function (d0, carts, gars, now) {
+    var d = L.clone(d0), pl = G.placarDuelo(d, now);
+    if (d.status !== 'andamento' || !pl.fim) return null;
+    var c = { de: L.clone(carts.de || {}), para: L.clone(carts.para || {}) }, g = { de: L.clone(gars.de || { carros: {} }), para: L.clone(gars.para || { carros: {} }) };
+    d.status = 'fim'; d.fimEm = now; d.placar = pl.placar; d.venceu = pl.venceu;
+    if (!pl.vencedor) {
+      ['de', 'para'].forEach(function (s) { devolver(c[s], g[s], d.aposta[s], d.ap[G.outro(s)], now, 'empate'); });
+      d.vencedor = ''; return { doc: d, carteiras: c, garagens: g, vencedor: '' };
+    }
+    var w = pl.vencedor, l = G.outro(w), aw = d.aposta[w], al = d.aposta[l];
+    d.vencedor = d[w];
+    // a aposta do vencedor volta para ele
+    if (aw.tipo === 'carro') { if (g[w].carros[aw.iid]) delete g[w].carros[aw.iid].travado; }
+    else { c[w].recebido = (c[w].recebido || 0) + aw.valor; mov(c[w], { t: now, v: aw.valor, d: 'Aposta devolvida: venceu o duelo com ' + d.ap[l] }); }
+    // e a do perdedor passa para o vencedor
+    if (al.tipo === 'carro') {
+      var car = g[l].carros[al.iid];
+      if (car) { delete g[l].carros[al.iid]; var iid = novaInst(g[w], al.cat, 'duelo', car.km || 0, now, d.ap[l]); d.carroGanho = { iid: iid, cat: al.cat }; }
+    } else { c[w].recebido = (c[w].recebido || 0) + al.valor; mov(c[w], { t: now, v: al.valor, d: 'Prêmio do duelo com ' + d.ap[l] }); }
+    return { doc: d, carteiras: c, garagens: g, vencedor: d[w] };
   };
 
   // ---------- multas por evasão de pedágio (free flow sem TAG) ----------
@@ -247,7 +391,7 @@
       if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
-      creditos = Math.max(0, Math.min(Math.round(L.curva(tempo, 40) * G.TREINO_PROP), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
+      creditos = Math.max(0, Math.min(G.creditosTreino(tempo), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
       doc.hoje.creditos += creditos; doc.creditos = (doc.creditos || 0) + creditos;
       // guarda só as últimas 12 semanas
       Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });

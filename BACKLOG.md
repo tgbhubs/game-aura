@@ -8,6 +8,8 @@ Melhorias anotadas para fazer juntas no próximo pacote.
 
 ## Feito recentemente
 
+- 2026-11-21a: duelos (melhor de 3, créditos ou carro, até 100 créditos); treino paga 40% sem teto (+1 a cada 15 s depois de 3 min); atributos rebalanceados (carro pago sempre melhor que o da casa; topo com seguro e pneu normal).
+
 - 2026-11-20g: recuperados Viajante 88 (Caravan preta), Serpente Roadster (Viper RT/10, pintado de verde) e Conceito Trilha (Concept 006).
 
 - 2026-11-20c: pacote do backlog — 11 carros detalhados com nomes fictícios e sem logotipos (créditos na aba Regras); showroom com os lançamentos do mês no 0 km; pedágio com free flow nas laterais e multas por evasão (treino e rodada), pagas em créditos com desconto até o vencimento e bloqueio de anúncio; Retomados Itaú e Porto com selo de origem; canal de sugestões com aba na administração; foto obrigatória no cadastro e para jogar.

@@ -3,7 +3,7 @@
 var GS = { aba: 'minha', saldo: null, carregandoSaldo: false, estoque: null, subEst: null, semana: '' };
 function nCred(n) { return (n || 0).toLocaleString('pt-BR'); }
 function fotoCat(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="gfoto" src="' + f.foto + '" alt="">' : '<div class="gfoto"></div>'; }
-function origemTxt(o, rd) { return o === 'base' ? 'Da casa' : o === 'retomado' ? 'Retomado ' + (Garagem.ORIGENS[rd] || 'Porto') : o === 'usado' ? 'Usado' : '0 km'; }
+function origemTxt(o, rd) { return o === 'base' ? 'Da casa' : o === 'retomado' ? 'Retomado ' + (Garagem.ORIGENS[rd] || 'Porto') : o === 'usado' ? 'Usado' : o === 'duelo' ? 'Ganho em duelo' : '0 km'; }
 function seloOrigem(org) { return '<span class="gselo ' + org + '">' + (org === 'itau' ? 'Itaú' : 'Porto') + '</span>'; }
 function multasPend() { return Garagem.multasPendentes(D.carteira); }
 function dataHora(ms) { return dataCurta(ms); }
@@ -13,7 +13,7 @@ function garMultas() {
   var h = '<div class="card gmulta"><div class="row between"><b>🚨 Multas pendentes</b><span class="tag">' + l.length + '</span></div><p class="small" style="margin:4px 0 8px">Evasão de pedágio: passou no free flow sem TAG. Pagando até o vencimento, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, o valor sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa não pode ser anunciado.</p>';
   l.forEach(function (m) {
     var v = Garagem.valorMulta(m, now), venc = now > m.vence, c = Garagem.CATALOGO[m.cat];
-    h += '<div class="gtr"><div style="min-width:0"><b>' + esc(c ? c.nome : 'Carro') + '</b> <span class="tiny mut">· ' + (m.origem === 'treino' ? 'treino' : 'corrida') + ' de ' + dataCurta(m.em) + '</span><br><span class="tiny ' + (venc ? 'gvenc' : 'mut') + '">' + (venc ? 'Vencida em ' + dataCurta(m.vence) : 'Vence em ' + dataCurta(m.vence) + ' · com desconto') + '</span></div>' +
+    h += '<div class="gtr"><div style="min-width:0"><b>' + esc(c ? c.nome : 'Carro') + '</b> <span class="tiny mut">· ' + (m.origem === 'treino' ? 'treino' : m.origem === 'duelo' ? 'duelo' : 'corrida') + ' de ' + dataCurta(m.em) + '</span><br><span class="tiny ' + (venc ? 'gvenc' : 'mut') + '">' + (venc ? 'Vencida em ' + dataCurta(m.vence) : 'Vence em ' + dataCurta(m.vence) + ' · com desconto') + '</span></div>' +
       '<button class="btn sm ' + (saldo >= v ? 'lar' : 'gh') + '" data-a="garPagarMulta" data-v="' + esc(m.id) + '"' + (saldo >= v ? '' : ' disabled') + '>Pagar ' + nCred(v) + '</button></div>';
   });
   return h + '</div>';
@@ -41,7 +41,7 @@ function telaGaragem() {
   var sd = GS.saldo, h = '';
   h += '<div class="card gsaldo"><div class="row between" style="align-items:flex-end"><div><div class="tiny" style="opacity:.75;letter-spacing:.06em">SEUS CRÉDITOS</div><div class="gnum">' + (sd ? nCred(sd.saldo) : '…') + '</div></div>' +
     '<button class="btn sm" style="background:rgba(255,255,255,.12);color:#fff" data-a="garExtrato">Extrato</button></div>' +
-    '<p class="small" style="opacity:.8;margin:8px 0 0">Você ganha créditos com os pontos de cada rodada (quiz + corrida), com ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e com os treinos da corrida (20% dos pontos). Os créditos acumulam para sempre.</p></div>';
+    '<p class="small" style="opacity:.8;margin:8px 0 0">Você ganha créditos com os pontos de cada rodada (quiz + corrida), com ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e com os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre.</p></div>';
   h += '<div class="seg">' + [['minha', 'Garagem'], ['0km', '0 km'], ['retomados', 'Retomados'], ['mercado', 'Mercado'], ['precos', 'Preços']].map(function (a) {
     return '<button class="' + (GS.aba === a[0] ? 'on' : '') + '" data-a="garAba" data-v="' + a[0] + '">' + a[1] + '</button>'; }).join('') + '</div>';
   h += garMultas();
@@ -59,7 +59,7 @@ function garMinha() {
     var c = Garagem.CATALOGO[x.cat], an = anuncioDe(x.key), mul = multasPend().filter(function (m) { return m.carro === x.key; }).length;
     h += '<div class="gitem' + (sel === x.key ? ' on' : '') + '">' + fotoCat(x.cat) + '<div class="ginfo"><b>' + esc(c.nome) + '</b>' + (mul ? ' <span class="tag gvenc">' + (mul === 1 ? '1 multa' : mul + ' multas') + '</span>' : '') + '<span>' + c.tipo + ' · ' + origemTxt(x.origem, x.retomadoDe) + (x.origem !== 'base' ? ' · ' + kmTxt(x.km) : '') + (x.de ? ' · era de ' + esc(x.de) : '') + '</span>' + barrasAtrMini(c.atr, x.cat) +
       (x.origem !== 'base' ? '<div style="margin-top:4px">' + selPreco(x.cat, x.km) + '</div>' : '') + '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">' + (sel === x.key ? '<span class="tag ok">Em uso</span>' : '<button class="btn sm lar" data-a="garUsar" data-v="' + esc(x.key) + '">Usar</button>') +
-      (x.origem === 'base' ? '' : an ? '<span class="tag gold">Anunciado por ' + nCred(an.preco) + '</span><button class="lnk tiny" data-a="garCancelar" data-v="' + an._id + '">Cancelar anúncio</button>' : mul ? '<span class="tiny mut">Pague a multa para anunciar</span>' : '<button class="btn sm gh" data-a="garAnunciar" data-v="' + esc(x.key) + '">Anunciar no mercado</button>') +
+      (x.origem === 'base' ? '' : an ? '<span class="tag gold">Anunciado por ' + nCred(an.preco) + '</span><button class="lnk tiny" data-a="garCancelar" data-v="' + an._id + '">Cancelar anúncio</button>' : (D.garagem && D.garagem.carros && D.garagem.carros[x.key] && D.garagem.carros[x.key].travado) ? '<span class="tag gold">⚔️ Apostado em duelo</span>' : mul ? '<span class="tiny mut">Pague a multa para anunciar</span>' : '<button class="btn sm gh" data-a="garAnunciar" data-v="' + esc(x.key) + '">Anunciar no mercado</button>') +
       '</div></div></div>';
   });
   return h + '</div>';

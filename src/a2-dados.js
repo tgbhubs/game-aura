@@ -74,6 +74,7 @@ function assinarAtivo() {
   subUser.push(B.ouvirDoc('carteira/' + S.user.uid, function (d) { var mudou = D.carteira && d && JSON.stringify(d) !== JSON.stringify(D.carteira); D.carteira = d; if (mudou && typeof atualizarSaldo === 'function') atualizarSaldo(); render(); }));
   subUser.push(B.ouvirCol('anuncios', [['status', '==', 'ativo']], function (m) { D.anuncios = m; render(); }));
   subUser.push(B.ouvirCol('treinos', null, function (m) { D.treinos = m; render(); }));
+  subUser.push(B.ouvirCol('duelos', [['uids', 'array-contains', S.user.uid]], function (m) { D.duelos = m; render(); }));
   subUser.push(B.ouvirCol('transacoes', null, function (m) { D.transacoes = m; render(); }));
   subUser.push(B.ouvirCol('mesas', [['aberta', '==', true]], function (m) { D.mesas = m; render(); if (typeof placaAtualizarLista === 'function') placaAtualizarLista(); }));
   reassinarTemporada();

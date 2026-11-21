@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-20g';
+var BUILD = '2026-11-21a';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v6';
+  var CH = 'gameicarros_demo_v7';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -136,7 +136,7 @@ function criarDemo() {
   function parte(path) { var p = path.split('/'); return { col: p[0], id: p[1] }; }
   function col(c) { if (!db.cols[c]) db.cols[c] = {}; return db.cols[c]; }
   function bate(doc, where) {
-    return (where || []).every(function (w) { var v = doc[w[0]]; if (w[1] === '==') return v === w[2]; if (w[1] === 'in') return w[2].indexOf(v) >= 0; return true; });
+    return (where || []).every(function (w) { var v = doc[w[0]]; if (w[1] === '==') return v === w[2]; if (w[1] === 'in') return w[2].indexOf(v) >= 0; if (w[1] === 'array-contains') return (v || []).indexOf(w[2]) >= 0; return true; });
   }
   function clone(o) { return o == null ? null : JSON.parse(JSON.stringify(o)); }
   function notificar(c) { setTimeout(function () { subs.forEach(function (s) { if (s.col === c) s.fire(); }); }, 0); }
@@ -267,6 +267,7 @@ function criarDemo() {
     }
     if (nome === 'placa') return demoPlaca(uid, jog, d, now);
     if (nome === 'garagem') return demoGaragem(uid, jog, d, now);
+    if (nome === 'duelo') return demoDuelo(uid, jog, d, now);
     if (nome === 'treino') {
       var tr0 = lerDoc('treinos/' + uid);
       var rt = d.op === 'iniciar' ? Garagem.iniciarTreino({ now: now, uid: uid, jog: jog, doc: tr0, carro: String(d.carro || ''), garagem: lerDoc('garagens/' + uid) })
@@ -286,6 +287,42 @@ function criarDemo() {
     var vit = Object.keys(col('placaPartidas')).filter(function (k) { var p = col('placaPartidas')[k]; return p.vencedor === uid && !p.temRobo; }).length;
     var ganhos = Garagem.ganhos(uid, plac, col('temporadas'), vit, (lerDoc('treinos/' + uid) || {}).creditos || 0), carteira = lerDoc('carteira/' + uid) || {};
     return { uid: uid, ganhos: ganhos, carteira: carteira, garagem: lerDoc('garagens/' + uid) || { carros: {} }, saldo: Garagem.saldo(ganhos, carteira) };
+  }
+  // mesmo motor dos duelos do servidor, gravando no armazenamento do demo
+  function demoDuelo(uid, jog, d, now) {
+    var ap = function (j) { return (j && (j.apelido || String(j.nome || '').split(/\s+/)[0])) || ''; };
+    var anunciados = function (u) { var a = col('anuncios'); return Object.keys(a).map(function (k) { return a[k]; }).filter(function (x) { return x.vendedor === u && x.status === 'ativo'; }).map(function (x) { return x.iid; }); };
+    var op = d.op;
+    if (op === 'desafiar') {
+      var outro = lerDoc('jogadores/' + d.para), todos = col('duelos');
+      var abertos = Object.keys(todos).map(function (k) { return todos[k]; }).filter(function (x) { return (x.uids || []).indexOf(uid) >= 0 && Garagem.duelAtivo(x); });
+      var id = 'd' + now.toString(36);
+      var r = Garagem.desafiar({ id: id, now: now, uid: uid, ap: ap(jog), para: d.para, paraAp: ap(outro), paraAtivo: !!outro && outro.status === 'ativo', aposta: d.aposta, st: demoSaldo(uid), anunciados: anunciados(uid),
+        meusAtivos: abertos.length, entreNos: abertos.some(function (x) { return x.uids.indexOf(d.para) >= 0; }) });
+      gravar('duelos/' + id, r.doc); gravar('carteira/' + uid, r.carteira); gravar('garagens/' + uid, r.garagem);
+      return { id: id };
+    }
+    var du = lerDoc('duelos/' + d.id); if (!du) Logica.erro('Duelo não encontrado.');
+    var lados = function () { return { carts: { de: lerDoc('carteira/' + du.de) || {}, para: lerDoc('carteira/' + du.para) || {} }, gars: { de: lerDoc('garagens/' + du.de) || { carros: {} }, para: lerDoc('garagens/' + du.para) || { carros: {} } } }; };
+    if (op === 'aceitar') { var ra = Garagem.aceitar({ id: d.id, now: now, uid: uid, d: du, aposta: d.aposta, st: demoSaldo(uid), anunciados: anunciados(uid) }); gravar('duelos/' + d.id, ra.doc); gravar('carteira/' + uid, ra.carteira); gravar('garagens/' + uid, ra.garagem); return { ok: true }; }
+    if (op === 'recusar' || op === 'cancelar') {
+      var rd = Garagem.desfazer({ now: now, d: du, motivo: op === 'recusar' ? 'recusado' : 'cancelado', cartDe: lerDoc('carteira/' + du.de), garDe: lerDoc('garagens/' + du.de) });
+      gravar('duelos/' + d.id, rd.doc); gravar('carteira/' + du.de, rd.carteira); gravar('garagens/' + du.de, rd.garagem); return { ok: true };
+    }
+    if (op === 'iniciar') { var ri = Garagem.iniciarDuelo({ now: now, uid: uid, d: du, n: d.n, carro: String(d.carro || ''), garagem: lerDoc('garagens/' + uid) }); gravar('duelos/' + d.id, ri.doc); return ri.resp; }
+    if (op === 'finalizar' || op === 'atualizar') {
+      var L2 = lados(), doc = du, resp = {};
+      if (op === 'finalizar') {
+        var f = Garagem.finalizarDuelo({ now: now, uid: uid, d: du, n: d.n, tempo: d.tempo }); doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
+        var lado = Garagem.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
+        if (Number(d.multas) > 0 && f.valido) { var m = Garagem.registrarMultas(L2.carts[lado], Math.min(Number(d.multas), Garagem.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now); if (m.novas) { L2.carts[lado] = m.carteira; resp.multas = m.novas; } }
+      }
+      if (doc.status === 'pendente' && now > doc.prazo) { var re = Garagem.desfazer({ now: now, d: doc, motivo: 'expirado', cartDe: L2.carts.de, garDe: L2.gars.de }); doc = re.doc; L2.carts.de = re.carteira; L2.gars.de = re.garagem; }
+      var liq = Garagem.liquidarDuelo(doc, L2.carts, L2.gars, now); if (liq) { doc = liq.doc; L2.carts = liq.carteiras; L2.gars = liq.garagens; }
+      gravar('duelos/' + d.id, doc); ['de', 'para'].forEach(function (sd) { gravar('carteira/' + doc[sd], L2.carts[sd]); gravar('garagens/' + doc[sd], L2.gars[sd]); });
+      resp.status = doc.status; resp.vencedor = doc.vencedor || ''; resp.placar = Garagem.placarDuelo(doc, now); return resp;
+    }
+    Logica.erro('Operação desconhecida.');
   }
   function demoGaragem(uid, jog, d, now) {
     var sid = Garagem.semana(now), op = d.op;
@@ -491,6 +528,14 @@ function semearDemo(db) {
     for (var q = 0; q < 3; q++) { var cq = catsN[(i * 3 + q) % catsN.length]; pcar[cq] = { t: Math.round(tg * (0.5 + r() * 0.5) * 100) / 100, em: agora - 86400000 * q }; }
     put('treinos', p[0], { uid: p[0], ap: p[2], nm: primeiroNome(p[1]), a: p[3], treinos: 3 + Math.floor(r() * 20), melhor: { t: tg, cat: cats[(i + 1) % cats.length], em: agora - 86400000 * (3 + i) }, semanas: semanas, porCarro: pcar });
   });
+  // Duelos: um desafio esperando o Diego e um duelo em andamento
+  var sd = function (n) { return (Logica.hash('duelo-demo' + n) >>> 0) || 1; };
+  put('duelos', 'dd1', { de: 'demo-ana', para: 'demo-diego', ap: { de: 'Aninha', para: 'Dieguinho' }, uids: ['demo-ana', 'demo-diego'], status: 'pendente', criadoEm: agora - 3 * 3600000, prazo: agora + 45 * 3600000,
+    aposta: { de: { tipo: 'creditos', valor: 40 }, para: null }, seeds: [], corridas: { de: [null, null, null], para: [null, null, null] }, placar: { de: 0, para: 0 }, vencedor: '' });
+  put('duelos', 'dd2', { de: 'demo-diego', para: 'demo-caio', ap: { de: 'Dieguinho', para: 'Caio' }, uids: ['demo-diego', 'demo-caio'], status: 'andamento', criadoEm: agora - 26 * 3600000, aceitoEm: agora - 20 * 3600000, prazo: agora + 28 * 3600000,
+    aposta: { de: { tipo: 'creditos', valor: 25 }, para: { tipo: 'creditos', valor: 25 } }, seeds: [sd(1), sd(2), sd(3)],
+    corridas: { de: [{ inicio: agora - 19 * 3600000, fim: agora - 19 * 3600000 + 90000, t: 84.6, cat: 'aura', carro: 'aura' }, null, null], para: [{ inicio: agora - 10 * 3600000, fim: agora - 10 * 3600000 + 70000, t: 66.2, cat: 'hatch-verde', carro: 'x' }, { inicio: agora - 9 * 3600000, fim: agora - 9 * 3600000 + 110000, t: 102.9, cat: 'hatch-verde', carro: 'x' }, null] },
+    placar: { de: 0, para: 0 }, vencedor: '' });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
     var gid = 'garagens/' + x[0], g0 = (db.cols.garagens && db.cols.garagens[x[0]]) || { carros: {}, seq: 0 };

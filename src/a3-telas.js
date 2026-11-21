@@ -160,7 +160,7 @@ function cartoesJogo(detalhado) {
   return h;
 }
 function telaInicio() {
-  var h = avisoVezPlaca();
+  var h = avisoVezPlaca() + avisoDuelo();
   if (S.me && !S.me.foto) h += '<div class="card gmulta" style="margin-top:14px"><b>📷 Falta sua foto</b><p class="small" style="margin:4px 0 8px">Para jogar, coloque uma foto: ela aparece no ranking, nas mesas e nas conquistas. É assim que o time se conhece.</p><label class="btn lar sm" style="margin:0">Escolher foto<input type="file" accept="image/*" data-c="foto" style="display:none"></label></div>';
   h += heroRodada();
   h += cartoesJogo(false);
@@ -196,10 +196,12 @@ function cartaoBadge(b, novo) {
   return '<button class="bdg' + (novo ? ' novo' : '') + '" data-a="compartilharBadge" data-v="' + esc(b.tipo + '|' + b.rid + '|' + (b.n || '')) + '"><span class="e">' + d.e + '</span><span style="flex:1"><b>' + d.t + '</b><span>' + esc(d.d) + ' · ' + onde + '</span></span><span class="tag nv">Compartilhar</span></button>';
 }
 function telaJogar() {
-  var h = heroRodada();
-  if (!rodadaAtual()) return h + '<div class="card"><h3>Sem rodada aberta agora</h3><p class="mut">Enquanto isso, que tal treinar a corrida?</p><button class="btn lar full" data-a="treino">Treinar corrida</button></div>' + secaoPlaca();
+  if (DU.tela) return telaDuelos();
+  var h = avisoDuelo() + heroRodada();
+  if (!rodadaAtual()) return h + secaoDuelos() + '<div class="card"><h3>Sem rodada aberta agora</h3><p class="mut">Enquanto isso, que tal treinar a corrida?</p><button class="btn lar full" data-a="treino">Treinar corrida</button></div>' + secaoPlaca();
   h += cartoesJogo(true);
   h += secaoPlaca();
+  h += secaoDuelos();
   h += '<div class="card"><h3>Como pontua</h3><p class="small mut" style="margin:0">Cada etapa vale até <b>100 pontos</b>. No quiz, 10 por acerto. Na corrida, os pontos vêm do seu melhor tempo: 30 s ≈ 53 · 60 s ≈ 78 · 90 s ≈ 89 · 120 s ≈ 95. A rodada vale até 200.</p></div>';
   return h;
 }
@@ -420,7 +422,8 @@ function telaRegras() {
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
     '<p class="small mut">Conquistas de rodada aparecem quando a rodada fecha (domingo 23:59), exceto Gabaritou, Piloto de Ouro e Combo Perfeito, que saem na hora. Toque numa conquista para compartilhar a imagem.</p>' +
-    '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (20% dos pontos). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo de ' + Garagem.LOTE + ' carros com desconto toda segunda; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
+    '<h4>⚔️ Duelos</h4><ul><li>Desafie alguém numa <b>melhor de 3 corridas</b>, cada um no seu tempo (até 48 h depois do aceite), com as mesmas pistas para os dois.</li><li>Cada lado aposta de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ' créditos ou um carro (não vale carro da casa, anunciado ou com multa). Quem vencer 2 corridas leva as duas apostas; empate decide na soma dos tempos.</li><li>Valem os atributos do carro e as multas do free flow. Corrida não feita no prazo vale 0.</li></ul>' +
+    '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo de ' + Garagem.LOTE + ' carros com desconto toda segunda; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
     '<h4 id="regras-placa">🃏 Placa!</h4><ul><li>Jogo de cartas online, de 2 a 6 pessoas. Crie uma mesa na aba Jogar ou entre numa mesa aberta. Uma mão = uma partida.</li>' +
     '<li>Baralho de 108 cartas em 4 cores (laranja, azul, verde e vermelho): números de 0 a 9, <b>Pedágio</b> (o próximo perde a vez), <b>Retorno</b> (inverte o sentido), <b>Guincho +2</b>, <b>Seguro</b> (curinga: escolhe a cor) e <b>Seguro Total +4</b> (curinga: escolhe a cor e o próximo compra 4 e perde a vez).</li>' +
     '<li>Cada pessoa começa com 7 cartas. Na sua vez, jogue uma carta da mesma cor, número ou símbolo da carta da mesa. Sem jogada, compre 1: se servir, pode jogá-la na hora.</li>' +

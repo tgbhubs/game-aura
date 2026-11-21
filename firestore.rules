@@ -69,6 +69,8 @@ service cloud.firestore {
     match /transacoes/{id} { allow read: if isAtivo(); allow write: if false; }
     // Treinos: recordes gravados só pelo servidor (Cloud Function "treino")
     match /treinos/{uid} { allow read: if isAtivo(); allow write: if false; }
+    // Duelos: convite, apostas, corridas e prêmio gravados só pelo servidor (Cloud Function "duelo")
+    match /duelos/{id} { allow read: if isAtivo(); allow write: if false; }
     // sugestões, melhorias e problemas: a própria pessoa cria; só a administração lê tudo e muda o status
     match /sugestoes/{id} {
       allow create: if isAtivo() && id.matches(request.auth.uid + '_[0-9]+')

@@ -252,6 +252,7 @@ var A = {
   fecharCorrida: function () {
     if (CR && CR.fase === 'jogo' && CR.motor) {
       if (CR.treino) { fecharOv(); return; }
+      if (CR.duelo) { abrirConfirma('Encerrar esta corrida do duelo?', 'O tempo até aqui fica registrado e a corrida conta como feita.', 'Encerrar', function () { if (CR && CR.motor) CR.motor.abortar(); }, true); return; }
       abrirConfirma('Encerrar a tentativa?', 'O tempo até aqui fica registrado e a tentativa conta como usada.', 'Encerrar', function () { if (CR && CR.motor) CR.motor.abortar(); }, true);
     } else if (CR && CR.fase === 'salvando') toast('Aguarde, registrando seu tempo…');
     else fecharOv();
@@ -360,9 +361,10 @@ var A = {
 };
 Object.keys(A_PLACA).forEach(function (k) { A[k] = A_PLACA[k]; });
 Object.keys(A_GAR).forEach(function (k) { A[k] = A_GAR[k]; });
+Object.keys(A_DUELO).forEach(function (k) { A[k] = A_DUELO[k]; });
 // foto obrigatória para jogar: o objetivo é interação, todo mundo precisa ser reconhecível no ranking e nas mesas
 function DEMO_SEM_FOTO() { return typeof DEMO !== 'undefined' && DEMO && !S.testeFoto; }
-var ACOES_JOGO = { quiz: 1, corrida: 1, treino: 1, irCorrida: 1, paraValendo: 1, treinoDaqui: 1, comecarQuiz: 1, iniciarCorrida: 1, placaCriar: 1, placaCriarN: 1, placaCriarRobo: 1, placaEntrar: 1 };
+var ACOES_JOGO = { quiz: 1, corrida: 1, treino: 1, irCorrida: 1, paraValendo: 1, treinoDaqui: 1, comecarQuiz: 1, iniciarCorrida: 1, placaCriar: 1, placaCriarN: 1, placaCriarRobo: 1, placaEntrar: 1, duelDesafiar: 1, duelAceitar: 1, duelCorrer: 1 };
 function pedirFoto() {
   abrirModal('<div id="modalFoto"><h3>Coloque uma foto para jogar 📷</h3><p class="mut small">O Game Aura é para o time se conhecer: sua foto aparece no ranking, nas mesas do Placa! e nas conquistas. Escolha uma foto em que dê para ver seu rosto.</p>' +
     '<div class="mact"><button class="btn gh" data-a="fecharModal">Agora não</button><label class="btn lar" style="margin:0">Escolher foto<input type="file" accept="image/*" data-c="foto" style="display:none"></label></div></div>');

@@ -139,7 +139,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
-  var ATR = (CR && CR.treino) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro só valem no treino
+  var ATR = (CR && (CR.treino || CR.duelo)) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro valem no treino e nos duelos
   var COR_EU = SEL.cor == null ? 0x3A3F4B : SEL.cor;
   function hexCss(n, f) { var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; f = f || 1; return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')'; }
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
