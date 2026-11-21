@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-21b';
+var BUILD = '2026-11-21d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v7';
+  var CH = 'gameicarros_demo_v8';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -536,6 +536,16 @@ function semearDemo(db) {
     aposta: { de: { tipo: 'creditos', valor: 25 }, para: { tipo: 'creditos', valor: 25 } }, seeds: [sd(1), sd(2), sd(3)],
     corridas: { de: [{ inicio: agora - 19 * 3600000, fim: agora - 19 * 3600000 + 90000, t: 84.6, cat: 'aura', carro: 'aura' }, null, null], para: [{ inicio: agora - 10 * 3600000, fim: agora - 10 * 3600000 + 70000, t: 66.2, cat: 'hatch-verde', carro: 'x' }, { inicio: agora - 9 * 3600000, fim: agora - 9 * 3600000 + 110000, t: 102.9, cat: 'hatch-verde', carro: 'x' }, null] },
     placar: { de: 0, para: 0 }, vencedor: '' });
+  // Duelos já encerrados (para o ranking e as conquistas da demo)
+  var nomesD = { 'demo-ana': 'Aninha', 'demo-caio': 'Caio', 'demo-diego': 'Dieguinho', 'demo-leo': 'Léo', 'demo-bruna': 'Bru', 'demo-joao': 'Jão' };
+  [['demo-diego', 'demo-leo', 'de', [1, 1, 0], 30, 30, null], ['demo-ana', 'demo-diego', 'para', [0, 1, 1], 50, 40, null], ['demo-diego', 'demo-bruna', 'de', [1, 1, -1], 100, 20, null],
+   ['demo-caio', 'demo-joao', 'de', [1, 0, 1], 25, 0, 'hatch-branco'], ['demo-leo', 'demo-ana', 'para', [1, 0, 0], 15, 15, null], ['demo-joao', 'demo-diego', 'de', [1, 1, -1], 20, 20, null]].forEach(function (x, i) {
+    var fimEm = agora - (6 - i) * 86400000 + 3600000, w = x[2], l = w === 'de' ? 'para' : 'de';
+    var venc = x[3].filter(function (v) { return v >= 0; }).map(function (v) { return v === 1 ? w : l; });
+    var pl = { de: venc.filter(function (v) { return v === 'de'; }).length, para: venc.filter(function (v) { return v === 'para'; }).length };
+    put('duelos', 'df' + i, { de: x[0], para: x[1], ap: { de: nomesD[x[0]], para: nomesD[x[1]] }, uids: [x[0], x[1]], status: 'fim', criadoEm: fimEm - 2 * 86400000, aceitoEm: fimEm - 1.5 * 86400000, prazo: fimEm + 86400000, fimEm: fimEm,
+      aposta: { de: { tipo: 'creditos', valor: x[4] }, para: x[6] ? { tipo: 'carro', iid: 'x', cat: x[6] } : { tipo: 'creditos', valor: x[5] || 10 } }, seeds: [1, 2, 3], corridas: { de: [null, null, null], para: [null, null, null] }, placar: pl, venceu: venc.concat(['', '', '']).slice(0, 3), vencedor: x[w === 'de' ? 0 : 1] });
+  });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
     var gid = 'garagens/' + x[0], g0 = (db.cols.garagens && db.cols.garagens[x[0]]) || { carros: {}, seq: 0 };

@@ -339,6 +339,11 @@ span.pc{display:flex}
 .rkc-rec .av{width:22px;height:22px;font-size:10px}
 .rkc-lista{padding:0 14px 8px;border-top:1px solid var(--line)}
 .dvez{margin-top:12px}
+.seg.seg6{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.seg.seg6 button{min-width:0}
+.dstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.dstats>div{background:#F7F4EC;border-radius:10px;padding:8px;text-align:center;min-width:0}
+.dstats b{display:block;font:900 18px Montserrat,sans-serif;color:var(--navy)}
+.dstats span{font-size:11px;color:var(--mut)}
 .dcard{border:1.5px solid #F5D08A}
 .dduel{margin-bottom:10px}
 .dplacar{font:900 26px Montserrat,sans-serif;color:var(--navy);white-space:nowrap}
@@ -1468,7 +1473,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-21b';
+var BUILD = '2026-11-21d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1586,7 +1591,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v7';
+  var CH = 'gameicarros_demo_v8';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -1994,6 +1999,16 @@ function semearDemo(db) {
     aposta: { de: { tipo: 'creditos', valor: 25 }, para: { tipo: 'creditos', valor: 25 } }, seeds: [sd(1), sd(2), sd(3)],
     corridas: { de: [{ inicio: agora - 19 * 3600000, fim: agora - 19 * 3600000 + 90000, t: 84.6, cat: 'aura', carro: 'aura' }, null, null], para: [{ inicio: agora - 10 * 3600000, fim: agora - 10 * 3600000 + 70000, t: 66.2, cat: 'hatch-verde', carro: 'x' }, { inicio: agora - 9 * 3600000, fim: agora - 9 * 3600000 + 110000, t: 102.9, cat: 'hatch-verde', carro: 'x' }, null] },
     placar: { de: 0, para: 0 }, vencedor: '' });
+  // Duelos já encerrados (para o ranking e as conquistas da demo)
+  var nomesD = { 'demo-ana': 'Aninha', 'demo-caio': 'Caio', 'demo-diego': 'Dieguinho', 'demo-leo': 'Léo', 'demo-bruna': 'Bru', 'demo-joao': 'Jão' };
+  [['demo-diego', 'demo-leo', 'de', [1, 1, 0], 30, 30, null], ['demo-ana', 'demo-diego', 'para', [0, 1, 1], 50, 40, null], ['demo-diego', 'demo-bruna', 'de', [1, 1, -1], 100, 20, null],
+   ['demo-caio', 'demo-joao', 'de', [1, 0, 1], 25, 0, 'hatch-branco'], ['demo-leo', 'demo-ana', 'para', [1, 0, 0], 15, 15, null], ['demo-joao', 'demo-diego', 'de', [1, 1, -1], 20, 20, null]].forEach(function (x, i) {
+    var fimEm = agora - (6 - i) * 86400000 + 3600000, w = x[2], l = w === 'de' ? 'para' : 'de';
+    var venc = x[3].filter(function (v) { return v >= 0; }).map(function (v) { return v === 1 ? w : l; });
+    var pl = { de: venc.filter(function (v) { return v === 'de'; }).length, para: venc.filter(function (v) { return v === 'para'; }).length };
+    put('duelos', 'df' + i, { de: x[0], para: x[1], ap: { de: nomesD[x[0]], para: nomesD[x[1]] }, uids: [x[0], x[1]], status: 'fim', criadoEm: fimEm - 2 * 86400000, aceitoEm: fimEm - 1.5 * 86400000, prazo: fimEm + 86400000, fimEm: fimEm,
+      aposta: { de: { tipo: 'creditos', valor: x[4] }, para: x[6] ? { tipo: 'carro', iid: 'x', cat: x[6] } : { tipo: 'creditos', valor: x[5] || 10 } }, seeds: [1, 2, 3], corridas: { de: [null, null, null], para: [null, null, null] }, placar: pl, venceu: venc.concat(['', '', '']).slice(0, 3), vencedor: x[w === 'de' ? 0 : 1] });
+  });
   // Garagem: algumas pessoas fictícias já compraram carros e anunciaram no mercado
   [['demo-ana', 'suv-porto', 0, 620], ['demo-caio', 'hatch-verde', 35000, 260], ['demo-bruna', 'picape-laranja', 52000, 540], ['demo-ana', 'sedan-prata', 61000, 230]].forEach(function (x, i) {
     var gid = 'garagens/' + x[0], g0 = (db.cols.garagens && db.cols.garagens[x[0]]) || { carros: {}, seq: 0 };
@@ -2093,7 +2108,8 @@ function assinarAtivo() {
   subUser.push(B.ouvirDoc('carteira/' + S.user.uid, function (d) { var mudou = D.carteira && d && JSON.stringify(d) !== JSON.stringify(D.carteira); D.carteira = d; if (mudou && typeof atualizarSaldo === 'function') atualizarSaldo(); render(); }));
   subUser.push(B.ouvirCol('anuncios', [['status', '==', 'ativo']], function (m) { D.anuncios = m; render(); }));
   subUser.push(B.ouvirCol('treinos', null, function (m) { D.treinos = m; render(); }));
-  subUser.push(B.ouvirCol('duelos', [['uids', 'array-contains', S.user.uid]], function (m) { D.duelos = m; render(); }));
+  // todos os duelos (são poucos): os meus para jogar e os encerrados para o ranking e as conquistas
+  subUser.push(B.ouvirCol('duelos', null, function (m) { D.duelos = m; render(); }));
   subUser.push(B.ouvirCol('transacoes', null, function (m) { D.transacoes = m; render(); }));
   subUser.push(B.ouvirCol('mesas', [['aberta', '==', true]], function (m) { D.mesas = m; render(); if (typeof placaAtualizarLista === 'function') placaAtualizarLista(); }));
   reassinarTemporada();
@@ -2138,6 +2154,48 @@ BADGES.placaSequencia = { e: '🔥', t: 'Sequência', d: 'Venceu 3 partidas de P
 BADGES.placaGuincheiro = { e: '🚛', t: 'Guincheiro', d: 'Fez alguém comprar 8 ou mais com Guincho acumulado' };
 BADGES.placaSegurado = { e: '🛡️', t: 'Segurado', d: 'Venceu jogando um Seguro como última carta' };
 BADGES.placaFiscal = { e: '👮', t: 'Fiscal', d: 'Aplicou 5 multas de "Placa!" na temporada' };
+BADGES.duelPrimeiro = { e: '⚔️', t: 'Primeiro duelo', d: 'Venceu o primeiro duelo na temporada' };
+BADGES.duelImbativel = { e: '🗡️', t: 'Imbatível', d: 'Venceu 3 duelos seguidos' };
+BADGES.duelDuelista = { e: '🏅', t: 'Duelista', d: 'Venceu 5 duelos na temporada' };
+BADGES.duelVarrida = { e: '🧹', t: 'Varrida', d: 'Venceu um duelo por 2 a 0' };
+BADGES.duelVirada = { e: '🔄', t: 'Virada no duelo', d: 'Perdeu a primeira corrida e venceu o duelo' };
+BADGES.duelChave = { e: '🔑', t: 'Tomou a chave', d: 'Ganhou um carro num duelo' };
+BADGES.duelTudo = { e: '💰', t: 'Tudo ou nada', d: 'Venceu um duelo em que o outro apostou 100 créditos' };
+var ORDEM_DUELO = ['duelPrimeiro', 'duelImbativel', 'duelDuelista', 'duelVarrida', 'duelVirada', 'duelChave', 'duelTudo'];
+// ranking, estatísticas e conquistas dos duelos encerrados na temporada
+function calcDuelos(tid) {
+  var t = D.temporadas && D.temporadas[tid], ini = t ? t.inicio : 0, fim = t ? t.inicio + (t.semanas || 0) * 7 * 86400000 : Infinity;
+  var lista = Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; })
+    .filter(function (d) { return d.status === 'fim' && d.fimEm >= ini && d.fimEm < fim; }).sort(function (a, b) { return a.fimEm - b.fimEm; });
+  var por = {}, badges = {};
+  function add(uid, tipo, d) { (badges[uid] = badges[uid] || []).push({ tipo: tipo, rid: 'duelo|' + d._id, n: null, tid: tid }); }
+  function px(uid, ap) { var x = por[uid] = por[uid] || { uid: uid, ap: ap, duelos: 0, vitorias: 0, derrotas: 0, empates: 0, creditos: 0, carrosGanhos: 0, carrosPerdidos: 0, seq: 0, maiorSeq: 0, varridas: 0, viradas: 0 }; x.ap = ap || x.ap; return x; }
+  lista.forEach(function (d) {
+    ['de', 'para'].forEach(function (lado) {
+      var o = lado === 'de' ? 'para' : 'de', uid = d[lado], x = px(uid, d.ap[lado]);
+      x.duelos++;
+      if (!d.vencedor) { x.empates++; x.seq = 0; return; }
+      if (d.vencedor === uid) {
+        x.vitorias++; x.seq++; x.maiorSeq = Math.max(x.maiorSeq, x.seq);
+        var ap = d.aposta[o];
+        if (ap.tipo === 'carro') { x.carrosGanhos++; add(uid, 'duelChave', d); } else { x.creditos += ap.valor; if (ap.valor >= 100) add(uid, 'duelTudo', d); }
+        if (x.vitorias === 1) add(uid, 'duelPrimeiro', d);
+        if (x.seq === 3) add(uid, 'duelImbativel', d);
+        if (x.vitorias === 5) add(uid, 'duelDuelista', d);
+        if (d.placar && d.placar[lado] === 2 && d.placar[o] === 0) { x.varridas++; add(uid, 'duelVarrida', d); }
+        if (d.venceu && d.venceu[0] === o) { x.viradas++; add(uid, 'duelVirada', d); }
+      } else {
+        x.derrotas++; x.seq = 0;
+        var mp = d.aposta[lado];
+        if (mp.tipo === 'carro') x.carrosPerdidos++; else x.creditos -= mp.valor;
+      }
+    });
+  });
+  var arr = Object.keys(por).map(function (k) { var x = por[k]; x.taxa = x.duelos ? x.vitorias / x.duelos : 0; return x; });
+  arr.sort(function (a, b) { return b.vitorias - a.vitorias || b.taxa - a.taxa || b.creditos - a.creditos || (a.ap || '').localeCompare(b.ap || ''); });
+  arr.forEach(function (x, i) { var p = arr[i - 1]; x.pos = (p && p.vitorias === x.vitorias && p.taxa === x.taxa && p.creditos === x.creditos) ? p.pos : i + 1; });
+  return { ranking: arr, por: por, badges: badges, duelos: lista };
+}
 var ORDEM_PLACA = ['placaPrimeira', 'placaSequencia', 'placaGuincheiro', 'placaSegurado', 'placaFiscal'];
 var PLACA_MIN = 5;
 // ranking e conquistas do Placa! (separados do quiz e da corrida)
@@ -2255,7 +2313,7 @@ function badgeChave(b) { return b.tipo + '|' + b.rid; }
 function meusBadges() {
   var tid = tempAtivaId(); if (!tid || !S.user) return [];
   var res = calcTemporada(tid);
-  var l = (res.badges[S.user.uid] || []).concat(calcPlaca(tid).badges[S.user.uid] || []);
+  var l = (res.badges[S.user.uid] || []).concat(calcPlaca(tid).badges[S.user.uid] || []).concat(calcDuelos(tid).badges[S.user.uid] || []);
   l.sort(function (a, b) { return (b.n || 99) - (a.n || 99) || ORDEM_BADGES.indexOf(a.tipo) - ORDEM_BADGES.indexOf(b.tipo); });
   return l;
 }
@@ -2505,10 +2563,11 @@ function telaRanking() {
     temps.forEach(function (k) { h += '<option value="' + k + '"' + (k === tid ? ' selected' : '') + '>' + esc(D.temporadas[k].nome) + '</option>'; });
     h += '</select>';
   }
-  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa', 'treino'].map(function (m) {
-    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino' }[m] + '</button>';
+  h += '<div class="seg seg6">' + ['rodada', 'temporada', 'areas', 'placa', 'treino', 'duelos'].map(function (m) {
+    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino', duelos: 'Duelos' }[m] + '</button>';
   }).join('') + '</div>';
   if (S.rankModo === 'placa') return h + rankingPlaca(tid);
+  if (S.rankModo === 'duelos') return h + rankingDuelos(tid);
   if (S.rankModo === 'treino') return h + rankingTreino();
   var iniciadas = res.rods.filter(function (r) { return Date.now() >= r.inicio; });
   if (!iniciadas.length) return h + '<div class="empty">A primeira rodada ainda não começou.</div>';
@@ -2574,6 +2633,24 @@ function rankingTreino() {
   h += '</div>';
   S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
   if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+// ranking de duelos da temporada: vitórias, aproveitamento e saldo de créditos
+function rankingDuelos(tid) {
+  var r = calcDuelos(tid), uid = S.user.uid;
+  var h = '<p class="small mut">Duelos encerrados nesta temporada. Ordem: vitórias, aproveitamento e saldo de créditos nas apostas.</p>';
+  if (!r.ranking.length) return h + '<div class="empty">Nenhum duelo terminou ainda. <button class="lnk" data-a="duelos">Desafie alguém</button></div>';
+  r.ranking.forEach(function (x) {
+    var j = jogDe(x.uid, { uid: x.uid, ap: x.ap });
+    var sub = x.vitorias + 'V ' + x.derrotas + 'D' + (x.empates ? ' ' + x.empates + 'E' : '') + ' · ' + Math.round(x.taxa * 100) + '% · ' + (x.creditos > 0 ? '+' : '') + nCred(x.creditos) + ' cr' + (x.carrosGanhos ? ' · 🔑' + x.carrosGanhos : '') + (x.seq >= 2 ? ' · 🔥' + x.seq : '');
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + x.pos + '">' + x.pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + sub + '</span></div><div class="pt">' + x.vitorias + '<small>vitórias</small></div></div>';
+  });
+  var ult = r.duelos.slice(-5).reverse();
+  h += '<div class="sec">Últimos duelos</div>';
+  ult.forEach(function (d) {
+    var w = d.vencedor ? (d.vencedor === d.de ? 'de' : 'para') : '', l = w === 'de' ? 'para' : 'de';
+    h += '<div class="card" style="padding:10px 14px;margin-bottom:8px"><div class="small">' + (w ? '<b>' + esc(d.ap[w]) + '</b> venceu <b>' + esc(d.ap[l]) + '</b> por ' + d.placar[w] + '×' + d.placar[l] + ' e levou ' + esc(Garagem.apostaTxt(d.aposta[l])) : 'Empate entre <b>' + esc(d.ap.de) + '</b> e <b>' + esc(d.ap.para) + '</b>') + '</div><div class="tiny mut">' + fmtDia(d.fimEm) + '</div></div>';
+  });
   return h;
 }
 // miniatura do carro (foto do catálogo) para listas
@@ -2664,6 +2741,13 @@ function telaPerfil() {
     h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
   });
   h += '</div>';
+  var rtd = retrospectoDuelos(uid);
+  h += '<div class="sec">Duelos</div>' + (rtd ? '<div class="card">' + rtd + '</div>' : '') + '<div class="bgrid">';
+  ORDEM_DUELO.forEach(function (t) {
+    var d = BADGES[t];
+    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
+  });
+  h += '</div>';
   if (mb.length) { h += '<div style="margin-top:8px">'; mb.forEach(function (b) { h += cartaoBadge(b, false); }); h += '</div>'; }
   // histórico
   var tid = tempAtivaId();
@@ -2710,6 +2794,7 @@ function telaRegras() {
     '<li>Sem limite de tempo por jogada. Qualquer um pode pausar. Encerrar antes só com o aceite de todos (e não conta no ranking). Se alguém ficar 10 minutos sem jogar na vez dele, a mesa pode votar para remover a pessoa; as cartas dela voltam para o monte.</li>' +
     '<li><b>Robôs:</b> dá para jogar só contra robôs ou completar os lugares vazios da sua mesa com eles. Partidas com robô não contam para o ranking nem para as conquistas.</li>' +
     '<li><b>Ranking do Placa!:</b> vitórias na temporada, com desempate pela taxa de vitória. Entra quem jogou pelo menos 5 partidas.</li></ul>' +
+    '<p class="small">Conquistas dos duelos: ' + ORDEM_DUELO.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
     '<p class="small">Conquistas do Placa!: ' + ORDEM_PLACA.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
     '<h4>🚗 Créditos dos carros 3D</h4><p class="small">Modelos do Sketchfab, adaptados para o jogo (otimizados, sem logotipos e com nomes fictícios).</p><ul class="small"><li>Cyberpunk: <a href="https://sketchfab.com/3d-models/cyberpunk-car-b4301ff99d214d16a7a43708a5866bf0" target="_blank" rel="noopener">modelo de 4d_Bob</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Conceito: <a href="https://sketchfab.com/3d-models/free-concept-car-004-public-domain-cc0-4cba124633eb494eadc3bb0c4660ad7e" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Conceito Neon: <a href="https://sketchfab.com/3d-models/free-ai-based-conceptcar-050-public-domain-cc0-3f7a98a53efe48068adddf0c0f3ddbae" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Touro SV: <a href="https://sketchfab.com/3d-models/1995-lamborghini-diablo-sv-21d606803a6442ce8877baee15547ed7" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Veloce Pista: <a href="https://sketchfab.com/3d-models/ferrari-488-pista-090fbbb80e3f48ed9c4be915d65c2adf" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Gran Turismo: <a href="https://sketchfab.com/3d-models/maserati-alfieri-dd37cab4fe8644cc9808008a47565195" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Asa de Gaivota: <a href="https://sketchfab.com/3d-models/mercedes-benz-sls-amg-coupe-black-series-d306a599cc014b07a75e20b440635414" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Felino X: <a href="https://sketchfab.com/3d-models/2013-jaguar-c-x75-20caf150bb0444909c65b57217aa46f6" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Monoposto F: <a href="https://sketchfab.com/3d-models/2027-formula-1-car-900b2d93db1b4fd7bfce436067e25287" target="_blank" rel="noopener">modelo de Abu Saif</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente GTS: <a href="https://sketchfab.com/3d-models/1996-dodge-viper-gts-sr2-2a125eb8b25e4a249aab9db8e465274a" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Besouro: <a href="https://sketchfab.com/3d-models/beetlefusca-version-1-cb6e82e73386448fb3b4e2dd25255a5e" target="_blank" rel="noopener">modelo de soujagah</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Perua Retrô: <a href="https://sketchfab.com/3d-models/volkswagen-kombi-micro-bus-d34fd744db1c4f84ad40c854ddbff9e9" target="_blank" rel="noopener">modelo de winterborn</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Viajante 88: <a href="https://sketchfab.com/3d-models/80s90s-chevrolet-caravan-c77c570538d6499ca6b6f97bc9b01f21" target="_blank" rel="noopener">modelo de coptrum</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente Roadster: <a href="https://sketchfab.com/3d-models/dodge-viper-rt10-sr1-f09fc27ddbe1488da79e82fd669c57de" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (cor alterada)</li><li>Conceito Trilha: <a href="https://sketchfab.com/3d-models/free-concept-car-006-public-domain-cc0-a4e19bb6e6394c4a95d4319ef7d265ba" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Diplomata 87: <a href="https://sketchfab.com/3d-models/chevrolet-opala-diplomata-87-a704d368afce4f9cae6c2a26dcc0a9ff" target="_blank" rel="noopener">modelo de Ynklar</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li></ul>' +
     '<h4>🤝 Espírito do jogo</h4><p>É um jogo de integração. Nada de pesquisar respostas ou trocar gabarito: a graça é descobrir junto.</p></div>';
@@ -2993,6 +3078,14 @@ function meusCarros() {
   return l;
 }
 function carroPreferido() { var c = lerLS('gi_carro', 'aura'); return meusCarros().some(function (x) { return x.key === c; }) ? c : 'aura'; }
+// Poder Aura: o "a" do logo em três cores (mesmo efeito do Seguro Porto), a partir do nível 10
+var IMG_AURA = (function () { var i = new Image(); i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ICONE_SVG); return i; })();
+function desenharPoderAura(ctx, x, y, tam) {
+  ctx.save(); ctx.shadowColor = '#FF8A3C'; ctx.shadowBlur = 18;
+  if (IMG_AURA.complete && IMG_AURA.naturalWidth) ctx.drawImage(IMG_AURA, x - tam / 2, y - tam / 2, tam, tam);
+  else { ctx.fillStyle = '#14235E'; ctx.beginPath(); ctx.arc(x, y, tam / 2, 0, 7); ctx.fill(); ctx.fillStyle = '#FF6200'; ctx.font = '900 ' + Math.round(tam * 0.6) + 'px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('a', x, y); }
+  ctx.restore();
+}
 function carroSel(key) {
   key = key || carroPreferido();
   var x = meusCarros().filter(function (y) { return y.key === key; })[0] || { key: 'aura', cat: 'aura' };
@@ -3088,7 +3181,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
   var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3;
-  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40], cap: [92, 150] };
+  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aura: [42, 42], aviso: [400, 40], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
   var ATR = (CR && (CR.treino || CR.duelo)) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro valem no treino e nos duelos
@@ -3098,7 +3191,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
-    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
+    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
     pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
@@ -3142,6 +3235,11 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var z = rnd();
     if (s.t > 6 && s.t - s.ultSeguro > 18 + 10 * ex && z < 0.14) { s.ultSeguro = s.t; add('seguro', livres[Math.floor(rnd() * livres.length)], d + 170); }
     else if (z > 0.91) add('tag', livres[Math.floor(rnd() * livres.length)], d + 170);
+    // Poder Aura a partir do nível 10 (sorteio próprio, sem mudar o resto da pista)
+    if (nivel(s.t) >= 10 && s.t - s.ultAura > 14 && livres.length) {
+      var ha = (Logica.hash('aura|' + seed + '|' + Math.round(d)) >>> 0) / 4294967296;
+      if (ha < 0.16) { s.ultAura = s.t; add('aura', livres[Math.floor(ha * 1e6) % livres.length], d + 90); }
+    }
   }
   function passo(dt) {
     s.t += dt;
@@ -3180,6 +3278,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         continue;
       }
       if (o.tipo === 'tag') { o.pego = true; if (s.tags < MAX_TAGS) { s.tags++; s.msg = { txt: 'Tag: +1 mensalidade (' + s.tags + ')', cor: '#9FD3FF', ate: s.t + 1.1 }; } else s.msg = { txt: 'Tag em dia (' + MAX_TAGS + ' mensalidades)', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
+      if (o.tipo === 'aura') {
+        o.pego = true; som('seguro');
+        if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Poder Aura: +1 vida', cor: '#FFB27A', ate: s.t + 1.4 }; }
+        else s.msg = { txt: 'Escudos já no máximo', cor: '#FFB27A', ate: s.t + 1 };
+        continue;
+      }
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
@@ -3708,6 +3812,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
             ctx.fillStyle = '#9CC9FF'; ctx.fillRect(bx + 8, py - 14, 42, 10);
           });
         }
+      } else if (o.tipo === 'aura') {
+        var cya = bot - o.h / 2, pa = 1 + Math.sin(s.t * 8) * 0.09;
+        ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx + 8, cya + 14, 19, 10, 0, 0, 7); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.translate(cx, cya); ctx.scale(pa, pa); ctx.rotate(Math.sin(s.t * 3) * 0.12); desenharPoderAura(ctx, 0, 0, 42); ctx.restore();
       } else if (o.tipo === 'tag' || o.tipo === 'seguro') {
         var cy3 = bot - o.h / 2, pul = 1 + Math.sin(s.t * 7) * 0.07;
         ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx + 8, cy3 + 12, 18, 10, 0, 0, 7); ctx.fill(); ctx.restore();
@@ -4053,6 +4161,8 @@ function criar3DReal(E) {
 
   // ---------- objetos da pista ----------
   var texTag = canvasTex(128, 96, function (g, w, h) { g.fillStyle = '#14235E'; rr(g, 4, 4, w - 8, h - 8, 16); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke(); g.fillStyle = '#EC7000'; g.font = '900 44px Montserrat, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAG', w / 2, h / 2 + 2); });
+  var texAura = canvasTex(160, 160, function (g, w, h) { desenharPoderAura(g, w / 2, h / 2, 132); });
+  if (!(IMG_AURA.complete && IMG_AURA.naturalWidth)) IMG_AURA.addEventListener('load', function () { var c = texAura.image, g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); desenharPoderAura(g, c.width / 2, c.height / 2, 132); texAura.needsUpdate = true; });
   var texSeg = canvasTex(128, 160, function (g, w, h) {
     g.save(); g.translate(w / 2, 62); g.scale(3.3, 3.3); g.beginPath(); g.moveTo(0, -15); g.lineTo(12, -10); g.lineTo(12, 0); g.quadraticCurveTo(12, 11, 0, 16); g.quadraticCurveTo(-12, 11, -12, 0); g.lineTo(-12, -10); g.closePath();
     g.fillStyle = '#499EF2'; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.6; g.stroke(); g.beginPath(); g.moveTo(-5, 0); g.lineTo(-1, 5); g.lineTo(6, -5); g.lineWidth = 2.4; g.lineCap = 'round'; g.stroke(); g.restore();
@@ -4122,6 +4232,10 @@ function criar3DReal(E) {
         });
         g.add(praca);
       }
+    } else if (o.tipo === 'aura') {
+      var sa = new T.Sprite(new T.SpriteMaterial({ map: texAura, transparent: true, depthWrite: false }));
+      sa.scale.set(1.45, 1.45, 1); sa.position.y = 1.1; g.add(sa); g.userData.sp = sa;
+      var ga = brilho(0xFF8A3C, 2.9); ga.position.y = 1.1; g.add(ga); g.userData.gl = ga;
     } else if (o.tipo === 'tag' || o.tipo === 'seguro') {
       var sp = new T.Sprite(new T.SpriteMaterial({ map: o.tipo === 'tag' ? texTag : texSeg, transparent: true, depthWrite: false }));
       if (o.tipo === 'tag') sp.scale.set(1.3, 0.98, 1); else sp.scale.set(1.25, 1.56, 1);
@@ -4815,7 +4929,13 @@ var A_GAR = {
    Quem desafia escolhe a pessoa e a aposta (créditos ou um carro); quem aceita escolhe a sua.
    As 3 pistas são as mesmas para os dois, valem os atributos do carro e quem vencer 2 leva tudo. */
 var DU = { tela: false, vistos: {}, atualizados: {} };
-function duelosLista() { return Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; }); }
+function duelosLista() { var u = S.user.uid; return Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; }).filter(function (d) { return (d.uids || []).indexOf(u) >= 0; }); }
+// retrospecto na temporada (estatísticas dos duelos encerrados)
+function retrospectoDuelos(uid) {
+  var tid = tempAtivaId(); if (!tid) return '';
+  var x = calcDuelos(tid).por[uid]; if (!x) return '';
+  return '<div class="dstats"><div><b>' + x.vitorias + '</b><span>vitórias</span></div><div><b>' + x.derrotas + '</b><span>derrotas</span></div><div><b>' + Math.round(x.taxa * 100) + '%</b><span>aproveitamento</span></div><div><b>' + (x.creditos > 0 ? '+' : '') + nCred(x.creditos) + '</b><span>créditos</span></div><div><b>' + x.carrosGanhos + '</b><span>carros ganhos</span></div><div><b>' + x.maiorSeq + '</b><span>maior sequência</span></div></div>';
+}
 function meuLado(d) { return Garagem.lado(d, S.user.uid); }
 function advDe(d) { var l = meuLado(d), o = Garagem.outro(l); return { uid: d[o], ap: d.ap[o], lado: o }; }
 function prazoTxt(ms) { var h = Math.max(0, Math.round((ms - Date.now()) / 3600000)); return h >= 24 ? Math.floor(h / 24) + ' d ' + (h % 24) + ' h' : h + ' h'; }
@@ -4848,6 +4968,9 @@ function telaDuelos() {
   atualizarVencidos();
   var uid = S.user.uid, l = duelosLista();
   var h = '<div class="row between" style="margin:14px 0 6px"><button class="lnk" data-a="duelVoltar">← Jogar</button><button class="btn lar sm" data-a="duelDesafiar">Desafiar alguém</button></div><h2 style="margin:4px 0 10px">⚔️ Duelos</h2>';
+  var rt = retrospectoDuelos(uid);
+  if (rt) h += '<div class="card"><div class="row between"><b>Seu retrospecto na temporada</b><button class="lnk tiny" data-a="duelRanking">Ranking de duelos</button></div>' + rt + '</div>';
+  else h += '<div class="row" style="justify-content:flex-end;margin:-4px 0 6px"><button class="lnk tiny" data-a="duelRanking">Ranking de duelos</button></div>';
   var rec = l.filter(function (d) { return d.status === 'pendente' && d.para === uid; }).sort(function (a, b) { return b.criadoEm - a.criadoEm; });
   var and = l.filter(function (d) { return d.status === 'andamento'; }).sort(function (a, b) { return a.prazo - b.prazo; });
   var env = l.filter(function (d) { return d.status === 'pendente' && d.de === uid; }).sort(function (a, b) { return b.criadoEm - a.criadoEm; });
@@ -4972,6 +5095,7 @@ var A_DUELO = {
   },
   duelRecusar: function (id) { abrirConfirma('Recusar o desafio?', 'A aposta volta para quem desafiou.', 'Recusar', function () { B.chamar('duelo', { op: 'recusar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelCancelar: function (id) { abrirConfirma('Cancelar o desafio?', 'Sua aposta volta para você.', 'Cancelar desafio', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
+  duelRanking: function () { DU.tela = false; S.tab = 'ranking'; S.rankModo = 'duelos'; R(); window.scrollTo(0, 0); },
   duelVerDepois: function () { fecharOv(); DU.tela = true; S.tab = 'jogar'; R(); window.scrollTo(0, 0); },
   duelCorrer: function (v) { var p = v.split('|'); abrirCorridaDuelo(p[0], parseInt(p[1], 10)); }
 };

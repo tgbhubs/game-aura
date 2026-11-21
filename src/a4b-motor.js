@@ -41,6 +41,14 @@ function meusCarros() {
   return l;
 }
 function carroPreferido() { var c = lerLS('gi_carro', 'aura'); return meusCarros().some(function (x) { return x.key === c; }) ? c : 'aura'; }
+// Poder Aura: o "a" do logo em três cores (mesmo efeito do Seguro Porto), a partir do nível 10
+var IMG_AURA = (function () { var i = new Image(); i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ICONE_SVG); return i; })();
+function desenharPoderAura(ctx, x, y, tam) {
+  ctx.save(); ctx.shadowColor = '#FF8A3C'; ctx.shadowBlur = 18;
+  if (IMG_AURA.complete && IMG_AURA.naturalWidth) ctx.drawImage(IMG_AURA, x - tam / 2, y - tam / 2, tam, tam);
+  else { ctx.fillStyle = '#14235E'; ctx.beginPath(); ctx.arc(x, y, tam / 2, 0, 7); ctx.fill(); ctx.fillStyle = '#FF6200'; ctx.font = '900 ' + Math.round(tam * 0.6) + 'px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('a', x, y); }
+  ctx.restore();
+}
 function carroSel(key) {
   key = key || carroPreferido();
   var x = meusCarros().filter(function (y) { return y.key === key; })[0] || { key: 'aura', cat: 'aura' };
@@ -136,7 +144,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
   var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3;
-  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aviso: [400, 40], cap: [92, 150] };
+  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aura: [42, 42], aviso: [400, 40], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
   var ATR = (CR && (CR.treino || CR.duelo)) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro valem no treino e nos duelos
@@ -146,7 +154,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
-    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
+    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
     pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
@@ -190,6 +198,11 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var z = rnd();
     if (s.t > 6 && s.t - s.ultSeguro > 18 + 10 * ex && z < 0.14) { s.ultSeguro = s.t; add('seguro', livres[Math.floor(rnd() * livres.length)], d + 170); }
     else if (z > 0.91) add('tag', livres[Math.floor(rnd() * livres.length)], d + 170);
+    // Poder Aura a partir do nível 10 (sorteio próprio, sem mudar o resto da pista)
+    if (nivel(s.t) >= 10 && s.t - s.ultAura > 14 && livres.length) {
+      var ha = (Logica.hash('aura|' + seed + '|' + Math.round(d)) >>> 0) / 4294967296;
+      if (ha < 0.16) { s.ultAura = s.t; add('aura', livres[Math.floor(ha * 1e6) % livres.length], d + 90); }
+    }
   }
   function passo(dt) {
     s.t += dt;
@@ -228,6 +241,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         continue;
       }
       if (o.tipo === 'tag') { o.pego = true; if (s.tags < MAX_TAGS) { s.tags++; s.msg = { txt: 'Tag: +1 mensalidade (' + s.tags + ')', cor: '#9FD3FF', ate: s.t + 1.1 }; } else s.msg = { txt: 'Tag em dia (' + MAX_TAGS + ' mensalidades)', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
+      if (o.tipo === 'aura') {
+        o.pego = true; som('seguro');
+        if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Poder Aura: +1 vida', cor: '#FFB27A', ate: s.t + 1.4 }; }
+        else s.msg = { txt: 'Escudos já no máximo', cor: '#FFB27A', ate: s.t + 1 };
+        continue;
+      }
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
@@ -756,6 +775,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
             ctx.fillStyle = '#9CC9FF'; ctx.fillRect(bx + 8, py - 14, 42, 10);
           });
         }
+      } else if (o.tipo === 'aura') {
+        var cya = bot - o.h / 2, pa = 1 + Math.sin(s.t * 8) * 0.09;
+        ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx + 8, cya + 14, 19, 10, 0, 0, 7); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.translate(cx, cya); ctx.scale(pa, pa); ctx.rotate(Math.sin(s.t * 3) * 0.12); desenharPoderAura(ctx, 0, 0, 42); ctx.restore();
       } else if (o.tipo === 'tag' || o.tipo === 'seguro') {
         var cy3 = bot - o.h / 2, pul = 1 + Math.sin(s.t * 7) * 0.07;
         ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx + 8, cy3 + 12, 18, 10, 0, 0, 7); ctx.fill(); ctx.restore();

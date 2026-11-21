@@ -74,7 +74,8 @@ function assinarAtivo() {
   subUser.push(B.ouvirDoc('carteira/' + S.user.uid, function (d) { var mudou = D.carteira && d && JSON.stringify(d) !== JSON.stringify(D.carteira); D.carteira = d; if (mudou && typeof atualizarSaldo === 'function') atualizarSaldo(); render(); }));
   subUser.push(B.ouvirCol('anuncios', [['status', '==', 'ativo']], function (m) { D.anuncios = m; render(); }));
   subUser.push(B.ouvirCol('treinos', null, function (m) { D.treinos = m; render(); }));
-  subUser.push(B.ouvirCol('duelos', [['uids', 'array-contains', S.user.uid]], function (m) { D.duelos = m; render(); }));
+  // todos os duelos (são poucos): os meus para jogar e os encerrados para o ranking e as conquistas
+  subUser.push(B.ouvirCol('duelos', null, function (m) { D.duelos = m; render(); }));
   subUser.push(B.ouvirCol('transacoes', null, function (m) { D.transacoes = m; render(); }));
   subUser.push(B.ouvirCol('mesas', [['aberta', '==', true]], function (m) { D.mesas = m; render(); if (typeof placaAtualizarLista === 'function') placaAtualizarLista(); }));
   reassinarTemporada();
@@ -119,6 +120,48 @@ BADGES.placaSequencia = { e: '🔥', t: 'Sequência', d: 'Venceu 3 partidas de P
 BADGES.placaGuincheiro = { e: '🚛', t: 'Guincheiro', d: 'Fez alguém comprar 8 ou mais com Guincho acumulado' };
 BADGES.placaSegurado = { e: '🛡️', t: 'Segurado', d: 'Venceu jogando um Seguro como última carta' };
 BADGES.placaFiscal = { e: '👮', t: 'Fiscal', d: 'Aplicou 5 multas de "Placa!" na temporada' };
+BADGES.duelPrimeiro = { e: '⚔️', t: 'Primeiro duelo', d: 'Venceu o primeiro duelo na temporada' };
+BADGES.duelImbativel = { e: '🗡️', t: 'Imbatível', d: 'Venceu 3 duelos seguidos' };
+BADGES.duelDuelista = { e: '🏅', t: 'Duelista', d: 'Venceu 5 duelos na temporada' };
+BADGES.duelVarrida = { e: '🧹', t: 'Varrida', d: 'Venceu um duelo por 2 a 0' };
+BADGES.duelVirada = { e: '🔄', t: 'Virada no duelo', d: 'Perdeu a primeira corrida e venceu o duelo' };
+BADGES.duelChave = { e: '🔑', t: 'Tomou a chave', d: 'Ganhou um carro num duelo' };
+BADGES.duelTudo = { e: '💰', t: 'Tudo ou nada', d: 'Venceu um duelo em que o outro apostou 100 créditos' };
+var ORDEM_DUELO = ['duelPrimeiro', 'duelImbativel', 'duelDuelista', 'duelVarrida', 'duelVirada', 'duelChave', 'duelTudo'];
+// ranking, estatísticas e conquistas dos duelos encerrados na temporada
+function calcDuelos(tid) {
+  var t = D.temporadas && D.temporadas[tid], ini = t ? t.inicio : 0, fim = t ? t.inicio + (t.semanas || 0) * 7 * 86400000 : Infinity;
+  var lista = Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; })
+    .filter(function (d) { return d.status === 'fim' && d.fimEm >= ini && d.fimEm < fim; }).sort(function (a, b) { return a.fimEm - b.fimEm; });
+  var por = {}, badges = {};
+  function add(uid, tipo, d) { (badges[uid] = badges[uid] || []).push({ tipo: tipo, rid: 'duelo|' + d._id, n: null, tid: tid }); }
+  function px(uid, ap) { var x = por[uid] = por[uid] || { uid: uid, ap: ap, duelos: 0, vitorias: 0, derrotas: 0, empates: 0, creditos: 0, carrosGanhos: 0, carrosPerdidos: 0, seq: 0, maiorSeq: 0, varridas: 0, viradas: 0 }; x.ap = ap || x.ap; return x; }
+  lista.forEach(function (d) {
+    ['de', 'para'].forEach(function (lado) {
+      var o = lado === 'de' ? 'para' : 'de', uid = d[lado], x = px(uid, d.ap[lado]);
+      x.duelos++;
+      if (!d.vencedor) { x.empates++; x.seq = 0; return; }
+      if (d.vencedor === uid) {
+        x.vitorias++; x.seq++; x.maiorSeq = Math.max(x.maiorSeq, x.seq);
+        var ap = d.aposta[o];
+        if (ap.tipo === 'carro') { x.carrosGanhos++; add(uid, 'duelChave', d); } else { x.creditos += ap.valor; if (ap.valor >= 100) add(uid, 'duelTudo', d); }
+        if (x.vitorias === 1) add(uid, 'duelPrimeiro', d);
+        if (x.seq === 3) add(uid, 'duelImbativel', d);
+        if (x.vitorias === 5) add(uid, 'duelDuelista', d);
+        if (d.placar && d.placar[lado] === 2 && d.placar[o] === 0) { x.varridas++; add(uid, 'duelVarrida', d); }
+        if (d.venceu && d.venceu[0] === o) { x.viradas++; add(uid, 'duelVirada', d); }
+      } else {
+        x.derrotas++; x.seq = 0;
+        var mp = d.aposta[lado];
+        if (mp.tipo === 'carro') x.carrosPerdidos++; else x.creditos -= mp.valor;
+      }
+    });
+  });
+  var arr = Object.keys(por).map(function (k) { var x = por[k]; x.taxa = x.duelos ? x.vitorias / x.duelos : 0; return x; });
+  arr.sort(function (a, b) { return b.vitorias - a.vitorias || b.taxa - a.taxa || b.creditos - a.creditos || (a.ap || '').localeCompare(b.ap || ''); });
+  arr.forEach(function (x, i) { var p = arr[i - 1]; x.pos = (p && p.vitorias === x.vitorias && p.taxa === x.taxa && p.creditos === x.creditos) ? p.pos : i + 1; });
+  return { ranking: arr, por: por, badges: badges, duelos: lista };
+}
 var ORDEM_PLACA = ['placaPrimeira', 'placaSequencia', 'placaGuincheiro', 'placaSegurado', 'placaFiscal'];
 var PLACA_MIN = 5;
 // ranking e conquistas do Placa! (separados do quiz e da corrida)
@@ -236,7 +279,7 @@ function badgeChave(b) { return b.tipo + '|' + b.rid; }
 function meusBadges() {
   var tid = tempAtivaId(); if (!tid || !S.user) return [];
   var res = calcTemporada(tid);
-  var l = (res.badges[S.user.uid] || []).concat(calcPlaca(tid).badges[S.user.uid] || []);
+  var l = (res.badges[S.user.uid] || []).concat(calcPlaca(tid).badges[S.user.uid] || []).concat(calcDuelos(tid).badges[S.user.uid] || []);
   l.sort(function (a, b) { return (b.n || 99) - (a.n || 99) || ORDEM_BADGES.indexOf(a.tipo) - ORDEM_BADGES.indexOf(b.tipo); });
   return l;
 }

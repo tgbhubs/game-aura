@@ -2,7 +2,13 @@
    Quem desafia escolhe a pessoa e a aposta (créditos ou um carro); quem aceita escolhe a sua.
    As 3 pistas são as mesmas para os dois, valem os atributos do carro e quem vencer 2 leva tudo. */
 var DU = { tela: false, vistos: {}, atualizados: {} };
-function duelosLista() { return Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; }); }
+function duelosLista() { var u = S.user.uid; return Object.keys(D.duelos || {}).map(function (k) { var d = D.duelos[k]; d._id = k; return d; }).filter(function (d) { return (d.uids || []).indexOf(u) >= 0; }); }
+// retrospecto na temporada (estatísticas dos duelos encerrados)
+function retrospectoDuelos(uid) {
+  var tid = tempAtivaId(); if (!tid) return '';
+  var x = calcDuelos(tid).por[uid]; if (!x) return '';
+  return '<div class="dstats"><div><b>' + x.vitorias + '</b><span>vitórias</span></div><div><b>' + x.derrotas + '</b><span>derrotas</span></div><div><b>' + Math.round(x.taxa * 100) + '%</b><span>aproveitamento</span></div><div><b>' + (x.creditos > 0 ? '+' : '') + nCred(x.creditos) + '</b><span>créditos</span></div><div><b>' + x.carrosGanhos + '</b><span>carros ganhos</span></div><div><b>' + x.maiorSeq + '</b><span>maior sequência</span></div></div>';
+}
 function meuLado(d) { return Garagem.lado(d, S.user.uid); }
 function advDe(d) { var l = meuLado(d), o = Garagem.outro(l); return { uid: d[o], ap: d.ap[o], lado: o }; }
 function prazoTxt(ms) { var h = Math.max(0, Math.round((ms - Date.now()) / 3600000)); return h >= 24 ? Math.floor(h / 24) + ' d ' + (h % 24) + ' h' : h + ' h'; }
@@ -35,6 +41,9 @@ function telaDuelos() {
   atualizarVencidos();
   var uid = S.user.uid, l = duelosLista();
   var h = '<div class="row between" style="margin:14px 0 6px"><button class="lnk" data-a="duelVoltar">← Jogar</button><button class="btn lar sm" data-a="duelDesafiar">Desafiar alguém</button></div><h2 style="margin:4px 0 10px">⚔️ Duelos</h2>';
+  var rt = retrospectoDuelos(uid);
+  if (rt) h += '<div class="card"><div class="row between"><b>Seu retrospecto na temporada</b><button class="lnk tiny" data-a="duelRanking">Ranking de duelos</button></div>' + rt + '</div>';
+  else h += '<div class="row" style="justify-content:flex-end;margin:-4px 0 6px"><button class="lnk tiny" data-a="duelRanking">Ranking de duelos</button></div>';
   var rec = l.filter(function (d) { return d.status === 'pendente' && d.para === uid; }).sort(function (a, b) { return b.criadoEm - a.criadoEm; });
   var and = l.filter(function (d) { return d.status === 'andamento'; }).sort(function (a, b) { return a.prazo - b.prazo; });
   var env = l.filter(function (d) { return d.status === 'pendente' && d.de === uid; }).sort(function (a, b) { return b.criadoEm - a.criadoEm; });
@@ -159,6 +168,7 @@ var A_DUELO = {
   },
   duelRecusar: function (id) { abrirConfirma('Recusar o desafio?', 'A aposta volta para quem desafiou.', 'Recusar', function () { B.chamar('duelo', { op: 'recusar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelCancelar: function (id) { abrirConfirma('Cancelar o desafio?', 'Sua aposta volta para você.', 'Cancelar desafio', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
+  duelRanking: function () { DU.tela = false; S.tab = 'ranking'; S.rankModo = 'duelos'; R(); window.scrollTo(0, 0); },
   duelVerDepois: function () { fecharOv(); DU.tela = true; S.tab = 'jogar'; R(); window.scrollTo(0, 0); },
   duelCorrer: function (v) { var p = v.split('|'); abrirCorridaDuelo(p[0], parseInt(p[1], 10)); }
 };

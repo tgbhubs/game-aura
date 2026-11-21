@@ -227,10 +227,11 @@ function telaRanking() {
     temps.forEach(function (k) { h += '<option value="' + k + '"' + (k === tid ? ' selected' : '') + '>' + esc(D.temporadas[k].nome) + '</option>'; });
     h += '</select>';
   }
-  h += '<div class="seg">' + ['rodada', 'temporada', 'areas', 'placa', 'treino'].map(function (m) {
-    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino' }[m] + '</button>';
+  h += '<div class="seg seg6">' + ['rodada', 'temporada', 'areas', 'placa', 'treino', 'duelos'].map(function (m) {
+    return '<button class="' + (S.rankModo === m ? 'on' : '') + '" data-a="rankModo" data-v="' + m + '">' + { rodada: 'Rodada', temporada: 'Temporada', areas: 'Áreas', placa: 'Placa!', treino: 'Treino', duelos: 'Duelos' }[m] + '</button>';
   }).join('') + '</div>';
   if (S.rankModo === 'placa') return h + rankingPlaca(tid);
+  if (S.rankModo === 'duelos') return h + rankingDuelos(tid);
   if (S.rankModo === 'treino') return h + rankingTreino();
   var iniciadas = res.rods.filter(function (r) { return Date.now() >= r.inicio; });
   if (!iniciadas.length) return h + '<div class="empty">A primeira rodada ainda não começou.</div>';
@@ -296,6 +297,24 @@ function rankingTreino() {
   h += '</div>';
   S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
   if (linhas.length) h += '<button class="btn gh full" data-a="compartilharRanking">📸 Compartilhar imagem do ranking</button>';
+  return h;
+}
+// ranking de duelos da temporada: vitórias, aproveitamento e saldo de créditos
+function rankingDuelos(tid) {
+  var r = calcDuelos(tid), uid = S.user.uid;
+  var h = '<p class="small mut">Duelos encerrados nesta temporada. Ordem: vitórias, aproveitamento e saldo de créditos nas apostas.</p>';
+  if (!r.ranking.length) return h + '<div class="empty">Nenhum duelo terminou ainda. <button class="lnk" data-a="duelos">Desafie alguém</button></div>';
+  r.ranking.forEach(function (x) {
+    var j = jogDe(x.uid, { uid: x.uid, ap: x.ap });
+    var sub = x.vitorias + 'V ' + x.derrotas + 'D' + (x.empates ? ' ' + x.empates + 'E' : '') + ' · ' + Math.round(x.taxa * 100) + '% · ' + (x.creditos > 0 ? '+' : '') + nCred(x.creditos) + ' cr' + (x.carrosGanhos ? ' · 🔑' + x.carrosGanhos : '') + (x.seq >= 2 ? ' · 🔥' + x.seq : '');
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + x.pos + '">' + x.pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span>' + sub + '</span></div><div class="pt">' + x.vitorias + '<small>vitórias</small></div></div>';
+  });
+  var ult = r.duelos.slice(-5).reverse();
+  h += '<div class="sec">Últimos duelos</div>';
+  ult.forEach(function (d) {
+    var w = d.vencedor ? (d.vencedor === d.de ? 'de' : 'para') : '', l = w === 'de' ? 'para' : 'de';
+    h += '<div class="card" style="padding:10px 14px;margin-bottom:8px"><div class="small">' + (w ? '<b>' + esc(d.ap[w]) + '</b> venceu <b>' + esc(d.ap[l]) + '</b> por ' + d.placar[w] + '×' + d.placar[l] + ' e levou ' + esc(Garagem.apostaTxt(d.aposta[l])) : 'Empate entre <b>' + esc(d.ap.de) + '</b> e <b>' + esc(d.ap.para) + '</b>') + '</div><div class="tiny mut">' + fmtDia(d.fimEm) + '</div></div>';
+  });
   return h;
 }
 // miniatura do carro (foto do catálogo) para listas
@@ -386,6 +405,13 @@ function telaPerfil() {
     h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
   });
   h += '</div>';
+  var rtd = retrospectoDuelos(uid);
+  h += '<div class="sec">Duelos</div>' + (rtd ? '<div class="card">' + rtd + '</div>' : '') + '<div class="bgrid">';
+  ORDEM_DUELO.forEach(function (t) {
+    var d = BADGES[t];
+    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
+  });
+  h += '</div>';
   if (mb.length) { h += '<div style="margin-top:8px">'; mb.forEach(function (b) { h += cartaoBadge(b, false); }); h += '</div>'; }
   // histórico
   var tid = tempAtivaId();
@@ -432,6 +458,7 @@ function telaRegras() {
     '<li>Sem limite de tempo por jogada. Qualquer um pode pausar. Encerrar antes só com o aceite de todos (e não conta no ranking). Se alguém ficar 10 minutos sem jogar na vez dele, a mesa pode votar para remover a pessoa; as cartas dela voltam para o monte.</li>' +
     '<li><b>Robôs:</b> dá para jogar só contra robôs ou completar os lugares vazios da sua mesa com eles. Partidas com robô não contam para o ranking nem para as conquistas.</li>' +
     '<li><b>Ranking do Placa!:</b> vitórias na temporada, com desempate pela taxa de vitória. Entra quem jogou pelo menos 5 partidas.</li></ul>' +
+    '<p class="small">Conquistas dos duelos: ' + ORDEM_DUELO.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
     '<p class="small">Conquistas do Placa!: ' + ORDEM_PLACA.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
     '<h4>🚗 Créditos dos carros 3D</h4><p class="small">Modelos do Sketchfab, adaptados para o jogo (otimizados, sem logotipos e com nomes fictícios).</p><ul class="small"><li>Cyberpunk: <a href="https://sketchfab.com/3d-models/cyberpunk-car-b4301ff99d214d16a7a43708a5866bf0" target="_blank" rel="noopener">modelo de 4d_Bob</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Conceito: <a href="https://sketchfab.com/3d-models/free-concept-car-004-public-domain-cc0-4cba124633eb494eadc3bb0c4660ad7e" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Conceito Neon: <a href="https://sketchfab.com/3d-models/free-ai-based-conceptcar-050-public-domain-cc0-3f7a98a53efe48068adddf0c0f3ddbae" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Touro SV: <a href="https://sketchfab.com/3d-models/1995-lamborghini-diablo-sv-21d606803a6442ce8877baee15547ed7" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Veloce Pista: <a href="https://sketchfab.com/3d-models/ferrari-488-pista-090fbbb80e3f48ed9c4be915d65c2adf" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Gran Turismo: <a href="https://sketchfab.com/3d-models/maserati-alfieri-dd37cab4fe8644cc9808008a47565195" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Asa de Gaivota: <a href="https://sketchfab.com/3d-models/mercedes-benz-sls-amg-coupe-black-series-d306a599cc014b07a75e20b440635414" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Felino X: <a href="https://sketchfab.com/3d-models/2013-jaguar-c-x75-20caf150bb0444909c65b57217aa46f6" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Monoposto F: <a href="https://sketchfab.com/3d-models/2027-formula-1-car-900b2d93db1b4fd7bfce436067e25287" target="_blank" rel="noopener">modelo de Abu Saif</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente GTS: <a href="https://sketchfab.com/3d-models/1996-dodge-viper-gts-sr2-2a125eb8b25e4a249aab9db8e465274a" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Besouro: <a href="https://sketchfab.com/3d-models/beetlefusca-version-1-cb6e82e73386448fb3b4e2dd25255a5e" target="_blank" rel="noopener">modelo de soujagah</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Perua Retrô: <a href="https://sketchfab.com/3d-models/volkswagen-kombi-micro-bus-d34fd744db1c4f84ad40c854ddbff9e9" target="_blank" rel="noopener">modelo de winterborn</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Viajante 88: <a href="https://sketchfab.com/3d-models/80s90s-chevrolet-caravan-c77c570538d6499ca6b6f97bc9b01f21" target="_blank" rel="noopener">modelo de coptrum</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente Roadster: <a href="https://sketchfab.com/3d-models/dodge-viper-rt10-sr1-f09fc27ddbe1488da79e82fd669c57de" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (cor alterada)</li><li>Conceito Trilha: <a href="https://sketchfab.com/3d-models/free-concept-car-006-public-domain-cc0-a4e19bb6e6394c4a95d4319ef7d265ba" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Diplomata 87: <a href="https://sketchfab.com/3d-models/chevrolet-opala-diplomata-87-a704d368afce4f9cae6c2a26dcc0a9ff" target="_blank" rel="noopener">modelo de Ynklar</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li></ul>' +
     '<h4>🤝 Espírito do jogo</h4><p>É um jogo de integração. Nada de pesquisar respostas ou trocar gabarito: a graça é descobrir junto.</p></div>';
