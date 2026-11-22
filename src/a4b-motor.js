@@ -143,7 +143,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   // ---------- constantes da simulação ----------
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
-  var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3;
+  var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3, AURA_DUR = 5;
   var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aura: [42, 42], aviso: [400, 40], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
@@ -154,7 +154,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
-    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
+    pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, aura: 0, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
     pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0 };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
@@ -207,6 +207,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function passo(dt) {
     s.t += dt;
     if (s.invul > 0) s.invul -= dt;
+    if (s.aura > 0) s.aura = Math.max(0, s.aura - dt);
     if (s.tremor > 0) s.tremor -= dt;
     if (s.parada > 0) { s.parada -= dt; return; }
     if (s.revisao > 0) s.revisao -= dt;
@@ -234,17 +235,17 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         continue;
       }
       if (o.tipo === 'buraco') {
-        // buraco não encerra: estraga o pneu (a revisão do CAP protege)
-        if (s.revisao > 0) continue;
+        // buraco não encerra: estraga o pneu (a revisão do CAP e o Poder Aura protegem)
+        if (s.revisao > 0 || s.aura > 0) continue;
         o.batido = true; som('buraco'); s.pneu -= BURACO; s.tremor = 0.4; s.buracos = (s.buracos || 0) + 1;
         s.msg = { txt: 'Buraco! Pneu −' + BURACO + '%', cor: '#FFD07A', ate: s.t + 1.3 };
         continue;
       }
       if (o.tipo === 'tag') { o.pego = true; if (s.tags < MAX_TAGS) { s.tags++; s.msg = { txt: 'Tag: +1 mensalidade (' + s.tags + ')', cor: '#9FD3FF', ate: s.t + 1.1 }; } else s.msg = { txt: 'Tag em dia (' + MAX_TAGS + ' mensalidades)', cor: '#9FD3FF', ate: s.t + 1 }; continue; }
       if (o.tipo === 'aura') {
-        o.pego = true; som('seguro');
-        if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Poder Aura: +1 vida', cor: '#FFB27A', ate: s.t + 1.4 }; }
-        else s.msg = { txt: 'Escudos já no máximo', cor: '#FFB27A', ate: s.t + 1 };
+        // Poder Aura: alguns segundos invencível (atravessa cones, carros, buracos e cancelas)
+        o.pego = true; som('seguro'); s.aura = AURA_DUR; s.auras = (s.auras || 0) + 1;
+        s.msg = { txt: 'Poder Aura: invencível por ' + AURA_DUR + ' s!', cor: '#FFB27A', ate: s.t + 1.6 };
         continue;
       }
       if (o.tipo === 'seguro') {
@@ -262,10 +263,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       }
       if (o.tipo === 'cancela') {
         s.obst.forEach(function (q) { if (q.tipo === 'cancela' && q.d === o.d) { q.aberta = true; q.passou = true; } });
+        if (s.aura > 0) { s.msg = { txt: 'Aura! Cancela aberta', cor: '#FFB27A', ate: s.t + 1.2 }; continue; }
         if (s.tags > 0) { s.tags--; s.msg = { txt: 'Tag! Passou direto' + (s.tags ? ' (restam ' + s.tags + ')' : ''), cor: '#7CE0B0', ate: s.t + 1.4 }; }
         else { s.pen += PENALIDADE; s.parada = PARADA; s.msg = { txt: 'Sem tag: −' + PENALIDADE + ' s', cor: '#FF9C9C', ate: s.t + PARADA + 0.8 }; }
         continue;
       }
+      if (s.aura > 0) { o.batido = true; som('batida'); s.tremor = 0.15; continue; }   // com a Aura, o obstáculo sai voando
       if (s.invul > 0) continue;
       if (s.vidas > 0) {
         som('seguro'); s.vidas--; s.usouSeguro++; o.batido = true; s.invul = INVUL; s.tremor = 0.35; s.pneu = Math.max(1, s.pneu - 15);
@@ -318,6 +321,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.fillStyle = '#EC7000'; ctx.font = '900 12px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('TAG', ix + 96, iy + 1);
     ctx.fillStyle = '#fff'; ctx.font = '900 11px Montserrat, Arial, sans-serif'; ctx.fillText('×' + s.tags, ix + 120, iy + 1);
     ctx.globalAlpha = 1;
+    if (s.aura > 0) {
+      var aw = 118, ah = 10, ay = iy + 22;
+      ctx.fillStyle = 'rgba(20,35,94,.85)'; rr(ctx, ix, ay, aw + 46, 20, 6); ctx.fill();
+      desenharPoderAura(ctx, ix + 11, ay + 10, 16);
+      ctx.fillStyle = 'rgba(255,255,255,.2)'; rr(ctx, ix + 24, ay + 5, aw, ah, 4); ctx.fill();
+      var gA = ctx.createLinearGradient(ix + 24, 0, ix + 24 + aw, 0); gA.addColorStop(0, '#FF6200'); gA.addColorStop(0.5, '#499EF2'); gA.addColorStop(1, '#FF6535');
+      ctx.fillStyle = gA; rr(ctx, ix + 24, ay + 5, aw * (s.aura / AURA_DUR), ah, 4); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '900 10px Montserrat, Arial, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(Math.ceil(s.aura) + ' s', ix + aw + 28, ay + 13);
+    }
     // pneu
     var px = HW - 112, py = 64, pw = 102, gasto = s.pneu < PNEU_GASTO, pisca = gasto && Math.floor(s.t * 3) % 2 === 0;
     ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py, pw, 34, 10); ctx.fill();
@@ -793,6 +805,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     var fg = ctx.createRadialGradient(px, CY - 60, 4, px, CY - 60, 90); fg.addColorStop(0, 'rgba(255,240,190,.22)'); fg.addColorStop(1, 'rgba(255,240,190,0)');
     ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(px - 18, CY + 2); ctx.lineTo(px - 70, CY - 150); ctx.lineTo(px + 70, CY - 150); ctx.lineTo(px + 18, CY + 2); ctx.closePath(); ctx.fill(); ctx.restore();
+    if (s.aura > 0) {
+      var pa2 = 1 + Math.sin(s.t * 12) * 0.06, fim = s.aura < 1.2 && Math.floor(s.aura * 8) % 2 === 0;
+      if (!fim) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; var hg = ctx.createRadialGradient(px, CY + 46, 10, px, CY + 46, 70 * pa2); hg.addColorStop(0, 'rgba(255,140,60,.55)'); hg.addColorStop(0.55, 'rgba(73,158,242,.35)'); hg.addColorStop(1, 'rgba(73,158,242,0)'); ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(px, CY + 46, 72 * pa2, 0, 7); ctx.fill(); ctx.restore(); }
+    }
     if (!(s.invul > 0 && Math.floor(s.invul * 10) % 2 === 0)) {
       ctx.save(); ctx.translate(px, CY + 72); ctx.rotate(inclin); ctx.translate(0, -26);
       ctx.drawImage(REAL.sombraCarro, -26 - 9 + 5, -46 - 6 + 6, 66, 106);

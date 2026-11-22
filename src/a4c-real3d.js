@@ -220,13 +220,14 @@ function criar3DReal(E) {
     meu.userData.rodas = []; meu.userData.lant = [];
   }, SEL.cor);
   var bolha = new T.Mesh(new T.SphereGeometry(2.1, 24, 16), new T.MeshStandardMaterial({ color: cor(0x499EF2), transparent: true, opacity: 0.18, emissive: cor(0x499EF2), emissiveIntensity: 0.6, depthWrite: false }));
+  var haloAura = brilho(0xFF8A3C, 5.5); haloAura.visible = false;   // brilho do Poder Aura em volta do carro
   bolha.scale.set(0.75, 0.55, 1); bolha.visible = false; meu.add(bolha); bolha.position.y = 0.6;
   // fotografa o carro escolhido sem cenário (usado para gerar as fotos da garagem e o carro da vista de cima)
   E.fotoCarro = function (vista, w, h) {
     var rd = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     rd.outputEncoding = T.sRGBEncoding; rd.toneMapping = T.ACESFilmicToneMapping; rd.toneMappingExposure = 1.1;
     rd.setPixelRatio(1); rd.setSize(w, h, false); rd.setClearColor(0x000000, 0);
-    var cena = new T.Scene();
+    var cena = new T.Scene(); cena.add(haloAura);
     try { var pm2 = new T.PMREMGenerator(rd), cc = new T.Scene(); cc.add(new T.Mesh(new T.SphereGeometry(400, 32, 16), ceuMat)); cena.environment = pm2.fromScene(cc, 0.02).texture; pm2.dispose(); } catch (e) { }
     cena.add(new T.HemisphereLight(cor(0xE4EEFF), cor(0x6A5A48), 0.9));
     var luz = new T.DirectionalLight(cor(0xFFF1DE), vista === 'cima' ? 1.6 : 2.4); luz.position.set(vista === 'cima' ? 2 : -4, 9, vista === 'cima' ? 3 : -6); cena.add(luz);
@@ -368,8 +369,11 @@ function criar3DReal(E) {
     var inc = -(CENTRO[s.lane] - s.x) * 0.004;   // a frente aponta para a faixa de destino
     meu.rotation.y = inc; meu.rotation.z = -inc * 0.35;
     meu.userData.rodas.forEach(function (r) { r.rotation.x -= v * dt / 0.34; });
-    var piscaInv = s.invul > 0;
-    bolha.visible = piscaInv; if (piscaInv) bolha.material.opacity = 0.12 + Math.abs(Math.sin(tempoReal * 10)) * 0.15;
+    var piscaInv = s.invul > 0, comAura = s.aura > 0 && !(s.aura < 1.2 && Math.floor(s.aura * 8) % 2 === 0);
+    bolha.visible = piscaInv || comAura;
+    if (comAura) { bolha.material.color.setHex(0xFF8A3C); bolha.material.emissive.setHex(0xFF6200); bolha.material.opacity = 0.2 + Math.abs(Math.sin(tempoReal * 8)) * 0.14; }
+    else if (piscaInv) { bolha.material.color.setHex(0x499EF2); bolha.material.emissive.setHex(0x499EF2); bolha.material.opacity = 0.12 + Math.abs(Math.sin(tempoReal * 10)) * 0.15; }
+    haloAura.visible = comAura; if (comAura) { haloAura.position.set(cx, 1.0, (CARH / 2) * K); var esc = 5.5 + Math.sin(tempoReal * 9) * 0.5; haloAura.scale.set(esc, esc, 1); }
     meu.userData.lant.forEach(function (l) { l.userData.glow.visible = s.parada > 0; });
     if (s.invul > invAnt + 0.5) explodir(cx, 0, 'seguro');
     invAnt = s.invul;
