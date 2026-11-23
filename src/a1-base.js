@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-21e';
+var BUILD = '2026-11-23a';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -128,7 +128,7 @@ function criarFirebase() {
 
 /* ================== BACKEND: DEMONSTRAÇÃO ================== */
 function criarDemo() {
-  var CH = 'gameicarros_demo_v8';
+  var CH = 'gameicarros_demo_v9';
   var db = lerLS(CH, null);
   var subs = [], authCbs = [];
   var usuario = lerLS(CH + '_u', null);
@@ -536,6 +536,9 @@ function semearDemo(db) {
     aposta: { de: { tipo: 'creditos', valor: 25 }, para: { tipo: 'creditos', valor: 25 } }, seeds: [sd(1), sd(2), sd(3)],
     corridas: { de: [{ inicio: agora - 19 * 3600000, fim: agora - 19 * 3600000 + 90000, t: 84.6, cat: 'aura', carro: 'aura' }, null, null], para: [{ inicio: agora - 10 * 3600000, fim: agora - 10 * 3600000 + 70000, t: 66.2, cat: 'hatch-verde', carro: 'x' }, { inicio: agora - 9 * 3600000, fim: agora - 9 * 3600000 + 110000, t: 102.9, cat: 'hatch-verde', carro: 'x' }, null] },
     placar: { de: 0, para: 0 }, vencedor: '' });
+  put('duelos', 'dprazo', { de: 'demo-diego', para: 'demo-joao', ap: { de: 'Dieguinho', para: 'Jão' }, uids: ['demo-diego', 'demo-joao'], status: 'fim', criadoEm: agora - 50 * 3600000, aceitoEm: agora - 49 * 3600000, prazo: agora - 3600000, fimEm: agora - 1800000,
+    aposta: { de: { tipo: 'creditos', valor: 20 }, para: { tipo: 'creditos', valor: 20 } }, seeds: [1, 2, 3], corridas: { de: [{ t: 248.99, cat: 'aura', inicio: agora - 2 * 3600000 }, null, null], para: [{ t: 296.67, cat: 'touro', inicio: agora - 48 * 3600000 }, null, null] },
+    placar: { de: 0, para: 1 }, venceu: ['para', 'empate', 'empate'], vencedor: 'demo-joao' });
   // Duelos já encerrados (para o ranking e as conquistas da demo)
   var nomesD = { 'demo-ana': 'Aninha', 'demo-caio': 'Caio', 'demo-diego': 'Dieguinho', 'demo-leo': 'Léo', 'demo-bruna': 'Bru', 'demo-joao': 'Jão' };
   [['demo-diego', 'demo-leo', 'de', [1, 1, 0], 30, 30, null], ['demo-ana', 'demo-diego', 'para', [0, 1, 1], 50, 40, null], ['demo-diego', 'demo-bruna', 'de', [1, 1, -1], 100, 20, null],

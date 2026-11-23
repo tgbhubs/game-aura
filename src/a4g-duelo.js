@@ -25,10 +25,60 @@ function atualizarVencidos() {
 }
 function apostaHTML(a) { if (!a) return '<span class="mut">a definir</span>'; return a.tipo === 'carro' ? miniCarro(a.cat) + '<b>' + esc(Garagem.CATALOGO[a.cat] ? Garagem.CATALOGO[a.cat].nome : 'carro') + '</b>' : '<b>' + nCred(a.valor) + ' créditos</b>'; }
 
+// resumo de um duelo: corrida a corrida, por que terminou e o que aconteceu com as apostas
+function resumoDueloHTML(d) {
+  var lado = meuLado(d), a = advDe(d), o = a.lado, pl = Garagem.placarDuelo(d, d.fimEm || Date.now());
+  var cs = d.corridas || { de: [], para: [] }, eu = S.user.uid;
+  var feitas = function (l) { return l.filter(function (x) { return x && x.t != null; }).length; };
+  var nEu = feitas(cs[lado] || []), nEle = feitas(cs[o] || []);
+  var placarTxt = (d.placar ? d.placar[lado] : pl.placar[lado]) + ' × ' + (d.placar ? d.placar[o] : pl.placar[o]);
+  var res = d.status !== 'fim' ? 'Em andamento' : !d.vencedor ? 'Empate' : d.vencedor === eu ? '🏆 Você venceu' : esc(a.ap) + ' venceu';
+  var h = '<h3>⚔️ Você × ' + esc(a.ap) + '</h3><div class="dres ' + (d.status !== 'fim' ? '' : !d.vencedor ? 'emp' : d.vencedor === eu ? 'win' : 'lose') + '"><b>' + res + '</b><span>' + placarTxt + '</span></div>';
+  // motivo do fim
+  var venceu2 = !!(d.placar && (d.placar.de >= 2 || d.placar.para >= 2));
+  var porPrazo = d.status === 'fim' && !venceu2 && (nEu < 3 || nEle < 3);
+  if (d.status === 'fim') {
+    if (venceu2) h += '<p class="small">' + (d.vencedor === eu ? 'Você' : esc(a.ap)) + ' venceu 2 corridas e fechou o duelo.</p>';
+    else if (porPrazo) h += '<p class="small">O prazo de 48 h acabou em <b>' + fmtDiaHora(d.prazo) + '</b>. Você fez ' + nEu + (nEu === 1 ? ' corrida' : ' corridas') + ' e ' + esc(a.ap) + ' fez ' + nEle + '. Corrida não feita vale 0 e, quando os dois ficam sem tempo, a corrida empata.</p>';
+    else h += '<p class="small">As 3 corridas foram feitas.</p>';
+    if (d.placar && d.placar.de === d.placar.para && d.vencedor) h += '<p class="small">Empatou nas corridas e quem decidiu foi a <b>soma dos tempos</b>.</p>';
+  } else h += '<p class="small">Termina em ' + fmtDiaHora(d.prazo) + ' (' + prazoTxt(d.prazo) + ').</p>';
+  // tabela corrida a corrida
+  h += '<div class="dtab"><div class="dtr dth"><span></span><span>Você</span><span>' + esc(a.ap) + '</span></div>';
+  for (var i = 0; i < 3; i++) {
+    var x = (cs[lado] || [])[i], y = (cs[o] || [])[i], w = (d.venceu || pl.venceu)[i];
+    var cel = function (c) { return c && c.t != null ? '<b>' + fmtSeg(c.t) + '</b>' + miniCarro(c.cat) : c ? '<span class="mut">não terminou</span>' : '<span class="mut">' + (d.status === 'fim' ? 'não correu (0)' : '—') + '</span>'; };
+    var marca = w === lado ? '<span class="dwin-t">você</span>' : w === o ? '<span class="dlose-t">' + esc(a.ap) + '</span>' : w === 'empate' ? '<span class="mut">empate</span>' : '';
+    h += '<div class="dtr' + (w === lado ? ' g' : w === o ? ' p' : '') + '"><span>Corrida ' + (i + 1) + '<br>' + marca + '</span><span>' + cel(x) + '</span><span>' + cel(y) + '</span></div>';
+  }
+  h += '</div>';
+  // apostas
+  var mia = d.aposta[lado], dele = d.aposta[o];
+  h += '<div class="dapostas" style="margin-top:12px"><div><span class="tiny mut">Sua aposta</span><div class="small">' + apostaHTML(mia) + '</div></div><div><span class="tiny mut">Aposta de ' + esc(a.ap) + '</span><div class="small">' + apostaHTML(dele) + '</div></div></div>';
+  if (d.status === 'fim') {
+    var txt = !d.vencedor ? 'As duas apostas voltaram para cada um.' : d.vencedor === eu ? 'Você recebeu de volta a sua aposta e ganhou ' + esc(Garagem.apostaTxt(dele)) + '.' : 'Sua aposta (' + esc(Garagem.apostaTxt(mia)) + ') foi para ' + esc(a.ap) + '.';
+    h += '<p class="small" style="margin-top:10px"><b>' + txt + '</b></p>';
+  }
+  return h + '<div class="mact"><button class="btn gh" data-a="fecharModal">Fechar</button>' + (d.status === 'fim' ? '<button class="btn lar" data-a="duelRevanche" data-v="' + esc(a.uid) + '">Revanche</button>' : '') + '</div>';
+}
+// mostra o resumo uma vez quando um duelo meu termina
+function verDuelosEncerrados() {
+  if (!S.user || !D.duelos || $('#modal').className === 'on') return;
+  var chave = 'gi_duelos_vistos_' + S.user.uid, vistos = lerLS(chave, null);
+  var fim = duelosLista().filter(function (d) { return d.status === 'fim'; });
+  if (vistos === null) { gravarLS(chave, fim.map(function (d) { return d._id; })); return; }
+  var novo = fim.filter(function (d) { return vistos.indexOf(d._id) < 0; }).sort(function (a, b) { return b.fimEm - a.fimEm; })[0];
+  if (!novo || (typeof CR !== 'undefined' && CR)) return;
+  vistos.push(novo._id); gravarLS(chave, vistos);
+  abrirModal(resumoDueloHTML(novo));
+}
 function avisoDuelo() {
-  var l = convitesRecebidos(); if (!l.length) return '';
+  setTimeout(verDuelosEncerrados, 300);
+  var urg = duelosEmAndamento().filter(function (d) { return proximaCorrida(d) >= 0 && d.prazo - Date.now() < 12 * 3600000 && d.prazo > Date.now(); })[0];
+  var alerta = urg ? '<button class="pvez dvez" data-a="duelos"><span class="pvez-c" style="font-size:26px">⏰</span><span style="flex:1;text-align:left"><b>Seu duelo com ' + esc(advDe(urg).ap) + ' acaba em ' + prazoTxt(urg.prazo) + '</b><span>Corrida não feita vale 0. Corra a corrida ' + (proximaCorrida(urg) + 1) + ' de 3.</span></span><span class="tag gold">Correr</span></button>' : '';
+  var l = convitesRecebidos(); if (!l.length) return alerta;
   var d = l[0];
-  return '<button class="pvez dvez" data-a="duelos"><span class="pvez-c" style="font-size:26px">⚔️</span><span style="flex:1;text-align:left"><b>' + esc(d.ap.de) + ' te desafiou!</b><span>Duelo valendo ' + esc(Garagem.apostaTxt(d.aposta.de)) + (l.length > 1 ? ' · +' + (l.length - 1) + ' desafio' + (l.length > 2 ? 's' : '') : '') + '</span></span><span class="tag gold">Ver</span></button>';
+  return alerta + '<button class="pvez dvez" data-a="duelos"><span class="pvez-c" style="font-size:26px">⚔️</span><span style="flex:1;text-align:left"><b>' + esc(d.ap.de) + ' te desafiou!</b><span>Duelo valendo ' + esc(Garagem.apostaTxt(d.aposta.de)) + (l.length > 1 ? ' · +' + (l.length - 1) + ' desafio' + (l.length > 2 ? 's' : '') : '') + '</span></span><span class="tag gold">Ver</span></button>';
 }
 function secaoDuelos() {
   var rec = convitesRecebidos().length, and = duelosEmAndamento().filter(function (d) { return proximaCorrida(d) >= 0; }).length;
@@ -74,7 +124,7 @@ function telaDuelos() {
       if (d.status === 'fim') res = !d.vencedor ? '<span class="tag">Empate</span>' : d.vencedor === uid ? '<span class="tag dwin">Venceu ' + d.placar[lado] + '×' + d.placar[a.lado] + '</span>' : '<span class="tag dlose">Perdeu ' + d.placar[lado] + '×' + d.placar[a.lado] + '</span>';
       else res = '<span class="tag">' + ({ recusado: 'Recusado', cancelado: 'Cancelado', expirado: 'Expirou' })[d.status] + '</span>';
       var premio = d.status === 'fim' && d.vencedor ? (d.vencedor === uid ? 'Ganhou ' : 'Perdeu ') + esc(Garagem.apostaTxt(d.aposta[d.vencedor === uid ? a.lado : lado])) : '';
-      h += '<div class="rk"><span class="pos">⚔️</span>' + avatar(jogDe(a.uid, { uid: a.uid, ap: a.ap }), a.uid) + '<div class="nm"><b>' + esc(a.ap) + '</b><span>' + premio + '</span></div><div>' + res + '</div></div>';
+      h += '<button class="rk rkbtn" data-a="duelResumo" data-v="' + d._id + '"><span class="pos">⚔️</span>' + avatar(jogDe(a.uid, { uid: a.uid, ap: a.ap }), a.uid) + '<div class="nm"><b>' + esc(a.ap) + '</b><span>' + (premio || 'Toque para ver o resumo') + '</span></div><div>' + res + '</div></button>';
     });
   }
   h += '<div class="card" style="margin-top:16px"><h3 style="margin-top:0">Como funciona</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.6">' +
@@ -95,8 +145,11 @@ function cartaoDuelo(d) {
     h += '<div class="dcor' + (w === lado ? ' ganhei' : w === a.lado ? ' perdi' : '') + '"><span class="tiny mut">Corrida ' + (i + 1) + '</span><div><b>' + tEu + '</b>' + (eu && eu.t != null ? miniCarro(eu.cat) : '') + '</div><div class="tiny mut">' + esc(a.ap) + ': ' + tEle + '</div></div>';
   }
   h += '</div>';
+  var horas = (d.prazo - Date.now()) / 3600000;
+  if (prox >= 0 && horas < 12) h += '<div class="dalerta">⏰ Faltam ' + prazoTxt(d.prazo) + '. Corrida não feita até lá vale 0.</div>';
   if (prox >= 0) h += '<button class="btn lar full" style="margin-top:10px" data-a="duelCorrer" data-v="' + d._id + '|' + prox + '">Correr a corrida ' + (prox + 1) + ' de 3</button>';
   else h += '<p class="tiny mut" style="margin:10px 0 0">Você já correu as 3. Falta ' + esc(a.ap) + ' terminar.</p>';
+  h += '<button class="lnk tiny" style="margin-top:8px" data-a="duelResumo" data-v="' + d._id + '">Ver resumo</button>';
   return h + '</div>';
 }
 
@@ -168,6 +221,8 @@ var A_DUELO = {
   },
   duelRecusar: function (id) { abrirConfirma('Recusar o desafio?', 'A aposta volta para quem desafiou.', 'Recusar', function () { B.chamar('duelo', { op: 'recusar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelCancelar: function (id) { abrirConfirma('Cancelar o desafio?', 'Sua aposta volta para você.', 'Cancelar desafio', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
+  duelResumo: function (id) { var d = D.duelos[id]; if (d) { d._id = id; abrirModal(resumoDueloHTML(d)); } },
+  duelRevanche: function (uid) { fecharModal(); DU.tipo = 'creditos'; DU.iid = ''; DU.para = uid; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalDesafiar(); },
   duelRanking: function () { DU.tela = false; S.tab = 'ranking'; S.rankModo = 'duelos'; R(); window.scrollTo(0, 0); },
   duelVerDepois: function () { fecharOv(); DU.tela = true; S.tab = 'jogar'; R(); window.scrollTo(0, 0); },
   duelCorrer: function (v) { var p = v.split('|'); abrirCorridaDuelo(p[0], parseInt(p[1], 10)); }
