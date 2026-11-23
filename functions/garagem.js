@@ -8,8 +8,8 @@
   // pneu = gasto do pneu (menor é melhor), seguro = vidas com que você larga
   G.CATALOGO = {
     'aura':            { nome: 'Aura',              modelo: 'aura',     cor: 0x2F7FE0, preco: 0,    tipo: 'Sedã',      atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
-    'conceito':        { nome: 'Conceito',          modelo: 'conceito', cor: 0xB04600, preco: 0,    tipo: 'Esportivo', atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
-    'cyberpunk':       { nome: 'Cyberpunk',         modelo: 'cyberpunk', cor: null,    preco: 0,    tipo: 'Muscle',    atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
+    'conceito':        { nome: 'Conceito',          modelo: 'conceito', cor: 0xB04600, preco: 0,    tipo: 'Esportivo', atr: { faixa: 1.10, pneu: 1.00, seguro: 0, eletrico: true } },
+    'cyberpunk':       { nome: 'Cyberpunk',         modelo: 'cyberpunk', cor: null,    preco: 0,    tipo: 'Muscle',    atr: { faixa: 1.10, pneu: 1.00, seguro: 0, eletrico: true } },
     'hatch-verde':     { nome: 'Hatch Verde',       modelo: 'hatch',    cor: 0x17935F, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
     'hatch-branco':    { nome: 'Hatch Branco',      modelo: 'hatch',    cor: 0xE9E7E1, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
     'sedan-grafite':   { nome: 'Sedã Grafite',      modelo: 'aura',     cor: 0x3A3F4B, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 } },
@@ -18,8 +18,8 @@
     'suv-porto':       { nome: 'SUV Azul Porto',    modelo: 'suv',      cor: 0x499EF2, preco: 650,  tipo: 'SUV',       atr: { faixa: 1.10, pneu: 0.80, seguro: 1 } },
     'picape-laranja':  { nome: 'Picape Laranja',    modelo: 'picape',   cor: 0xEC7000, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
     'picape-marinho':  { nome: 'Picape Marinho',    modelo: 'picape',   cor: 0x1C398E, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
-    'conceito-marinho':{ nome: 'Conceito Marinho',  modelo: 'conceito', cor: 0x14235E, preco: 900,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.05, seguro: 0 } },
-    'conceito-branco': { nome: 'Conceito Branco',   modelo: 'conceito', cor: 0xE9E7E1, preco: 950,  tipo: 'Esportivo', atr: { faixa: 1.30, pneu: 1.05, seguro: 0 } },
+    'conceito-marinho':{ nome: 'Conceito Marinho',  modelo: 'conceito', cor: 0x14235E, preco: 900,  tipo: 'Esportivo', atr: { faixa: 1.40, pneu: 1.05, seguro: 0, eletrico: true } },
+    'conceito-branco': { nome: 'Conceito Branco',   modelo: 'conceito', cor: 0xE9E7E1, preco: 950,  tipo: 'Esportivo', atr: { faixa: 1.40, pneu: 1.05, seguro: 0, eletrico: true } },
     // modelos 3D detalhados (nomes fictícios; créditos dos autores na aba Regras)
     'besouro':         { nome: 'Besouro',           modelo: 'besouro',   cor: null, preco: 400,  tipo: 'Clássico',  atr: { faixa: 1.10, pneu: 0.85, seguro: 0 }, lancado: '2026-11' },
     'perua':           { nome: 'Perua Retrô',       modelo: 'perua',     cor: null, preco: 500,  tipo: 'Clássico',  atr: { faixa: 1.00, pneu: 0.75, seguro: 1 }, lancado: '2026-11' },
@@ -28,12 +28,14 @@
     'granturismo':     { nome: 'Gran Turismo',      modelo: 'granturismo', cor: null, preco: 1200, tipo: 'Esportivo', atr: { faixa: 1.35, pneu: 0.95, seguro: 1 }, lancado: '2026-11' },
     'gaivota':         { nome: 'Asa de Gaivota',    modelo: 'gaivota',   cor: null, preco: 1300, tipo: 'Esportivo', atr: { faixa: 1.45, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
     'felino':          { nome: 'Felino X',          modelo: 'felino',    cor: null, preco: 1350, tipo: 'Superesportivo', atr: { faixa: 1.50, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
-    'neon':            { nome: 'Conceito Neon',     modelo: 'neon',      cor: null, preco: 1400, tipo: 'Conceito',  atr: { faixa: 1.45, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
+    'neon':            { nome: 'Conceito Neon',     modelo: 'neon',      cor: null, preco: 1400, tipo: 'Conceito',  atr: { faixa: 1.55, pneu: 1.00, seguro: 1, eletrico: true }, lancado: '2026-11' },
     'veloce':          { nome: 'Veloce Pista',      modelo: 'veloce',    cor: null, preco: 1500, tipo: 'Superesportivo', atr: { faixa: 1.55, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
     'touro':           { nome: 'Touro SV',          modelo: 'touro',     cor: null, preco: 1600, tipo: 'Superesportivo', atr: { faixa: 1.60, pneu: 1.00, seguro: 1 }, lancado: '2026-11' },
     'viajante':        { nome: 'Viajante 88',       modelo: 'viajante',  cor: null, preco: 450,  tipo: 'Clássico',  atr: { faixa: 1.00, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
     'roadster':        { nome: 'Serpente Roadster', modelo: 'roadster',  cor: null, preco: 1000, tipo: 'Muscle',    atr: { faixa: 1.35, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
-    'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.30, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
+    'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.40, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11' },
+    'hatch-e':         { nome: 'Hatch E',           modelo: 'hatch',     cor: 0x7FD3F5, preco: 480,  tipo: 'Elétrico',  atr: { faixa: 1.25, pneu: 0.95, seguro: 0, eletrico: true }, lancado: '2026-11' },
+    'suv-e':           { nome: 'SUV Porto E',       modelo: 'suv',       cor: 0x2FB8A6, preco: 820,  tipo: 'Elétrico',  atr: { faixa: 1.20, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11' },
     'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.75, pneu: 0.95, seguro: 1 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
@@ -50,9 +52,12 @@
   G.TREINO_PROP = 0.4;          // treino rende 40% dos pontos que o tempo valeria na rodada…
   G.TREINO_EXTRA_APOS = 180;    // …e, sem teto, +1 crédito a cada 15 s depois dos 3 minutos
   G.TREINO_EXTRA_CADA = 15;
-  G.creditosTreino = function (tempo) {
+  G.BONUS_ELETRICO = 0.15;      // carro elétrico rende +15% de créditos no treino e nos duelos
+  G.ehEletrico = function (cat) { return !!(G.CATALOGO[cat] && G.CATALOGO[cat].atr.eletrico); };
+  G.creditosTreino = function (tempo, cat) {
     tempo = Number(tempo) || 0;
-    return Math.round(L.curva(tempo, 40) * G.TREINO_PROP) + Math.max(0, Math.floor((tempo - G.TREINO_EXTRA_APOS) / G.TREINO_EXTRA_CADA));
+    var c = Math.round(L.curva(tempo, 40) * G.TREINO_PROP) + Math.max(0, Math.floor((tempo - G.TREINO_EXTRA_APOS) / G.TREINO_EXTRA_CADA));
+    return G.ehEletrico(cat) ? Math.round(c * (1 + G.BONUS_ELETRICO)) : c;
   };
   G.TREINO_LIMITE_DIA = Infinity; // sem limite: créditos não mexem no ranking e incentivam compra e venda
   G.dia = function (now) { return new Date(now - 3 * 3600000).toISOString().slice(0, 10); };
@@ -312,6 +317,9 @@
       var car = g[l].carros[al.iid];
       if (car) { delete g[l].carros[al.iid]; var iid = novaInst(g[w], al.cat, 'duelo', car.km || 0, now, d.ap[l]); d.carroGanho = { iid: iid, cat: al.cat }; }
     } else { c[w].recebido = (c[w].recebido || 0) + al.valor; mov(c[w], { t: now, v: al.valor, d: 'Prêmio do duelo com ' + d.ap[l] }); }
+    // bônus elétrico: quem venceu correndo a última corrida com carro elétrico ganha +15% sobre os créditos ganhos
+    var ult = (d.corridas[w] || []).filter(function (x) { return x && x.t != null; }).pop();
+    if (al.tipo === 'creditos' && ult && G.ehEletrico(ult.cat)) { var bn = Math.round(al.valor * G.BONUS_ELETRICO); if (bn > 0) { c[w].recebido = (c[w].recebido || 0) + bn; mov(c[w], { t: now, v: bn, d: 'Bônus elétrico do duelo' }); d.bonusEletrico = bn; } }
     return { doc: d, carteiras: c, garagens: g, vencedor: d[w] };
   };
 
@@ -391,7 +399,7 @@
       if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
-      creditos = Math.max(0, Math.min(G.creditosTreino(tempo), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
+      creditos = Math.max(0, Math.min(G.creditosTreino(tempo, ss.cat), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
       doc.hoje.creditos += creditos; doc.creditos = (doc.creditos || 0) + creditos;
       // guarda só as últimas 12 semanas
       Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });

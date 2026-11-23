@@ -123,6 +123,17 @@ function capTextura(g, w, h) {
   g.strokeStyle = '#fff'; g.lineWidth = 14; g.lineCap = 'round'; g.lineJoin = 'round';
   for (var i = 0; i < 2; i++) { var y = h - 150 + i * 62; g.beginPath(); g.moveTo(w / 2 - 50, y + 26); g.lineTo(w / 2, y - 14); g.lineTo(w / 2 + 50, y + 26); g.stroke(); }
 }
+// piso do posto de abastecimento (combustível e recarga elétrica)
+function postoTextura(g, w, h) {
+  function rr2(x, y, ww, hh, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + ww, y, x + ww, y + hh, r); g.arcTo(x + ww, y + hh, x, y + hh, r); g.arcTo(x, y + hh, x, y, r); g.arcTo(x, y, x + ww, y, r); g.closePath(); }
+  g.fillStyle = 'rgba(23,147,95,.92)'; rr2(4, 4, w - 8, h - 8, 26); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 8; g.setLineDash([26, 18]); rr2(18, 18, w - 36, h - 36, 18); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '900 66px Montserrat, Arial, sans-serif'; g.fillText('POSTO', w / 2, 92);
+  g.font = '900 56px Arial, sans-serif'; g.fillText('⛽ ⚡', w / 2, 160);
+  g.strokeStyle = '#fff'; g.lineWidth = 14; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (var i = 0; i < 2; i++) { var y = h - 150 + i * 62; g.beginPath(); g.moveTo(w / 2 - 50, y + 26); g.lineTo(w / 2, y - 14); g.lineTo(w / 2 + 50, y + 26); g.stroke(); }
+}
 function montarMotor() {
   var box = $('#cvBox'), wrap = $('#cvWrap'), hud = $('#cv');
   var dispW = Math.min(box.clientWidth, 480), dispH = window.innerHeight - 140;
@@ -144,7 +155,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   var N = 5, LANE = 100, ROAD = N * LANE, CARW = 44, CARH = 78, STEP = 1 / 120, HORIZ = 2400;
   var CENTRO = []; for (var c = 0; c < N; c++) CENTRO.push(LANE / 2 + c * LANE);
   var PENALIDADE = 5, PARADA = 1.5, MAX_VIDAS = 2, INVUL = 1.5, MAX_TAGS = 3, AURA_DUR = 5;
-  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aura: [42, 42], aviso: [400, 40], cap: [92, 150] };
+  var TAM = { cone: [38, 44], buraco: [64, 46], carro: [52, 90], cancela: [96, 22], tag: [40, 30], seguro: [40, 34], aura: [42, 42], aviso: [400, 40], posto: [92, 150], cap: [92, 150] };
   // pneus e pit stop no CAP Porto: o pneu gasta com o tempo; parar no CAP troca os pneus e dá 15 s de revisão (passa por buracos)
   var SEL = carroSel(CR && CR.carro);
   var ATR = (CR && (CR.treino || CR.duelo)) ? SEL.atr : { faixa: 1, pneu: 1, seguro: 0 };   // atributos do carro valem no treino e nos duelos
@@ -152,10 +163,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function hexCss(n, f) { var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; f = f || 1; return 'rgb(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ')'; }
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
+  // abastecimento: tanque dura ~95 s (elétrico ~65 s); no posto, combustão para 2 s e elétrico 3,5 s.
+  // Na rodada todos andam a combustão; o tanque só entra a partir da rodada que começa em 30/11 (a desta semana segue como estava).
+  var rodTanque = !(CR && !CR.treino && !CR.duelo) || (window.D && D.rodadas && CR.rid && D.rodadas[CR.rid] && D.rodadas[CR.rid].inicio >= Date.UTC(2026, 10, 30, 3));
+  var TANQUE = rodTanque, ELETRICO = !!ATR.eletrico;
+  var CONSUMO = ELETRICO ? 100 / 65 : 100 / 95, POSTO_PARADA = ELETRICO ? 3.5 : 2, POSTO_PEN = ELETRICO ? 3.5 : 2, COMB_BAIXO = 25;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, aura: 0, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
-    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0 };
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0, comb: 100, ultPosto: 0, postos: 0, panes: 0, semComb: false, pausado: false };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
   function extra(t) { return Math.max(0, (t - 120) / 60); }
@@ -182,6 +198,15 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       return;
     }
     var ex = extra(s.t);
+    if (TANQUE && s.t > 20 && s.t - s.ultPosto > 26 + 4 * ex && d > s.capLivreAte) {
+      var hpo = (Logica.hash('posto|' + seed + '|' + Math.round(d)) >>> 0) / 4294967296;
+      if (hpo < 0.35) {
+        // posto na faixa da direita ou da esquerda; a faixa fica livre até a entrada
+        s.ultPosto = s.t; s.capLane = hpo < 0.175 ? 0 : N - 1;
+        add('posto', s.capLane, d + 640);
+        s.capLivreAte = d + 640 + TAM.cap[1] + 40;
+      }
+    }
     if (s.t > 14 && s.t - s.ultCap > 18 + 4 * ex && r < 0.42 && d > s.capLivreAte) {
       // entrada do CAP Porto na faixa da direita ou da esquerda, um pouco à frente; essa faixa fica livre até lá
       s.ultCap = s.t; s.caps++; s.capLane = rnd() < 0.5 ? 0 : N - 1;
@@ -212,6 +237,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (s.parada > 0) { s.parada -= dt; return; }
     if (s.revisao > 0) s.revisao -= dt;
     s.pneu -= GASTO_PNEU * (1 + 0.2 * extra(s.t)) * dt;
+    if (TANQUE) {
+      s.comb -= CONSUMO * (1 + 0.15 * extra(s.t)) * dt;
+      if (s.comb <= 0) {
+        if (s.vidas > 0) { som('furou'); s.vidas--; s.usouSeguro++; s.panes++; s.comb = 35; s.invul = INVUL; s.msg = { txt: ELETRICO ? 'Bateria zerou! O seguro rebocou' : 'Pane seca! O seguro trouxe combustível', cor: '#9FD3FF', ate: s.t + 1.8 }; }
+        else { som('furou'); som('batida'); s.comb = 0; s.semComb = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.3; return; }
+      }
+    }
     if (s.pneu <= 0) {
       if (s.vidas > 0) { som('furou'); s.vidas--; s.usouSeguro++; s.pneu = 30; s.invul = INVUL; s.tremor = 0.35; s.msg = { txt: 'Pneu furou! O seguro trocou', cor: '#9FD3FF', ate: s.t + 1.8 }; }
       else { som('furou'); som('batida'); s.pneu = 0; s.furou = true; s.vivo = false; s.fase = 'batida'; s.flash = 1; s.tremor = 0.5; return; }
@@ -232,6 +264,11 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (o.tipo === 'cap') {
         som('pit'); o.pego = true; s.pits++; s.pneu = 100; s.revisao = REVISAO; s.pen += CAP_PEN; s.parada = CAP_PARADA;
         s.msg = { txt: 'CAP Porto: pneus novos (−' + CAP_PEN + ' s)', cor: '#9FD3FF', ate: s.t + CAP_PARADA + 1 };
+        continue;
+      }
+      if (o.tipo === 'posto') {
+        som('pit'); o.pego = true; s.postos++; s.comb = 100; s.pen += POSTO_PEN; s.parada = Math.max(s.parada, POSTO_PARADA);
+        s.msg = { txt: (ELETRICO ? 'Recarga completa' : 'Tanque cheio') + ' (−' + String(POSTO_PEN).replace('.', ',') + ' s)', cor: '#7CE0B0', ate: s.t + POSTO_PARADA + 1 };
         continue;
       }
       if (o.tipo === 'buraco') {
@@ -338,8 +375,19 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(ctx, px + 30, py + 12, pw - 40, 10, 5); ctx.fill();
     ctx.fillStyle = s.pneu > 60 ? '#7CE0B0' : s.pneu > PNEU_GASTO ? '#FFD07A' : '#FF9C5A';
     rr(ctx, px + 30, py + 12, Math.max(6, (pw - 40) * Math.max(0, s.pneu) / 100), 10, 5); ctx.fill();
-    if (s.revisao > 0) { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py + 40, pw, 24, 8); ctx.fill(); ctx.fillStyle = '#9FD3FF'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('REVISÃO ' + Math.ceil(s.revisao) + ' s', px + pw / 2, py + 52); }
-    else if (gasto && s.fase === 'rodando') { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, py + 40, pw, 24, 8); ctx.fill(); ctx.fillStyle = pisca ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PARE NO CAP', px + pw / 2, py + 52); }
+    var ay = py + 40;
+    if (TANQUE) {
+      var baixo = s.comb < COMB_BAIXO, piscaC = baixo && Math.floor(s.t * 3) % 2 === 0;
+      ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 30, 10); ctx.fill();
+      ctx.font = '15px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = piscaC ? 0.4 : 1; ctx.fillText(ELETRICO ? '🔋' : '⛽', px + 15, ay + 16); ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(ctx, px + 30, ay + 10, pw - 40, 10, 5); ctx.fill();
+      ctx.fillStyle = s.comb > 50 ? (ELETRICO ? '#7FD3F5' : '#7CE0B0') : s.comb > COMB_BAIXO ? '#FFD07A' : '#FF9C5A';
+      rr(ctx, px + 30, ay + 10, Math.max(6, (pw - 40) * Math.max(0, s.comb) / 100), 10, 5); ctx.fill();
+      ay += 36;
+    }
+    if (s.revisao > 0) { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = '#9FD3FF'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('REVISÃO ' + Math.ceil(s.revisao) + ' s', px + pw / 2, ay + 12); ay += 30; }
+    else if (gasto && s.fase === 'rodando') { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = pisca ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PARE NO CAP', px + pw / 2, ay + 12); ay += 30; }
+    if (TANQUE && s.comb < COMB_BAIXO && s.fase === 'rodando') { var pc = Math.floor(s.t * 3) % 2 === 0; ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = pc ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ELETRICO ? 'RECARREGUE' : 'ABASTEÇA', px + pw / 2, ay + 12); }
     if (s.msg && s.t < s.msg.ate) { ctx.fillStyle = 'rgba(13,24,64,.85)'; rr(ctx, HW / 2 - 140, 140, 280, 44, 12); ctx.fill(); ctx.fillStyle = s.msg.cor; ctx.textAlign = 'center'; ctx.font = '900 17px Montserrat, Arial, sans-serif'; ctx.fillText(s.msg.txt, HW / 2, 163); }
     if (s.fase === 'contagem') {
       ctx.fillStyle = 'rgba(13,24,64,.55)'; ctx.fillRect(0, 0, HW, HH);
@@ -348,7 +396,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     }
     if (s.fase === 'batida') {
       ctx.fillStyle = 'rgba(226,59,59,' + (0.5 * s.flash) + ')'; ctx.fillRect(0, 0, HW, HH);
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 46px Montserrat, Arial, sans-serif'; ctx.fillText(s.furou ? 'FUROU!' : 'BATEU!', HW / 2, HH / 2 - 20);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 46px Montserrat, Arial, sans-serif'; ctx.fillText(s.furou ? 'FUROU!' : s.semComb ? (ELETRICO ? 'SEM BATERIA!' : 'PANE SECA!') : 'BATEU!', HW / 2, HH / 2 - 20);
       ctx.font = '900 30px Montserrat, Arial, sans-serif'; ctx.fillText(fmtSeg(placar()), HW / 2, HH / 2 + 26);
     } else if (s.invul > 0 && Math.floor(s.invul * 8) % 2 === 0) {
       ctx.strokeStyle = 'rgba(73,158,242,.8)'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, HW - 6, HH - 6);
@@ -522,7 +570,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         if (!o._mesh) o._mesh = criarMesh(o);
         var g = o._mesh, a = o.d - s.dist + o.h / 2;
         g.position.set(o.tipo === 'aviso' ? 0 : lx(CENTRO[o.lane]), 0, -a * K);
-        g.visible = !(o.pego && o.tipo !== 'cap') && !(o.batido && o.tipo !== 'buraco');
+        g.visible = !(o.pego && o.tipo !== 'cap' && o.tipo !== 'posto') && !(o.batido && o.tipo !== 'buraco');
         if (g.userData.piv) { var alvo = o.aberta ? -1.25 : 0; g.userData.piv.rotation.z += (alvo - g.userData.piv.rotation.z) * 0.18; }
         if (g.userData.sp) { g.userData.sp.position.y = 1.0 + Math.sin(tempoReal * 4 + o.lane) * 0.12; }
         if (g.userData.pisca) { var on = Math.floor(tempoReal * 3) % 2 === 0; g.userData.pisca.forEach(function (l) { l.material.color.setHex(on ? 0xFFB020 : 0x7A4A00); }); }
@@ -565,7 +613,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     var fo = s.dist % 70; ctx.fillStyle = 'rgba(255,255,255,.75)';
     for (var f = -70; f < H + 70; f += 70) for (var l = 1; l < N; l++) ctx.fillRect(R0 + l * LANE - 2, f + fo, 4, 36);
     s.obst.forEach(function (o) {
-      if ((o.pego && o.tipo !== 'cap') || (o.batido && o.tipo !== 'buraco')) return;
+      if ((o.pego && o.tipo !== 'cap' && o.tipo !== 'posto') || (o.batido && o.tipo !== 'buraco')) return;
       var bot = CY - (o.d - s.dist), top = bot - o.h, cx = R0 + CENTRO[o.lane];
       if (bot < -40 || top > H + 40) return;
       if (o.tipo === 'cone') {
@@ -577,6 +625,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.strokeStyle = '#555B69'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = '#15171C'; ctx.beginPath(); ctx.ellipse(cx + 4, bot - o.h / 2 + 3, o.w / 3, o.h / 3.2, 0, 0, 7); ctx.fill();
       } else if (o.tipo === 'cap') capPiso(ctx, cx, bot, o.w, o.h, false);
+      else if (o.tipo === 'posto') { var cvq = document.createElement('canvas'); cvq.width = 256; cvq.height = 416; postoTextura(cvq.getContext('2d'), 256, 416); ctx.drawImage(cvq, cx - o.w / 2, bot - o.h, o.w, o.h); }
       else if (o.tipo === 'carro') carroClassico(ctx, cx, top, '#9AA1AC', '#666C76', true);
       else if (o.tipo === 'cancela' && o.ff) {
         ctx.fillStyle = 'rgba(73,158,242,.45)'; ctx.fillRect(cx - LANE / 2 + 4, top - 30, LANE - 8, o.h + 50);
@@ -739,6 +788,9 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
         ctx.stroke();
       } else if (o.tipo === 'cap') {
         capPiso(ctx, cx, bot, o.w, o.h, true);
+      } else if (o.tipo === 'posto') {
+        if (!REAL.posto) { var cvp = document.createElement('canvas'); cvp.width = 256; cvp.height = 416; postoTextura(cvp.getContext('2d'), 256, 416); REAL.posto = cvp; }
+        ctx.drawImage(REAL.posto, cx - o.w / 2, bot - o.h, o.w, o.h);
       } else if (o.tipo === 'aviso') {
         ctx.save(); ctx.globalAlpha = 0.85; ctx.fillStyle = '#F4F1EA'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 40px Montserrat, Arial, sans-serif';
         ctx.fillText('PEDÁGIO', R0 + ROAD / 2, bot - 22); ctx.fillRect(R0 + 14, bot - 2, ROAD - 28, 5); ctx.restore();
@@ -746,7 +798,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     });
     // objetos com altura (sombras + corpo)
     s.obst.forEach(function (o) {
-      if (o.pego || (o.batido && o.tipo !== 'buraco') || o.tipo === 'buraco' || o.tipo === 'aviso' || o.tipo === 'cap') return;
+      if (o.pego || (o.batido && o.tipo !== 'buraco') || o.tipo === 'buraco' || o.tipo === 'aviso' || o.tipo === 'cap' || o.tipo === 'posto') return;
       var bot = CY - (o.d - s.dist), top = bot - o.h, cx = R0 + CENTRO[o.lane];
       if (bot < -60 || top > H + 60) return;
       if (o.tipo === 'cone') {
@@ -847,11 +899,12 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     if (parado) return;
     if (ultimo == null) ultimo = ts;
     var dt = Math.min(0.05, (ts - ultimo) / 1000); ultimo = ts;
-    if (s.fase === 'contagem') {
+    if (s.fase === 'contagem' && !s.pausado) {
       var antesC = Math.ceil(s.cont); s.cont -= dt;
       if (s.cont <= 0) { s.fase = 'rodando'; if (window.Musica) { Musica.bip(true); Musica.tocar(); } }
       else if (Math.ceil(s.cont) !== antesC && window.Musica) Musica.bip(false);
     }
+    else if (s.pausado) { /* pausado: só redesenha */ }
     else if (s.fase === 'rodando') { if (window.Musica) Musica.ritmo(nivel(s.t)); s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
     else if (s.fase === 'batida') {
       s.flash = Math.max(0, s.flash - dt * 1.4); if (s.tremor > 0) s.tremor -= dt;
@@ -861,16 +914,26 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     raf = requestAnimationFrame(quadro);
   }
   function tecla(e) {
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') { e.preventDefault(); pausaJogo(!s.pausado); return; }
+    if (s.pausado) return;
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { e.preventDefault(); mover(-1); }
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); mover(1); }
   }
   function toque(e) {
+    if (s.pausado) return;
     e.preventDefault();
     var rect = wrap.getBoundingClientRect();
     var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
     mover(x < rect.width / 2 ? -1 : 1);
   }
-  function oculto() { if (document.hidden && s.fase === 'rodando' && s.vivo) { s.vivo = false; s.fase = 'batida'; s.flash = 1; } }
+  // saiu do app no meio da corrida: pausa (antes encerrava)
+  function oculto() { if (document.hidden && (s.fase === 'rodando' || s.fase === 'contagem') && s.vivo) pausaJogo(true); }
+  function pausaJogo(p) {
+    if (!(s.fase === 'rodando' || s.fase === 'contagem') || !s.vivo || s.pausado === p) return;
+    s.pausado = p;
+    if (window.Musica) { if (p) Musica.parar(); else if (s.fase === 'rodando') Musica.tocar(); }
+    if (typeof aoPausa === 'function') aoPausa(p);
+  }
   function parar() {
     parado = true; if (raf) cancelAnimationFrame(raf); if (window.Musica) Musica.parar();
     document.removeEventListener('keydown', tecla); document.removeEventListener('visibilitychange', oculto);
@@ -882,9 +945,10 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   wrap.addEventListener('pointerdown', toque);
   raf = requestAnimationFrame(quadro);
   this.parar = parar;
+  this.pausaJogo = pausaJogo;
   this.r3 = function () { return R3; };
   this.pausar = function () { parado = true; if (raf) cancelAnimationFrame(raf); };
-  this.abortar = function () { if (s.fase === 'rodando' && s.vivo) { s.vivo = false; s.fase = 'batida'; s.flash = 1; } else if (s.fase === 'contagem') { s.fase = 'batida'; s.vivo = false; } };
+  this.abortar = function () { if (s.pausado) { s.pausado = false; if (typeof aoPausa === 'function') aoPausa(false); } if (s.fase === 'rodando' && s.vivo) { s.vivo = false; s.fase = 'batida'; s.flash = 1; } else if (s.fase === 'contagem') { s.fase = 'batida'; s.vivo = false; } };
   this.estado = s;
   this.modo = VISUAL;
   this._passo = passo;

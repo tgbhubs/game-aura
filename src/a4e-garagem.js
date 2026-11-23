@@ -66,11 +66,11 @@ function garMinha() {
 }
 function barrasAtrMini(a, cat) {
   // toque nos atributos abre a explicação (eles só valem no treino)
-  return '<button class="gatr" data-a="infoAtr" data-v="' + (cat || '') + '" aria-label="O que significam os atributos"><span title="Agilidade">⚡ ' + Math.round(a.faixa * 100) + '%</span><span title="Pneus">🛞 ' + (a.pneu < 1 ? 'duram mais' : a.pneu > 1 ? 'gastam mais' : 'normais') + '</span><span title="Seguro">🛡️ ' + (a.seguro ? '+1' : '—') + '</span><span class="gatr-i">ⓘ</span></button>';
+  return '<button class="gatr" data-a="infoAtr" data-v="' + (cat || '') + '" aria-label="O que significam os atributos"><span title="Agilidade">⚡ ' + Math.round(a.faixa * 100) + '%</span><span title="Pneus">🛞 ' + (a.pneu < 1 ? 'duram mais' : a.pneu > 1 ? 'gastam mais' : 'normais') + '</span><span title="Seguro">🛡️ ' + (a.seguro ? '+1' : '—') + '</span><span title="Motor">' + (a.eletrico ? '🔋 elétrico' : '⛽') + '</span><span class="gatr-i">ⓘ</span></button>';
 }
 // duração aproximada do pneu (antes da reta final): 100% / (1,6% por segundo × fator do carro)
 function duraPneu(a) { return Math.round(100 / (1.6 * a.pneu)); }
-function legendaAtr() { return '<div class="tiny mut gleg">⚡ agilidade · 🛞 pneus · 🛡️ seguro inicial. <button class="lnk tiny" data-a="infoAtr">O que é cada um?</button> Só valem no treino.</div>'; }
+function legendaAtr() { return '<div class="tiny mut gleg">⚡ agilidade · 🛞 pneus · 🛡️ seguro inicial · ⛽/🔋 motor. <button class="lnk tiny" data-a="infoAtr">O que é cada um?</button> Só valem no treino.</div>'; }
 var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 // showroom: vitrine dos lançamentos do mês, um carro em destaque por vez (rolagem lateral)
 function garShowroom(saldo) {
@@ -178,6 +178,7 @@ var A_GAR = {
     abrirModal('<h3>' + (c ? esc(c.nome) + ': atributos' : 'O que são os atributos') + '</h3><p class="small mut">Os atributos <b>só valem no treino</b>. Na corrida da rodada, todos os carros andam igual, para o ranking ser justo.</p>' +
       item('⚡', 'Agilidade', 'Rapidez para trocar de faixa. 100% é o carro padrão; acima disso o carro desvia mais rápido, abaixo, demora mais.', a ? Math.round(a.faixa * 100) + '%' : '') +
       item('🛞', 'Pneus', 'Quanto o pneu gasta com o tempo. No carro padrão ele dura cerca de ' + duraPneu({ pneu: 1 }) + ' s até precisar parar no CAP Porto; na reta final (depois de 2 min) gasta mais rápido.', a ? (a.pneu < 1 ? 'duram mais' : a.pneu > 1 ? 'gastam mais' : 'normais') + ' · ~' + duraPneu(a) + ' s' : '') +
+      item(a && a.eletrico ? '🔋' : '⛽', 'Motor', 'Combustão: tanque dura cerca de 95 s e abastece em 2 s no posto. Elétrico: bateria dura cerca de 65 s e recarrega em 3,5 s, mas tem torque instantâneo (+10% de agilidade, já somado) e rende +15% de créditos no treino e nos duelos.', a ? (a.eletrico ? 'elétrico' : 'combustão') : '') +
       item('🛡️', 'Seguro inicial', 'Se o carro já larga com um Seguro Porto, que é uma vida extra. "—" quer dizer que larga sem nenhum.', a ? (a.seguro ? 'larga com 1' : 'sem') : '') +
       '<p class="tiny mut" style="margin-top:10px">Carros mais caros costumam ser mais ágeis, mas gastam pneu rápido e não têm seguro. Clássicos e utilitários manobram menos e aguentam mais.</p>' +
       '<div class="mact"><button class="btn lar" data-a="fecharModal">Entendi</button></div>');

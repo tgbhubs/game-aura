@@ -241,6 +241,8 @@ var A = {
   iniciarCorrida: function () { Musica.preparar(); iniciarCorrida(); },
   rankTreino: function (v) { S.rankTreino = v; S.manterScroll = true; R(); },
   verRankingTreino: function () { fecharOv(); S.tab = 'ranking'; S.rankModo = 'treino'; S.rankTreino = 'semana'; R(); },
+  pausarCorrida: function () { if (CR && CR.motor && CR.motor.pausaJogo) CR.motor.pausaJogo(true); },
+  retomarCorrida: function () { if (CR && CR.motor && CR.motor.pausaJogo) CR.motor.pausaJogo(false); },
   musica: function () {
     var on = Musica.alternar(), b = $('#btMusica');
     if (b) b.innerHTML = on ? '♫' : '<s>♫</s>';

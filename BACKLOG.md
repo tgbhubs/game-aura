@@ -8,6 +8,8 @@ Melhorias anotadas para fazer juntas no próximo pacote.
 
 ## Feito recentemente
 
+- 2026-11-23b: pausa na corrida; posto de combustível/recarga (rodada a partir de 30/11); carros elétricos (conceitos + Hatch E e SUV Porto E) com +10% de agilidade e +15% de créditos.
+
 - 2026-11-21d: Poder Aura na pista a partir do nível 10 (mesmo efeito do Seguro Porto); ranking, retrospecto e 7 conquistas de duelos.
 
 - 2026-11-21a: duelos (melhor de 3, créditos ou carro, até 100 créditos); treino paga 40% sem teto (+1 a cada 15 s depois de 3 min); atributos rebalanceados (carro pago sempre melhor que o da casa; topo com seguro e pneu normal).
