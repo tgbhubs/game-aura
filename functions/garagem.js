@@ -10,14 +10,14 @@
     'aura':            { nome: 'Aura',              modelo: 'aura',     cor: 0x2F7FE0, preco: 0,    tipo: 'Sedã',      atr: { faixa: 1.00, pneu: 1.00, seguro: 0 } },
     'conceito':        { nome: 'Conceito',          modelo: 'conceito', cor: 0xB04600, preco: 0,    tipo: 'Esportivo', atr: { faixa: 1.10, pneu: 1.00, seguro: 0, eletrico: true } },
     'cyberpunk':       { nome: 'Cyberpunk',         modelo: 'cyberpunk', cor: null,    preco: 0,    tipo: 'Muscle',    atr: { faixa: 1.10, pneu: 1.00, seguro: 0, eletrico: true } },
-    'hatch-verde':     { nome: 'Hatch Verde',       modelo: 'hatch',    cor: 0x17935F, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
-    'hatch-branco':    { nome: 'Hatch Branco',      modelo: 'hatch',    cor: 0xE9E7E1, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 } },
-    'sedan-grafite':   { nome: 'Sedã Grafite',      modelo: 'aura',     cor: 0x3A3F4B, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 } },
-    'sedan-prata':     { nome: 'Sedã Prata',        modelo: 'aura',     cor: 0xB9BEC6, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 } },
-    'suv-areia':       { nome: 'SUV Areia',         modelo: 'suv',      cor: 0xCDBB98, preco: 550,  tipo: 'SUV',       atr: { faixa: 1.05, pneu: 0.80, seguro: 1 } },
-    'suv-porto':       { nome: 'SUV Azul Porto',    modelo: 'suv',      cor: 0x499EF2, preco: 650,  tipo: 'SUV',       atr: { faixa: 1.10, pneu: 0.80, seguro: 1 } },
-    'picape-laranja':  { nome: 'Picape Laranja',    modelo: 'picape',   cor: 0xEC7000, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
-    'picape-marinho':  { nome: 'Picape Marinho',    modelo: 'picape',   cor: 0x1C398E, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 } },
+    'hatch-verde':     { nome: 'Hatch Verde',       modelo: 'hatch',    cor: 0x17935F, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 }, fora: true },
+    'hatch-branco':    { nome: 'Hatch Branco',      modelo: 'hatch',    cor: 0xE9E7E1, preco: 300,  tipo: 'Hatch',     atr: { faixa: 1.10, pneu: 0.95, seguro: 0 }, fora: true },
+    'sedan-grafite':   { nome: 'Sedã Grafite',      modelo: 'aura',     cor: 0x3A3F4B, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 }, fora: true },
+    'sedan-prata':     { nome: 'Sedã Prata',        modelo: 'aura',     cor: 0xB9BEC6, preco: 350,  tipo: 'Sedã',      atr: { faixa: 1.05, pneu: 0.85, seguro: 0 }, fora: true },
+    'suv-areia':       { nome: 'SUV Areia',         modelo: 'suv',      cor: 0xCDBB98, preco: 550,  tipo: 'SUV',       atr: { faixa: 1.05, pneu: 0.80, seguro: 1 }, fora: true },
+    'suv-porto':       { nome: 'SUV Azul Porto',    modelo: 'suv',      cor: 0x499EF2, preco: 650,  tipo: 'SUV',       atr: { faixa: 1.10, pneu: 0.80, seguro: 1 }, fora: true },
+    'picape-laranja':  { nome: 'Picape Laranja',    modelo: 'picape',   cor: 0xEC7000, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 }, fora: true },
+    'picape-marinho':  { nome: 'Picape Marinho',    modelo: 'picape',   cor: 0x1C398E, preco: 600,  tipo: 'Picape',    atr: { faixa: 1.05, pneu: 0.75, seguro: 1 }, fora: true },
     'conceito-marinho':{ nome: 'Conceito Marinho',  modelo: 'conceito', cor: 0x14235E, preco: 900,  tipo: 'Esportivo', atr: { faixa: 1.40, pneu: 1.05, seguro: 0, eletrico: true } },
     'conceito-branco': { nome: 'Conceito Branco',   modelo: 'conceito', cor: 0xE9E7E1, preco: 950,  tipo: 'Esportivo', atr: { faixa: 1.40, pneu: 1.05, seguro: 0, eletrico: true } },
     // modelos 3D detalhados (nomes fictícios; créditos dos autores na aba Regras)
@@ -34,20 +34,22 @@
     'viajante':        { nome: 'Viajante 88',       modelo: 'viajante',  cor: null, preco: 450,  tipo: 'Clássico',  atr: { faixa: 1.00, pneu: 0.80, seguro: 1 }, lancado: '2026-11' },
     'roadster':        { nome: 'Serpente Roadster', modelo: 'roadster',  cor: null, preco: 1000, tipo: 'Muscle',    atr: { faixa: 1.35, pneu: 1.05, seguro: 0 }, lancado: '2026-11' },
     'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.40, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11' },
-    'hatch-e':         { nome: 'Hatch E',           modelo: 'hatch',     cor: 0x7FD3F5, preco: 480,  tipo: 'Elétrico',  atr: { faixa: 1.25, pneu: 0.95, seguro: 0, eletrico: true }, lancado: '2026-11' },
-    'suv-e':           { nome: 'SUV Porto E',       modelo: 'suv',       cor: 0x2FB8A6, preco: 820,  tipo: 'Elétrico',  atr: { faixa: 1.20, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11' },
+    'hatch-e':         { nome: 'Hatch E',           modelo: 'hatch',     cor: 0x7FD3F5, preco: 480,  tipo: 'Elétrico',  atr: { faixa: 1.25, pneu: 0.95, seguro: 0, eletrico: true }, lancado: '2026-11', fora: true },
+    'suv-e':           { nome: 'SUV Porto E',       modelo: 'suv',       cor: 0x2FB8A6, preco: 820,  tipo: 'Elétrico',  atr: { faixa: 1.20, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11', fora: true },
     'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.75, pneu: 0.95, seguro: 1 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
+  // fora: true = modelo genérico fora de linha (não vende mais 0 km nem entra nos lotes de retomados; quem já tem continua usando e pode revender)
+  G.foraDeLinha = function (cat) { return !!(G.CATALOGO[cat] && G.CATALOGO[cat].fora); };
   // showroom do 0 km: lançamentos do mês (campo lancado = 'AAAA-MM'); se o mês não tem lançamento, mostra o mais recente
   G.mesId = function (now) { return new Date(now - 3 * 3600000).toISOString().slice(0, 7); };
   G.lancamentos = function (now) {
-    var mes = G.mesId(now), todos = Object.keys(G.CATALOGO).filter(function (k) { return G.CATALOGO[k].lancado && G.CATALOGO[k].lancado <= mes; });
+    var mes = G.mesId(now), todos = Object.keys(G.CATALOGO).filter(function (k) { return G.CATALOGO[k].lancado && G.CATALOGO[k].lancado <= mes && !G.CATALOGO[k].fora; });
     if (!todos.length) return { mes: mes, cats: [], doMes: false };
     var ult = todos.map(function (k) { return G.CATALOGO[k].lancado; }).sort().pop();
     return { mes: ult, doMes: ult === mes, cats: todos.filter(function (k) { return G.CATALOGO[k].lancado === ult; }).sort(function (a, b) { return G.CATALOGO[b].preco - G.CATALOGO[a].preco; }) };
   };
-  G.VENDA = Object.keys(G.CATALOGO).filter(function (k) { return G.BASE.indexOf(k) < 0; });
+  G.VENDA = Object.keys(G.CATALOGO).filter(function (k) { return G.BASE.indexOf(k) < 0 && !G.CATALOGO[k].fora; });
   G.PONTOS_VITORIA_PLACA = 30;
   G.TREINO_PROP = 0.4;          // treino rende 40% dos pontos que o tempo valeria na rodada…
   G.TREINO_EXTRA_APOS = 180;    // …e, sem teto, +1 crédito a cada 15 s depois dos 3 minutos
@@ -134,7 +136,7 @@
   };
   G.comprar0km = function (st, cat, now) {
     var c = G.CATALOGO[cat];
-    if (!c || G.BASE.indexOf(cat) >= 0) L.erro('Carro indisponível.');
+    if (!c || G.BASE.indexOf(cat) >= 0 || c.fora) L.erro('Carro indisponível.');
     precisa(st.saldo, c.preco);
     var gar = L.clone(st.garagem || {}), cart = L.clone(st.carteira || {});
     var iid = novaInst(gar, cat, '0km', 0, now);
