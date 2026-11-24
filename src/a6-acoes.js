@@ -266,7 +266,7 @@ var A = {
   compartilharBadge: function (v) { var p = v.split('|'); imagemBadge(p[0], p[1], p[2] ? parseInt(p[2], 10) : null); },
   compartilharPrevia: function () { compartilharPrevia(); },
   vistos: function () { marcarBadgesVistos(); R(); },
-  infoBadge: function (v) { var d = BADGES[v]; abrirModal('<div style="text-align:center"><div style="font-size:56px">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p></div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
+  infoBadge: function (v) { var d = BADGES[v], n = meusBadges().filter(function (b) { return b.tipo === v; }).length; abrirModal('<div style="text-align:center"><div style="font-size:56px' + (n ? '' : ';filter:grayscale(1);opacity:.6') + '">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p>' + (n ? '<p><b style="color:#7CE0B0">Conquistado' + (n > 1 ? ' ' + n + ' vezes' : '') + ' nesta temporada</b></p>' : '') + (d.como ? '<div class="card" style="text-align:left;margin-top:10px"><div class="tiny" style="opacity:.7;text-transform:uppercase;letter-spacing:.06em">' + (n ? 'Como conquistar de novo' : 'Como conquistar') + '</div><div style="margin-top:4px">' + esc(d.como) + '</div></div>' : '') + '</div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
   editarPerfil: function () {
     var me = S.me;
     abrirModal('<h3>Editar dados</h3><label class="f">Nome completo</label><input class="inp" id="eNome" value="' + esc(me.nome) + '"><label class="f">Apelido</label><input class="inp" id="eApelido" maxlength="18" value="' + esc(me.apelido) + '">' +

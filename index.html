@@ -133,8 +133,10 @@ textarea.inp{min-height:84px;resize:vertical}
 .bcell{background:var(--soft);border-radius:14px;padding:12px 6px;text-align:center;border:0}
 .bcell .e{font-size:30px}
 .bcell b{display:block;font-size:12px;margin-top:4px}
-.bcell span{font-size:11px;color:var(--mut)}
-.bcell.off{opacity:.35;filter:grayscale(1)}
+.bcell span{display:block;font-size:11px;color:var(--mut)}
+.bcell.off .e{opacity:.35;filter:grayscale(1)}
+.bcell.off b{opacity:.6}
+.bcell .como{display:block;font-style:normal;font-size:10.5px;line-height:1.3;color:var(--mut);margin-top:6px;padding:0 2px}
 /* tabela */
 table.t{width:100%;border-collapse:collapse;font-size:13.5px}
 table.t th{text-align:left;font-size:11.5px;color:var(--mut);font-weight:700;padding:6px 4px;border-bottom:1.5px solid var(--line)}
@@ -1387,6 +1389,17 @@ span.pc{display:flex}
     var base = G.MULTA.valor;
     return now <= m.vence ? Math.round(base * (1 - G.MULTA.desconto)) : Math.round(base * (1 + G.MULTA.juros));
   };
+  // Seguro Porto pego com o estoque cheio vira crédito na carteira (máximo plausível: 1 a cada 10 s de corrida)
+  G.SEGURO_CREDITO = 2;
+  G.maxSegurosExtra = function (tempo) { return Math.max(0, Math.min(30, Math.floor((Number(tempo) || 0) / 10) + 1)); };
+  G.creditarSeguros = function (cart0, n, tempo, origem, now) {
+    n = Math.max(0, Math.min(Math.floor(Number(n) || 0), G.maxSegurosExtra(tempo)));
+    var cart = L.clone(cart0 || {}), v = n * G.SEGURO_CREDITO;
+    if (!v) return { carteira: cart, creditos: 0 };
+    cart.recebido = (cart.recebido || 0) + v;
+    mov(cart, { t: now, v: v, d: 'Seguros extras (' + n + ') no ' + origem });
+    return { carteira: cart, creditos: v };
+  };
   // máximo plausível: uma praça a cada 12 s de corrida
   G.maxMultas = function (tempo) { return Math.max(0, Math.floor((Number(tempo) || 0) / 12) + 1); };
   G.registrarMultas = function (cart0, n, carro, cat, origem, now) {
@@ -1497,7 +1510,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-23b';
+var BUILD = '2026-11-23d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1741,6 +1754,7 @@ function criarDemo() {
         var mm = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(r.resp.tempo)), catM === 'aura' && carroM !== 'aura' ? 'aura' : carroM, catM, 'corrida', now);
         if (mm.novas) gravar('carteira/' + uid, mm.carteira); r.resp.multas = mm.novas;
       }
+      if (Number(d.segExtra) > 0) { var sx = Garagem.creditarSeguros(lerDoc('carteira/' + uid), d.segExtra, r.resp.tempo, 'corrida', now); if (sx.creditos) { gravar('carteira/' + uid, sx.carteira); r.resp.segCreditos = sx.creditos; } }
       return r.resp;
     }
     if (nome === 'anularTentativa') {
@@ -1764,6 +1778,7 @@ function criarDemo() {
         var mt = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(rt.resp.tempo)), rt.sessao.carro || rt.sessao.cat, rt.sessao.cat, 'treino', now);
         if (mt.novas) gravar('carteira/' + uid, mt.carteira); rt.resp.multas = mt.novas;
       }
+      if (d.op === 'finalizar' && rt.resp.valido && Number(d.segExtra) > 0) { var st2 = Garagem.creditarSeguros(lerDoc('carteira/' + uid), d.segExtra, rt.resp.tempo, 'treino', now); if (st2.creditos) { gravar('carteira/' + uid, st2.carteira); rt.resp.segCreditos = st2.creditos; } }
       return rt.resp;
     }
     Logica.erro('Função desconhecida: ' + nome);
@@ -1803,6 +1818,7 @@ function criarDemo() {
         var f = Garagem.finalizarDuelo({ now: now, uid: uid, d: du, n: d.n, tempo: d.tempo }); doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
         var lado = Garagem.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
         if (Number(d.multas) > 0 && f.valido) { var m = Garagem.registrarMultas(L2.carts[lado], Math.min(Number(d.multas), Garagem.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now); if (m.novas) { L2.carts[lado] = m.carteira; resp.multas = m.novas; } }
+        if (Number(d.segExtra) > 0 && f.valido) { var sd = Garagem.creditarSeguros(L2.carts[lado], d.segExtra, f.tempo, 'duelo', now); if (sd.creditos) { L2.carts[lado] = sd.carteira; resp.segCreditos = sd.creditos; } }
       }
       if (doc.status === 'pendente' && now > doc.prazo) { var re = Garagem.desfazer({ now: now, d: doc, motivo: 'expirado', cartDe: L2.carts.de, garDe: L2.gars.de }); doc = re.doc; L2.carts.de = re.carteira; L2.gars.de = re.garagem; }
       var liq = Garagem.liquidarDuelo(doc, L2.carts, L2.gars, now); if (liq) { doc = liq.doc; L2.carts = liq.carteiras; L2.gars = liq.garagens; }
@@ -2175,6 +2191,7 @@ var BADGES = {
   virada: { e: '🚀', t: 'Virada', d: 'Subiu 5+ posições no ranking da temporada numa rodada' },
   timeCampeao: { e: '🤝', t: 'Time Campeão', d: 'Sua área foi a 1ª da rodada' }
 };
+var COMO_BADGES = {"gabaritou": "Acerte as 10 perguntas do quiz de uma rodada.", "relampago": "Gabarite o quiz (10 de 10) no menor tempo entre todos da rodada.", "piloto": "Passe de 120 s numa corrida valendo (a da rodada, não o treino).", "combo": "Na mesma rodada, faça 10 de 10 no quiz e 90 s ou mais na corrida valendo.", "liderRodada": "Termine a rodada em 1º lugar no ranking (quiz + corrida).", "liderTemporada": "Termine a temporada em 1º lugar no ranking geral.", "presenca": "Jogue 4 rodadas seguidas, sem pular nenhuma semana.", "virada": "Suba 5 posições ou mais no ranking da temporada de uma rodada para a outra.", "timeCampeao": "Ajude sua área a terminar a rodada em 1º no ranking por áreas: quanto mais gente da área jogando, melhor.", "placaPrimeira": "Vença uma partida de Placa! na temporada.", "placaSequencia": "Vença 3 partidas de Placa! seguidas.", "placaGuincheiro": "Acumule Guinchos até alguém ter que comprar 8 cartas ou mais por sua causa.", "placaSegurado": "Bata a partida usando uma carta Seguro como a última da mão.", "placaFiscal": "Pegue 5 jogadores que esqueceram de dizer “Placa!” com uma carta na mão.", "duelPrimeiro": "Desafie alguém em Duelos (na Garagem) e vença a melhor de 3.", "duelImbativel": "Vença 3 duelos seguidos, sem perder nenhum no meio.", "duelDuelista": "Vença 5 duelos na temporada.", "duelVarrida": "Vença um duelo por 2 a 0, sem precisar da terceira corrida.", "duelVirada": "Perca a primeira corrida de um duelo e vença as outras duas.", "duelChave": "Vença um duelo em que o outro apostou um carro: ele passa a ser seu.", "duelTudo": "Vença um duelo em que o outro apostou o máximo, 100 créditos."};
 var ORDEM_BADGES = ['liderTemporada', 'liderRodada', 'combo', 'gabaritou', 'relampago', 'piloto', 'virada', 'presenca', 'timeCampeao'];
 BADGES.placaPrimeira = { e: '🪪', t: 'Primeira Placa', d: 'Venceu a primeira partida de Placa! na temporada' };
 BADGES.placaSequencia = { e: '🔥', t: 'Sequência', d: 'Venceu 3 partidas de Placa! seguidas' };
@@ -2188,6 +2205,7 @@ BADGES.duelVarrida = { e: '🧹', t: 'Varrida', d: 'Venceu um duelo por 2 a 0' }
 BADGES.duelVirada = { e: '🔄', t: 'Virada no duelo', d: 'Perdeu a primeira corrida e venceu o duelo' };
 BADGES.duelChave = { e: '🔑', t: 'Tomou a chave', d: 'Ganhou um carro num duelo' };
 BADGES.duelTudo = { e: '💰', t: 'Tudo ou nada', d: 'Venceu um duelo em que o outro apostou 100 créditos' };
+Object.keys(COMO_BADGES).forEach(function (k) { if (BADGES[k]) BADGES[k].como = COMO_BADGES[k]; });
 var ORDEM_DUELO = ['duelPrimeiro', 'duelImbativel', 'duelDuelista', 'duelVarrida', 'duelVirada', 'duelChave', 'duelTudo'];
 // ranking, estatísticas e conquistas dos duelos encerrados na temporada
 function calcDuelos(tid) {
@@ -2759,20 +2777,20 @@ function telaPerfil() {
   h += '<div class="sec">Conquistas da temporada</div><div class="bgrid">';
   ORDEM_BADGES.forEach(function (t) {
     var d = BADGES[t];
-    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
+    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span>' + (cont[t] || !d.como ? '' : '<i class="como">' + esc(d.como) + '</i>') + '</button>';
   });
   h += '</div>';
   h += '<div class="sec">Conquistas do Placa!</div><div class="bgrid">';
   ORDEM_PLACA.forEach(function (t) {
     var d = BADGES[t];
-    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
+    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span>' + (cont[t] || !d.como ? '' : '<i class="como">' + esc(d.como) + '</i>') + '</button>';
   });
   h += '</div>';
   var rtd = retrospectoDuelos(uid);
   h += '<div class="sec">Duelos</div>' + (rtd ? '<div class="card">' + rtd + '</div>' : '') + '<div class="bgrid">';
   ORDEM_DUELO.forEach(function (t) {
     var d = BADGES[t];
-    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span></button>';
+    h += '<button class="bcell' + (cont[t] ? '' : ' off') + '" data-a="infoBadge" data-v="' + t + '"><div class="e">' + d.e + '</div><b>' + d.t + '</b><span>' + (cont[t] ? (cont[t] > 1 ? cont[t] + '×' : 'conquistado') : 'a conquistar') + '</span>' + (cont[t] || !d.como ? '' : '<i class="como">' + esc(d.como) + '</i>') + '</button>';
   });
   h += '</div>';
   if (mb.length) { h += '<div style="margin-top:8px">'; mb.forEach(function (b) { h += cartaoBadge(b, false); }); h += '</div>'; }
@@ -2806,10 +2824,10 @@ function telaRegras() {
     '<div class="card regras" style="margin-top:12px"><h3 style="font-size:20px">Como funciona</h3>' +
     '<p>O Game Aura tem uma <b>rodada por semana</b>, de segunda 00:00 a domingo 23:59. Cada rodada tem duas etapas, que você joga quando quiser dentro da semana e em qualquer ordem.</p>' +
     '<h4>🧠 Quiz</h4><ul><li>10 perguntas, 4 alternativas, 20 segundos por pergunta.</li><li>Uma tentativa por rodada. Tempo esgotado conta como erro.</li><li>10 pontos por acerto (máximo 100).</li><li>Se você sair no meio, pode continuar depois; a pergunta que estava na tela conta como erro se o tempo dela acabar.</li><li>Desempate: menor tempo total nas perguntas que você acertou.</li><li>A ordem das perguntas e das alternativas muda para cada pessoa.</li></ul>' +
-    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua.</li><li><b>Posto (combustível e recarga):</b> o carro gasta combustível com o tempo; a barra ⛽ fica embaixo da do pneu. Pare no <b>posto</b> (faixa verde, na direita ou na esquerda) para encher: combustão para 2 s; elétrico (🔋) para 3,5 s e a bateria dura menos (cerca de 65 s contra 95 s), mas o elétrico tem +10% de agilidade e rende +15% de créditos no treino e nos duelos. Se acabar, o Seguro Porto socorre; sem seguro, a corrida acaba. Na rodada todos andam a combustão.</li><li><b>Pausa:</b> toque em ❚❚ no alto da tela (ou tecla P). Sair do app também pausa.</li><li><b>Poder Aura:</b> a partir do nível 10 aparece o "a" do logo nas três cores. Pegou, fica <b>5 segundos invencível</b>: atravessa cones, carros, buracos e cancelas sem perder nada (o free flow sem TAG continua dando multa).</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita ou da esquerda: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos. Depois de 2 minutos começa a <b>reta final</b>: mais obstáculos, menos Seguros e CAPs mais raros, até ficar impossível. A corrida não tem fim: ganha quem for mais longe.</li><li><b>Praça de pedágio:</b> as <b>3 faixas do meio</b> têm cancela. Cada <b>tag</b> que você pega vale 1 mensalidade (acumula até 3; costuma aparecer logo depois do aviso PEDÁGIO) e cada passagem usa uma: a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b>.</li><li><b>Free flow:</b> as <b>2 faixas laterais</b> têm pórtico de free flow, sem cancela. Com tag, passa sem parar e usa 1 mensalidade. Sem tag, passa sem parar, mas leva uma <b>multa por evasão</b>. Vale igual no treino e na rodada; a multa não mexe no tempo nem no ranking.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O treino rende <b>créditos</b> para a Garagem: 20% dos pontos que o tempo valeria na rodada. O seu melhor tempo entra no <b>ranking de treinos</b> (da semana e geral), onde valem os atributos do carro.</li></ul>' +
+    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua. Pegou seguro já com 2? Ele vira <b>2 créditos</b> na carteira (no treino, na rodada e no duelo).</li><li><b>Posto (combustível e recarga):</b> o carro gasta combustível com o tempo; a barra ⛽ fica embaixo da do pneu. Pare no <b>posto</b> (faixa verde, na direita ou na esquerda) para encher: combustão para 2 s; elétrico (🔋) para 3,5 s e a bateria dura menos (cerca de 65 s contra 95 s), mas o elétrico tem +10% de agilidade e rende +15% de créditos no treino e nos duelos. Se acabar, o Seguro Porto socorre; sem seguro, a corrida acaba. Na rodada todos andam a combustão.</li><li><b>Pausa:</b> toque em ❚❚ no alto da tela (ou tecla P). Sair do app também pausa.</li><li><b>Poder Aura:</b> a partir do nível 10 aparece o "a" do logo nas três cores. Pegou, fica <b>5 segundos invencível</b>: atravessa cones, carros, buracos e cancelas sem perder nada (o free flow sem TAG continua dando multa).</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita ou da esquerda: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos. Depois de 2 minutos começa a <b>reta final</b>: mais obstáculos, menos Seguros e CAPs mais raros, até ficar impossível. A corrida não tem fim: ganha quem for mais longe.</li><li><b>Praça de pedágio:</b> as <b>3 faixas do meio</b> têm cancela. Cada <b>tag</b> que você pega vale 1 mensalidade (acumula até 3; costuma aparecer logo depois do aviso PEDÁGIO) e cada passagem usa uma: a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b>.</li><li><b>Free flow:</b> as <b>2 faixas laterais</b> têm pórtico de free flow, sem cancela. Com tag, passa sem parar e usa 1 mensalidade. Sem tag, passa sem parar, mas leva uma <b>multa por evasão</b>. Vale igual no treino e na rodada; a multa não mexe no tempo nem no ranking.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O treino rende <b>créditos</b> para a Garagem: 40% dos pontos que o tempo valeria na rodada. O seu melhor tempo entra no <b>ranking de treinos</b> (da semana e geral), onde valem os atributos do carro.</li></ul>' +
     '<p><b>Pontos pelo melhor tempo</b> (não depende da posição dos outros):</p><table class="t" style="max-width:260px"><tr><th>Tempo</th><th class="n">Pontos</th></tr>' + tab + '</table>' +
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
-    '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
+    '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
     '<p class="small mut">Conquistas de rodada aparecem quando a rodada fecha (domingo 23:59), exceto Gabaritou, Piloto de Ouro e Combo Perfeito, que saem na hora. Toque numa conquista para compartilhar a imagem.</p>' +
     '<h4>⚔️ Duelos</h4><ul><li>Desafie alguém numa <b>melhor de 3 corridas</b>, cada um no seu tempo (até 48 h depois do aceite), com as mesmas pistas para os dois.</li><li>Cada lado aposta de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ' créditos ou um carro (não vale carro da casa, anunciado ou com multa). Quem vencer 2 corridas leva as duas apostas; empate decide na soma dos tempos.</li><li>Valem os atributos do carro e as multas do free flow. Corrida não feita no prazo vale 0.</li></ul>' +
     '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo de ' + Garagem.LOTE + ' carros com desconto toda segunda; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
@@ -2821,8 +2839,8 @@ function telaRegras() {
     '<li>Sem limite de tempo por jogada. Qualquer um pode pausar. Encerrar antes só com o aceite de todos (e não conta no ranking). Se alguém ficar 10 minutos sem jogar na vez dele, a mesa pode votar para remover a pessoa; as cartas dela voltam para o monte.</li>' +
     '<li><b>Robôs:</b> dá para jogar só contra robôs ou completar os lugares vazios da sua mesa com eles. Partidas com robô não contam para o ranking nem para as conquistas.</li>' +
     '<li><b>Ranking do Placa!:</b> vitórias na temporada, com desempate pela taxa de vitória. Entra quem jogou pelo menos 5 partidas.</li></ul>' +
-    '<p class="small">Conquistas dos duelos: ' + ORDEM_DUELO.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
-    '<p class="small">Conquistas do Placa!: ' + ORDEM_PLACA.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b> (' + esc(BADGES[b].d.charAt(0).toLowerCase() + BADGES[b].d.slice(1)) + ')'; }).join(' · ') + '.</p>' +
+    '<p class="small">Conquistas dos duelos: ' + ORDEM_DUELO.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d); }).join(' · ') + '.</p>' +
+    '<p class="small">Conquistas do Placa!: ' + ORDEM_PLACA.map(function (b) { return BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d); }).join(' · ') + '.</p>' +
     '<h4>🚗 Créditos dos carros 3D</h4><p class="small">Modelos do Sketchfab, adaptados para o jogo (otimizados, sem logotipos e com nomes fictícios).</p><ul class="small"><li>Cyberpunk: <a href="https://sketchfab.com/3d-models/cyberpunk-car-b4301ff99d214d16a7a43708a5866bf0" target="_blank" rel="noopener">modelo de 4d_Bob</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Conceito: <a href="https://sketchfab.com/3d-models/free-concept-car-004-public-domain-cc0-4cba124633eb494eadc3bb0c4660ad7e" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Conceito Neon: <a href="https://sketchfab.com/3d-models/free-ai-based-conceptcar-050-public-domain-cc0-3f7a98a53efe48068adddf0c0f3ddbae" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Touro SV: <a href="https://sketchfab.com/3d-models/1995-lamborghini-diablo-sv-21d606803a6442ce8877baee15547ed7" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Veloce Pista: <a href="https://sketchfab.com/3d-models/ferrari-488-pista-090fbbb80e3f48ed9c4be915d65c2adf" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Gran Turismo: <a href="https://sketchfab.com/3d-models/maserati-alfieri-dd37cab4fe8644cc9808008a47565195" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Asa de Gaivota: <a href="https://sketchfab.com/3d-models/mercedes-benz-sls-amg-coupe-black-series-d306a599cc014b07a75e20b440635414" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Felino X: <a href="https://sketchfab.com/3d-models/2013-jaguar-c-x75-20caf150bb0444909c65b57217aa46f6" target="_blank" rel="noopener">modelo de amogusstrikesback2</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Monoposto F: <a href="https://sketchfab.com/3d-models/2027-formula-1-car-900b2d93db1b4fd7bfce436067e25287" target="_blank" rel="noopener">modelo de Abu Saif</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente GTS: <a href="https://sketchfab.com/3d-models/1996-dodge-viper-gts-sr2-2a125eb8b25e4a249aab9db8e465274a" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Besouro: <a href="https://sketchfab.com/3d-models/beetlefusca-version-1-cb6e82e73386448fb3b4e2dd25255a5e" target="_blank" rel="noopener">modelo de soujagah</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Perua Retrô: <a href="https://sketchfab.com/3d-models/volkswagen-kombi-micro-bus-d34fd744db1c4f84ad40c854ddbff9e9" target="_blank" rel="noopener">modelo de winterborn</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Viajante 88: <a href="https://sketchfab.com/3d-models/80s90s-chevrolet-caravan-c77c570538d6499ca6b6f97bc9b01f21" target="_blank" rel="noopener">modelo de coptrum</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li><li>Serpente Roadster: <a href="https://sketchfab.com/3d-models/dodge-viper-rt10-sr1-f09fc27ddbe1488da79e82fd669c57de" target="_blank" rel="noopener">modelo de ilvskf</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (cor alterada)</li><li>Conceito Trilha: <a href="https://sketchfab.com/3d-models/free-concept-car-006-public-domain-cc0-a4e19bb6e6394c4a95d4319ef7d265ba" target="_blank" rel="noopener">modelo de Unity Fan</a>, domínio público</li><li>Diplomata 87: <a href="https://sketchfab.com/3d-models/chevrolet-opala-diplomata-87-a704d368afce4f9cae6c2a26dcc0a9ff" target="_blank" rel="noopener">modelo de Ynklar</a>, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></li></ul>' +
     '<h4>🤝 Espírito do jogo</h4><p>É um jogo de integração. Nada de pesquisar respostas ou trocar gabarito: a graça é descobrir junto.</p></div>';
 }
@@ -2938,7 +2956,7 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">' + (CR.duelo ? '⚔️' : '🏎️') + '</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.duelo ? 'Duelo com ' + esc(CR.duelo.adv) + ' · corrida ' + (CR.duelo.n + 1) + ' de 3' : CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>Fique de olho no <b>combustível</b> (⛽) e pare no <b>posto</b> verde para abastecer; carro elétrico (🔋) dura menos e recarrega mais devagar</li><li>Toque em <b>❚❚</b> para pausar</li><li>Do nível 10 em diante aparece o <b>Poder Aura</b> (o "a" do logo): 5 segundos invencível</li><li>No <b>pedágio</b>, as 3 faixas do meio têm cancela: com <b>tag</b> você passa direto (cada tag vale 1 mensalidade, acumula até 3); sem tag, o carro para e perde 5 s. As 2 faixas laterais são <b>free flow</b>: com tag passa e paga; sem tag passa sem parar, mas leva <b>multa</b> (paga em créditos na Garagem)</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2; com 2, cada seguro a mais vira 2 créditos)</li><li>Fique de olho no <b>combustível</b> (⛽) e pare no <b>posto</b> verde para abastecer; carro elétrico (🔋) dura menos e recarrega mais devagar</li><li>Toque em <b>❚❚</b> para pausar</li><li>Do nível 10 em diante aparece o <b>Poder Aura</b> (o "a" do logo): 5 segundos invencível</li><li>No <b>pedágio</b>, as 3 faixas do meio têm cancela: com <b>tag</b> você passa direto (cada tag vale 1 mensalidade, acumula até 3); sem tag, o carro para e perde 5 s. As 2 faixas laterais são <b>free flow</b>: com tag passa e paga; sem tag passa sem parar, mas leva <b>multa</b> (paga em créditos na Garagem)</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
     if (CR.duelo) h += '<p class="small" style="opacity:.8">A pista é a mesma para os dois. <b>Uma tentativa só</b>: sair no meio conta o tempo até ali. Valem os atributos do carro que você escolher.</p>';
     else if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
     else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto no ranking da rodada, mas rende <b>créditos</b> para a Garagem (40% dos pontos, e mais 1 a cada 15 s depois dos 3 minutos) e o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
@@ -2979,7 +2997,8 @@ function desenharCorrida() {
     }
     if (CR.duelo && CR.resDuelo) h += resultadoDuelo();
     var resX = CR.duelo ? CR.resDuelo : CR.treino ? CR.resTreino : CR.res;
-    var nm = resX ? (resX.multas || 0) : 0;
+    var nm = resX ? (resX.multas || 0) : 0, sc = resX ? (resX.segCreditos || 0) : 0;
+    if (sc) h += '<div class="ovcard" style="margin-top:10px;text-align:left"><b style="color:#7CE0B0">+' + sc + ' créditos de seguros extras</b><div class="tiny" style="opacity:.8;margin-top:4px">Seguro Porto pego com o estoque cheio vira ' + Garagem.SEGURO_CREDITO + ' créditos na carteira.</div></div>';
     if (nm) h += '<div class="ovcard" style="margin-top:10px;text-align:left"><b style="color:#FFD07A">' + (nm === 1 ? '1 multa' : nm + ' multas') + ' por evasão de pedágio</b><div class="tiny" style="opacity:.8;margin-top:4px">Passou no free flow sem TAG. Pague na Garagem até ' + Garagem.MULTA.prazoDias + ' dias com ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto. O tempo e o ranking não mudam.</div><button class="btn wh sm" style="margin-top:10px" data-a="verMultas">Ver multas</button></div>';
     h += '</div>';
     if (CR.duelo) h += '<button class="btn lar full" data-a="duelVerDepois">Ver o duelo</button>';
@@ -3033,12 +3052,12 @@ function resultadoDuelo() {
 }
 function fimCorrida(t, info) {
   if (!CR) return;
-  CR.tempo = t; CR.motor = null; CR.multas = (info && info.multas) || 0;
+  CR.tempo = t; CR.motor = null; CR.multas = (info && info.multas) || 0; CR.segExtra = (info && info.segExtra) || 0;
   var carroUsado = CR.carro || carroPreferido();
   if (CR.duelo) {
     CR.fase = 'salvando'; desenharCorrida();
     var tentarD = function (n) {
-      B.chamar('duelo', { op: 'finalizar', id: CR.duelo.id, n: CR.duelo.n, tempo: t, multas: CR.multas }).then(function (r) { if (!CR) return; CR.resDuelo = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+      B.chamar('duelo', { op: 'finalizar', id: CR.duelo.id, n: CR.duelo.n, tempo: t, multas: CR.multas, segExtra: CR.segExtra }).then(function (r) { if (!CR) return; CR.resDuelo = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
         .catch(function (e) { if (!CR) return; if (n < 2) { setTimeout(function () { tentarD(n + 1); }, 1200); return; } CR.fase = 'erro'; CR.erro = 'Não consegui registrar o tempo (' + msgErro(e) + '). Verifique a conexão.'; desenharCorrida(); });
     };
     tentarD(0);
@@ -3047,13 +3066,13 @@ function fimCorrida(t, info) {
   if (CR.treino) {
     if (CR.semRecorde) { CR.fase = 'fim'; desenharCorrida(); return; }
     CR.fase = 'salvando'; desenharCorrida();
-    B.chamar('treino', { op: 'finalizar', tempo: t, multas: CR.multas }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+    B.chamar('treino', { op: 'finalizar', tempo: t, multas: CR.multas, segExtra: CR.segExtra }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
       .catch(function () { if (!CR) return; CR.fase = 'fim'; desenharCorrida(); });
     return;
   }
   CR.fase = 'salvando'; desenharCorrida();
   var tentar = function (n) {
-    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t, multas: CR.multas, carro: carroUsado }).then(function (r) {
+    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t, multas: CR.multas, segExtra: CR.segExtra, carro: carroUsado }).then(function (r) {
       if (!CR) return; CR.res = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida();
     }).catch(function (e) {
       if (!CR) return;
@@ -3230,14 +3249,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   // abastecimento: tanque dura ~95 s (elétrico ~65 s); no posto, combustão para 2 s e elétrico 3,5 s.
-  // Na rodada todos andam a combustão; o tanque só entra a partir da rodada que começa em 30/11 (a desta semana segue como estava).
-  var rodTanque = !(CR && !CR.treino && !CR.duelo) || (window.D && D.rodadas && CR.rid && D.rodadas[CR.rid] && D.rodadas[CR.rid].inicio >= Date.UTC(2026, 10, 30, 3));
-  var TANQUE = rodTanque, ELETRICO = !!ATR.eletrico;
+  // Na rodada todos andam a combustão.
+  var TANQUE = true, ELETRICO = !!ATR.eletrico;   // posto vale em todas as corridas (na rodada todos a combustão)
   var CONSUMO = ELETRICO ? 100 / 65 : 100 / 95, POSTO_PARADA = ELETRICO ? 3.5 : 2, POSTO_PEN = ELETRICO ? 3.5 : 2, COMB_BAIXO = 25;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, aura: 0, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
-    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0, comb: 100, ultPosto: 0, postos: 0, panes: 0, semComb: false, pausado: false };
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0, segExtra: 0, comb: 100, ultPosto: 0, postos: 0, panes: 0, semComb: false, pausado: false };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
   function extra(t) { return Math.max(0, (t - 120) / 60); }
@@ -3354,7 +3372,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
-        else s.msg = { txt: 'Seguro já no máximo', cor: '#9FD3FF', ate: s.t + 1 };
+        else { s.segExtra++; s.msg = { txt: 'Seguro extra: +' + (window.Garagem ? Garagem.SEGURO_CREDITO : 2) + ' créditos', cor: '#7CE0B0', ate: s.t + 1.2 }; }
         continue;
       }
       if (o.tipo === 'cancela' && o.ff) {
@@ -3974,7 +3992,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     else if (s.fase === 'rodando') { if (window.Musica) Musica.ritmo(nivel(s.t)); s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
     else if (s.fase === 'batida') {
       s.flash = Math.max(0, s.flash - dt * 1.4); if (s.tremor > 0) s.tremor -= dt;
-      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100, { multas: s.multas }); }, 1100); }
+      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100, { multas: s.multas, segExtra: s.segExtra }); }, 1100); }
     }
     desenhar(ts / 1000);
     raf = requestAnimationFrame(quadro);
@@ -5296,9 +5314,35 @@ var Musica = (function () {
         for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
         ruido = buf;
       }
-      if (ctx.state === 'suspended') ctx.resume();
+      // iPhone: o contexto pode ficar 'suspended' ou 'interrupted' (ligação, notificação, app em segundo plano)
+      if (ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { });
     } catch (e) { ctx = null; }
   }
+  // ---------- desbloqueio do som no iPhone ----------
+  // 1) pede ao Safari para tratar como reprodução de mídia (toca mesmo com a chave do silencioso, iOS 17+);
+  // 2) a cada toque, retoma o contexto e toca um áudio mudo em loop, que mantém a sessão de áudio ativa em iPhones mais antigos.
+  var mudo = null;
+  function wavMudo() {
+    var n = 4410, b = new Uint8Array(44 + n * 2), v = new DataView(b.buffer);
+    function str(o, t) { for (var i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); }
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 44100, true); v.setUint32(28, 88200, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    var bin = ''; for (var k = 0; k < b.length; k++) bin += String.fromCharCode(b[k]); return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  function desbloquear() {
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { }
+    if (!ligada()) return;
+    try {
+      if (!mudo) { mudo = document.createElement('audio'); mudo.src = wavMudo(); mudo.loop = true; mudo.setAttribute('playsinline', ''); mudo.volume = 0.01; }
+      if (mudo.paused) { var pr = mudo.play(); if (pr && pr.catch) pr.catch(function () { }); }
+    } catch (e) { }
+    if (ctx) {
+      if (ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { });
+      try { var src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0); } catch (e) { }
+    }
+  }
+  ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, desbloquear, true); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && ctx && ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { }); });
   function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function env(g, t, a, v, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
   function osc(tipo, m, t, dur, vol, destino, detune) {
@@ -5405,7 +5449,7 @@ var Musica = (function () {
     if (!ligada()) return; preparar(); if (!ctx) return;
     var t = ctx.currentTime + 0.01; osc('square', final ? 81 : 69, t, final ? 0.35 : 0.14, 0.12);
   }
-  function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) parar(); return on; }
+  function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) { parar(); try { if (mudo) mudo.pause(); } catch (e) { } } else desbloquear(); return on; }
   // ---------- efeitos sonoros ----------
   function efeito(tipo) {
     if (!ligada()) return; preparar(); if (!ctx || !sfx) return;
@@ -6099,7 +6143,7 @@ var A = {
   compartilharBadge: function (v) { var p = v.split('|'); imagemBadge(p[0], p[1], p[2] ? parseInt(p[2], 10) : null); },
   compartilharPrevia: function () { compartilharPrevia(); },
   vistos: function () { marcarBadgesVistos(); R(); },
-  infoBadge: function (v) { var d = BADGES[v]; abrirModal('<div style="text-align:center"><div style="font-size:56px">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p></div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
+  infoBadge: function (v) { var d = BADGES[v], n = meusBadges().filter(function (b) { return b.tipo === v; }).length; abrirModal('<div style="text-align:center"><div style="font-size:56px' + (n ? '' : ';filter:grayscale(1);opacity:.6') + '">' + d.e + '</div><h3>' + d.t + '</h3><p class="mut">' + esc(d.d) + '</p>' + (n ? '<p><b style="color:#7CE0B0">Conquistado' + (n > 1 ? ' ' + n + ' vezes' : '') + ' nesta temporada</b></p>' : '') + (d.como ? '<div class="card" style="text-align:left;margin-top:10px"><div class="tiny" style="opacity:.7;text-transform:uppercase;letter-spacing:.06em">' + (n ? 'Como conquistar de novo' : 'Como conquistar') + '</div><div style="margin-top:4px">' + esc(d.como) + '</div></div>' : '') + '</div><div class="mact"><button class="btn" data-a="fecharModal">Ok</button></div>'); },
   editarPerfil: function () {
     var me = S.me;
     abrirModal('<h3>Editar dados</h3><label class="f">Nome completo</label><input class="inp" id="eNome" value="' + esc(me.nome) + '"><label class="f">Apelido</label><input class="inp" id="eApelido" maxlength="18" value="' + esc(me.apelido) + '">' +

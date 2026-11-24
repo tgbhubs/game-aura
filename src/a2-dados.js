@@ -114,6 +114,7 @@ var BADGES = {
   virada: { e: '🚀', t: 'Virada', d: 'Subiu 5+ posições no ranking da temporada numa rodada' },
   timeCampeao: { e: '🤝', t: 'Time Campeão', d: 'Sua área foi a 1ª da rodada' }
 };
+var COMO_BADGES = {"gabaritou": "Acerte as 10 perguntas do quiz de uma rodada.", "relampago": "Gabarite o quiz (10 de 10) no menor tempo entre todos da rodada.", "piloto": "Passe de 120 s numa corrida valendo (a da rodada, não o treino).", "combo": "Na mesma rodada, faça 10 de 10 no quiz e 90 s ou mais na corrida valendo.", "liderRodada": "Termine a rodada em 1º lugar no ranking (quiz + corrida).", "liderTemporada": "Termine a temporada em 1º lugar no ranking geral.", "presenca": "Jogue 4 rodadas seguidas, sem pular nenhuma semana.", "virada": "Suba 5 posições ou mais no ranking da temporada de uma rodada para a outra.", "timeCampeao": "Ajude sua área a terminar a rodada em 1º no ranking por áreas: quanto mais gente da área jogando, melhor.", "placaPrimeira": "Vença uma partida de Placa! na temporada.", "placaSequencia": "Vença 3 partidas de Placa! seguidas.", "placaGuincheiro": "Acumule Guinchos até alguém ter que comprar 8 cartas ou mais por sua causa.", "placaSegurado": "Bata a partida usando uma carta Seguro como a última da mão.", "placaFiscal": "Pegue 5 jogadores que esqueceram de dizer “Placa!” com uma carta na mão.", "duelPrimeiro": "Desafie alguém em Duelos (na Garagem) e vença a melhor de 3.", "duelImbativel": "Vença 3 duelos seguidos, sem perder nenhum no meio.", "duelDuelista": "Vença 5 duelos na temporada.", "duelVarrida": "Vença um duelo por 2 a 0, sem precisar da terceira corrida.", "duelVirada": "Perca a primeira corrida de um duelo e vença as outras duas.", "duelChave": "Vença um duelo em que o outro apostou um carro: ele passa a ser seu.", "duelTudo": "Vença um duelo em que o outro apostou o máximo, 100 créditos."};
 var ORDEM_BADGES = ['liderTemporada', 'liderRodada', 'combo', 'gabaritou', 'relampago', 'piloto', 'virada', 'presenca', 'timeCampeao'];
 BADGES.placaPrimeira = { e: '🪪', t: 'Primeira Placa', d: 'Venceu a primeira partida de Placa! na temporada' };
 BADGES.placaSequencia = { e: '🔥', t: 'Sequência', d: 'Venceu 3 partidas de Placa! seguidas' };
@@ -127,6 +128,7 @@ BADGES.duelVarrida = { e: '🧹', t: 'Varrida', d: 'Venceu um duelo por 2 a 0' }
 BADGES.duelVirada = { e: '🔄', t: 'Virada no duelo', d: 'Perdeu a primeira corrida e venceu o duelo' };
 BADGES.duelChave = { e: '🔑', t: 'Tomou a chave', d: 'Ganhou um carro num duelo' };
 BADGES.duelTudo = { e: '💰', t: 'Tudo ou nada', d: 'Venceu um duelo em que o outro apostou 100 créditos' };
+Object.keys(COMO_BADGES).forEach(function (k) { if (BADGES[k]) BADGES[k].como = COMO_BADGES[k]; });
 var ORDEM_DUELO = ['duelPrimeiro', 'duelImbativel', 'duelDuelista', 'duelVarrida', 'duelVirada', 'duelChave', 'duelTudo'];
 // ranking, estatísticas e conquistas dos duelos encerrados na temporada
 function calcDuelos(tid) {
