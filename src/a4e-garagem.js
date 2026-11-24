@@ -32,7 +32,7 @@ function assinarEstoque() {
   if (GS.subEst) { try { GS.subEst(); } catch (e) { } }
   GS.semana = sem; GS.estoque = null;
   B.chamar('garagem', { op: 'vitrine' }).then(function () {
-    GS.subEst = B.ouvirDoc('estoque/' + sem, function (d) { GS.estoque = d; if (S.tab === 'garagem') R(); });
+    GS.subEst = B.ouvirDoc('estoque/' + sem, function (d) { GS.estoque = Garagem.saneiaLote(d); if (S.tab === 'garagem') R(); });
   }).catch(function (e) { toast(msgErro(e)); });
 }
 
@@ -57,7 +57,7 @@ function garMinha() {
   var sel = carroPreferido(), h = '<p class="small mut">Escolha o carro que você usa na corrida. Na rodada todos andam igual; no treino valem os atributos de cada carro.</p>' + legendaAtr() + '<div class="glista">';
   meusCarros().forEach(function (x) {
     var c = Garagem.CATALOGO[x.cat], an = anuncioDe(x.key), mul = multasPend().filter(function (m) { return m.carro === x.key; }).length;
-    h += '<div class="gitem' + (sel === x.key ? ' on' : '') + '">' + fotoCat(x.cat) + '<div class="ginfo"><b>' + esc(c.nome) + '</b>' + (mul ? ' <span class="tag gvenc">' + (mul === 1 ? '1 multa' : mul + ' multas') + '</span>' : '') + '<span>' + c.tipo + ' · ' + origemTxt(x.origem, x.retomadoDe) + (x.origem !== 'base' ? ' · ' + kmTxt(x.km) : '') + (x.de ? ' · era de ' + esc(x.de) : '') + '</span>' + barrasAtrMini(c.atr, x.cat) +
+    h += '<div class="gitem' + (sel === x.key ? ' on' : '') + '">' + fotoCat(x.cat) + '<div class="ginfo"><b>' + esc(c.nome) + '</b>' + (c.fora ? ' <span class="tag">fora de linha</span>' : '') + (mul ? ' <span class="tag gvenc">' + (mul === 1 ? '1 multa' : mul + ' multas') + '</span>' : '') + '<span>' + c.tipo + ' · ' + origemTxt(x.origem, x.retomadoDe) + (x.origem !== 'base' ? ' · ' + kmTxt(x.km) : '') + (x.de ? ' · era de ' + esc(x.de) : '') + '</span>' + barrasAtrMini(c.atr, x.cat) +
       (x.origem !== 'base' ? '<div style="margin-top:4px">' + selPreco(x.cat, x.km) + '</div>' : '') + '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">' + (sel === x.key ? '<span class="tag ok">Em uso</span>' : '<button class="btn sm lar" data-a="garUsar" data-v="' + esc(x.key) + '">Usar</button>') +
       (x.origem === 'base' ? '' : an ? '<span class="tag gold">Anunciado por ' + nCred(an.preco) + '</span><button class="lnk tiny" data-a="garCancelar" data-v="' + an._id + '">Cancelar anúncio</button>' : (D.garagem && D.garagem.carros && D.garagem.carros[x.key] && D.garagem.carros[x.key].travado) ? '<span class="tag gold">⚔️ Apostado em duelo</span>' : mul ? '<span class="tiny mut">Pague a multa para anunciar</span>' : '<button class="btn sm gh" data-a="garAnunciar" data-v="' + esc(x.key) + '">Anunciar no mercado</button>') +
       '</div></div></div>';
@@ -149,9 +149,9 @@ function dataCurta(ms) { var d = new Date(ms); return ('0' + d.getDate()).slice(
 function garPrecos() {
   var tr = listaTransacoes(), h = '<div class="card gporto"><b>Preço Aura</b><p class="small" style="margin:4px 0 0">Referência de preço de cada modelo, calculada pelas vendas reais entre o time e pelos Retomados Itaú e Porto. Usa a mediana das últimas 15 vendas, ajustada para 30 mil km (cada mil km a mais desvaloriza 0,4%). Com menos de 3 vendas, vale uma estimativa de 70% do 0 km.</p></div>';
   h += '<div class="card" style="padding:4px 14px;margin-top:10px;overflow-x:auto"><table class="t gtab"><tr><th>Modelo</th><th class="n">Preço Aura</th><th class="n">0 km</th><th class="n">Vendas</th></tr>';
-  Garagem.VENDA.forEach(function (cat) {
+  Garagem.VENDA.concat(Object.keys(Garagem.CATALOGO).filter(Garagem.foraDeLinha)).forEach(function (cat) {
     var c = Garagem.CATALOGO[cat], p = Garagem.precoAura(cat, tr), n = tr.filter(function (t) { return t.cat === cat; }).length;
-    h += '<tr><td><b>' + esc(c.nome) + '</b><br><span class="tiny mut">' + c.tipo + (p.ultima ? ' · última: ' + nCred(p.ultima.preco) + ' em ' + dataCurta(p.ultima.em) : '') + '</span></td><td class="n"><b>' + nCred(p.valor) + '</b>' + (p.estimado ? '<br><span class="tiny mut">estimado</span>' : '<br><span class="tiny mut">' + p.n + ' vendas</span>') + '</td><td class="n">' + nCred(c.preco) + '</td><td class="n">' + n + '</td></tr>';
+    h += '<tr><td><b>' + esc(c.nome) + '</b><br><span class="tiny mut">' + c.tipo + (c.fora ? ' · fora de linha' : '') + (p.ultima ? ' · última: ' + nCred(p.ultima.preco) + ' em ' + dataCurta(p.ultima.em) : '') + '</span></td><td class="n"><b>' + nCred(p.valor) + '</b>' + (p.estimado ? '<br><span class="tiny mut">estimado</span>' : '<br><span class="tiny mut">' + p.n + ' vendas</span>') + '</td><td class="n">' + (c.fora ? '—' : nCred(c.preco)) + '</td><td class="n">' + n + '</td></tr>';
   });
   h += '</table></div>';
   // indicadores gerais

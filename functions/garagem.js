@@ -97,6 +97,17 @@
     return { semana: sid, itens: itens, criadoEm: now };
   };
 
+  // lote já gravado antes de um modelo sair de linha: troca os itens ainda à venda por um modelo atual (determinístico, igual no app e no servidor)
+  G.saneiaLote = function (lote) {
+    if (!lote || !lote.itens) return lote;
+    var mudou = false, itens = lote.itens.map(function (it) {
+      if (it.vendidoPara || !G.foraDeLinha(it.cat)) return it;
+      mudou = true; var h = L.hash('troca|' + it.id), cat = G.VENDA[h % G.VENDA.length], desc = 0.35 + (h % 1000) / 1000 * 0.2;
+      var n = L.clone(it); n.cat = cat; n.preco = Math.round(G.CATALOGO[cat].preco * (1 - desc) / 5) * 5; return n;
+    });
+    if (!mudou) return lote; var l2 = L.clone(lote); l2.itens = itens; return l2;
+  };
+
   // ---------- operações (puras: recebem o estado e devolvem o que gravar) ----------
   function precisa(saldo, valor) { if (saldo < valor) L.erro('Créditos insuficientes: faltam ' + (valor - saldo) + '.'); }
   function novaInst(gar, cat, origem, km, now, de, retomadoDe) {
@@ -144,6 +155,7 @@
     return { garagem: gar, carteira: cart, iid: iid, transacao: transacao('0km', cat, 0, c.preco, 0, st, null, now) };
   };
   G.comprarRetomado = function (st, lote, itemId, now) {
+    lote = G.saneiaLote(lote);
     var it = (lote.itens || []).filter(function (x) { return x.id === itemId; })[0];
     if (!it) L.erro('Esse carro não está no lote desta semana.');
     if (it.vendidoPara) L.erro('Esse carro já foi vendido.');
