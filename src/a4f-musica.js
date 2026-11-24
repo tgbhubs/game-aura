@@ -16,9 +16,35 @@ var Musica = (function () {
         for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
         ruido = buf;
       }
-      if (ctx.state === 'suspended') ctx.resume();
+      // iPhone: o contexto pode ficar 'suspended' ou 'interrupted' (ligação, notificação, app em segundo plano)
+      if (ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { });
     } catch (e) { ctx = null; }
   }
+  // ---------- desbloqueio do som no iPhone ----------
+  // 1) pede ao Safari para tratar como reprodução de mídia (toca mesmo com a chave do silencioso, iOS 17+);
+  // 2) a cada toque, retoma o contexto e toca um áudio mudo em loop, que mantém a sessão de áudio ativa em iPhones mais antigos.
+  var mudo = null;
+  function wavMudo() {
+    var n = 4410, b = new Uint8Array(44 + n * 2), v = new DataView(b.buffer);
+    function str(o, t) { for (var i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); }
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 44100, true); v.setUint32(28, 88200, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    var bin = ''; for (var k = 0; k < b.length; k++) bin += String.fromCharCode(b[k]); return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  function desbloquear() {
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { }
+    if (!ligada()) return;
+    try {
+      if (!mudo) { mudo = document.createElement('audio'); mudo.src = wavMudo(); mudo.loop = true; mudo.setAttribute('playsinline', ''); mudo.volume = 0.01; }
+      if (mudo.paused) { var pr = mudo.play(); if (pr && pr.catch) pr.catch(function () { }); }
+    } catch (e) { }
+    if (ctx) {
+      if (ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { });
+      try { var src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0); } catch (e) { }
+    }
+  }
+  ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, desbloquear, true); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && ctx && ctx.state !== 'running' && ctx.resume) ctx.resume().catch(function () { }); });
   function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function env(g, t, a, v, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
   function osc(tipo, m, t, dur, vol, destino, detune) {
@@ -125,7 +151,7 @@ var Musica = (function () {
     if (!ligada()) return; preparar(); if (!ctx) return;
     var t = ctx.currentTime + 0.01; osc('square', final ? 81 : 69, t, final ? 0.35 : 0.14, 0.12);
   }
-  function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) parar(); return on; }
+  function alternar() { var on = !ligada(); gravarLS('gi_musica', on ? '1' : '0'); if (!on) { parar(); try { if (mudo) mudo.pause(); } catch (e) { } } else desbloquear(); return on; }
   // ---------- efeitos sonoros ----------
   function efeito(tipo) {
     if (!ligada()) return; preparar(); if (!ctx || !sfx) return;

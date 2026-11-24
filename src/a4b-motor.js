@@ -164,14 +164,13 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   function escurecer(n, f) { var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f); return (r << 16) | (g << 8) | b; }
   var GASTO_PNEU = 1.6 * ATR.pneu, PNEU_GASTO = 35, CAP_PEN = 3, CAP_PARADA = 2, REVISAO = 15, BURACO = 35;
   // abastecimento: tanque dura ~95 s (elétrico ~65 s); no posto, combustão para 2 s e elétrico 3,5 s.
-  // Na rodada todos andam a combustão; o tanque só entra a partir da rodada que começa em 30/11 (a desta semana segue como estava).
-  var rodTanque = !(CR && !CR.treino && !CR.duelo) || (window.D && D.rodadas && CR.rid && D.rodadas[CR.rid] && D.rodadas[CR.rid].inicio >= Date.UTC(2026, 10, 30, 3));
-  var TANQUE = rodTanque, ELETRICO = !!ATR.eletrico;
+  // Na rodada todos andam a combustão.
+  var TANQUE = true, ELETRICO = !!ATR.eletrico;   // posto vale em todas as corridas (na rodada todos a combustão)
   var CONSUMO = ELETRICO ? 100 / 65 : 100 / 95, POSTO_PARADA = ELETRICO ? 3.5 : 2, POSTO_PEN = ELETRICO ? 3.5 : 2, COMB_BAIXO = 25;
   var rnd = Logica.rng(seed);
   var s = { t: 0, dist: 0, lane: 2, x: CENTRO[2], obst: [], prox: 700, tag: false, vivo: true, fase: 'contagem', cont: 3, acc: 0, flash: 0,
     pen: 0, parada: 0, msg: null, pracas: 0, ultPraca: -99, ultSeguro: -99, ultAura: -99, aura: 0, vidas: ATR.seguro || 0, invul: 0, usouSeguro: 0, tremor: 0,
-    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0, comb: 100, ultPosto: 0, postos: 0, panes: 0, semComb: false, pausado: false };
+    pneu: 100, revisao: 0, ultCap: 0, caps: 0, pits: 0, furou: false, capLivreAte: -1, capLane: 4, tags: 0, multas: 0, segExtra: 0, comb: 100, ultPosto: 0, postos: 0, panes: 0, semComb: false, pausado: false };
   var raf = null, ultimo = null, parado = false, fimDisparado = false;
   // depois de 2 minutos a corrida entra na reta final: tudo fica mais difícil até não dar mais
   function extra(t) { return Math.max(0, (t - 120) / 60); }
@@ -288,7 +287,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
-        else s.msg = { txt: 'Seguro já no máximo', cor: '#9FD3FF', ate: s.t + 1 };
+        else { s.segExtra++; s.msg = { txt: 'Seguro extra: +' + (window.Garagem ? Garagem.SEGURO_CREDITO : 2) + ' créditos', cor: '#7CE0B0', ate: s.t + 1.2 }; }
         continue;
       }
       if (o.tipo === 'cancela' && o.ff) {
@@ -908,7 +907,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     else if (s.fase === 'rodando') { if (window.Musica) Musica.ritmo(nivel(s.t)); s.acc += dt; while (s.acc >= STEP && s.vivo) { passo(STEP); s.acc -= STEP; } }
     else if (s.fase === 'batida') {
       s.flash = Math.max(0, s.flash - dt * 1.4); if (s.tremor > 0) s.tremor -= dt;
-      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100, { multas: s.multas }); }, 1100); }
+      if (!fimDisparado) { fimDisparado = true; if (window.Musica) Musica.parar(true); setTimeout(function () { parar(); aoFim(Math.round(placar() * 100) / 100, { multas: s.multas, segExtra: s.segExtra }); }, 1100); }
     }
     desenhar(ts / 1000);
     raf = requestAnimationFrame(quadro);

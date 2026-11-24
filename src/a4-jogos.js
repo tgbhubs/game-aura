@@ -109,7 +109,7 @@ function desenharCorrida() {
   var m = CR.rid ? minhaRodada(CR.rid) : null;
   if (CR.fase === 'intro') {
     h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center"><div class="big">' + (CR.duelo ? '⚔️' : '🏎️') + '</div><h2 style="font-size:28px;font-weight:900;margin:12px 0 6px">' + (CR.duelo ? 'Duelo com ' + esc(CR.duelo.adv) + ' · corrida ' + (CR.duelo.n + 1) + ' de 3' : CR.treino ? 'Treino livre' : 'Corrida da rodada ' + CR.n) + '</h2>' +
-      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2)</li><li>Fique de olho no <b>combustível</b> (⛽) e pare no <b>posto</b> verde para abastecer; carro elétrico (🔋) dura menos e recarrega mais devagar</li><li>Toque em <b>❚❚</b> para pausar</li><li>Do nível 10 em diante aparece o <b>Poder Aura</b> (o "a" do logo): 5 segundos invencível</li><li>No <b>pedágio</b>, as 3 faixas do meio têm cancela: com <b>tag</b> você passa direto (cada tag vale 1 mensalidade, acumula até 3); sem tag, o carro para e perde 5 s. As 2 faixas laterais são <b>free flow</b>: com tag passa e paga; sem tag passa sem parar, mas leva <b>multa</b> (paga em créditos na Garagem)</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
+      '<div class="ovcard"><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Toque na <b>esquerda</b> ou <b>direita</b> da pista para trocar de faixa (no computador, ← →)</li><li>Pista com <b>5 faixas</b>: desvie de cones e carros parados. <b>Buraco</b> não encerra, mas tira 35% do pneu</li><li>Pegue o <b>Seguro Porto</b> (escudo azul): se bater, ele te salva e a corrida continua (acumula até 2; com 2, cada seguro a mais vira 2 créditos)</li><li>Fique de olho no <b>combustível</b> (⛽) e pare no <b>posto</b> verde para abastecer; carro elétrico (🔋) dura menos e recarrega mais devagar</li><li>Toque em <b>❚❚</b> para pausar</li><li>Do nível 10 em diante aparece o <b>Poder Aura</b> (o "a" do logo): 5 segundos invencível</li><li>No <b>pedágio</b>, as 3 faixas do meio têm cancela: com <b>tag</b> você passa direto (cada tag vale 1 mensalidade, acumula até 3); sem tag, o carro para e perde 5 s. As 2 faixas laterais são <b>free flow</b>: com tag passa e paga; sem tag passa sem parar, mas leva <b>multa</b> (paga em créditos na Garagem)</li><li>Os <b>pneus gastam</b> com o tempo (veja o medidor). Entre no <b>CAP Porto</b>, que aparece na faixa da direita ou da esquerda, para trocar: custa 3 s e dá 15 s de revisão (passa por buracos). Se o pneu acabar, fura e a corrida termina</li><li>A velocidade sobe a cada 10 s e, depois de 2 min, vem a <b>reta final</b>: cada vez mais difícil. Ganha quem for mais longe</li></ul></div>';
     if (CR.duelo) h += '<p class="small" style="opacity:.8">A pista é a mesma para os dois. <b>Uma tentativa só</b>: sair no meio conta o tempo até ali. Valem os atributos do carro que você escolher.</p>';
     else if (!CR.treino) h += '<div class="ovcard"><div class="row between"><span>Tentativas restantes</span><b>' + m.restantes + ' de 3</b></div>' + (m.melhor ? '<div class="row between" style="margin-top:6px"><span>Seu melhor tempo</span><b>' + fmtSeg(m.melhor) + ' · ' + Logica.curva(m.melhor, k) + ' pts</b></div>' : '') + '</div><p class="small" style="opacity:.75">Ao começar, a tentativa conta. Sair do app no meio encerra a tentativa.</p>';
     else h += '<p class="small" style="opacity:.75">O treino usa pistas aleatórias e não vale ponto no ranking da rodada, mas rende <b>créditos</b> para a Garagem (40% dos pontos, e mais 1 a cada 15 s depois dos 3 minutos) e o seu melhor tempo entra no <b>ranking de treinos</b>.</p>';
@@ -150,7 +150,8 @@ function desenharCorrida() {
     }
     if (CR.duelo && CR.resDuelo) h += resultadoDuelo();
     var resX = CR.duelo ? CR.resDuelo : CR.treino ? CR.resTreino : CR.res;
-    var nm = resX ? (resX.multas || 0) : 0;
+    var nm = resX ? (resX.multas || 0) : 0, sc = resX ? (resX.segCreditos || 0) : 0;
+    if (sc) h += '<div class="ovcard" style="margin-top:10px;text-align:left"><b style="color:#7CE0B0">+' + sc + ' créditos de seguros extras</b><div class="tiny" style="opacity:.8;margin-top:4px">Seguro Porto pego com o estoque cheio vira ' + Garagem.SEGURO_CREDITO + ' créditos na carteira.</div></div>';
     if (nm) h += '<div class="ovcard" style="margin-top:10px;text-align:left"><b style="color:#FFD07A">' + (nm === 1 ? '1 multa' : nm + ' multas') + ' por evasão de pedágio</b><div class="tiny" style="opacity:.8;margin-top:4px">Passou no free flow sem TAG. Pague na Garagem até ' + Garagem.MULTA.prazoDias + ' dias com ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto. O tempo e o ranking não mudam.</div><button class="btn wh sm" style="margin-top:10px" data-a="verMultas">Ver multas</button></div>';
     h += '</div>';
     if (CR.duelo) h += '<button class="btn lar full" data-a="duelVerDepois">Ver o duelo</button>';
@@ -204,12 +205,12 @@ function resultadoDuelo() {
 }
 function fimCorrida(t, info) {
   if (!CR) return;
-  CR.tempo = t; CR.motor = null; CR.multas = (info && info.multas) || 0;
+  CR.tempo = t; CR.motor = null; CR.multas = (info && info.multas) || 0; CR.segExtra = (info && info.segExtra) || 0;
   var carroUsado = CR.carro || carroPreferido();
   if (CR.duelo) {
     CR.fase = 'salvando'; desenharCorrida();
     var tentarD = function (n) {
-      B.chamar('duelo', { op: 'finalizar', id: CR.duelo.id, n: CR.duelo.n, tempo: t, multas: CR.multas }).then(function (r) { if (!CR) return; CR.resDuelo = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+      B.chamar('duelo', { op: 'finalizar', id: CR.duelo.id, n: CR.duelo.n, tempo: t, multas: CR.multas, segExtra: CR.segExtra }).then(function (r) { if (!CR) return; CR.resDuelo = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
         .catch(function (e) { if (!CR) return; if (n < 2) { setTimeout(function () { tentarD(n + 1); }, 1200); return; } CR.fase = 'erro'; CR.erro = 'Não consegui registrar o tempo (' + msgErro(e) + '). Verifique a conexão.'; desenharCorrida(); });
     };
     tentarD(0);
@@ -218,13 +219,13 @@ function fimCorrida(t, info) {
   if (CR.treino) {
     if (CR.semRecorde) { CR.fase = 'fim'; desenharCorrida(); return; }
     CR.fase = 'salvando'; desenharCorrida();
-    B.chamar('treino', { op: 'finalizar', tempo: t, multas: CR.multas }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
+    B.chamar('treino', { op: 'finalizar', tempo: t, multas: CR.multas, segExtra: CR.segExtra }).then(function (r) { if (!CR) return; CR.resTreino = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida(); })
       .catch(function () { if (!CR) return; CR.fase = 'fim'; desenharCorrida(); });
     return;
   }
   CR.fase = 'salvando'; desenharCorrida();
   var tentar = function (n) {
-    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t, multas: CR.multas, carro: carroUsado }).then(function (r) {
+    B.chamar('finalizarCorrida', { rodadaId: CR.rid, n: CR.tn, tempo: t, multas: CR.multas, segExtra: CR.segExtra, carro: carroUsado }).then(function (r) {
       if (!CR) return; CR.res = r; CR.tempo = r.tempo; CR.fase = 'fim'; desenharCorrida();
     }).catch(function (e) {
       if (!CR) return;

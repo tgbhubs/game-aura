@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-23b';
+var BUILD = '2026-11-23c';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -254,6 +254,7 @@ function criarDemo() {
         var mm = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(r.resp.tempo)), catM === 'aura' && carroM !== 'aura' ? 'aura' : carroM, catM, 'corrida', now);
         if (mm.novas) gravar('carteira/' + uid, mm.carteira); r.resp.multas = mm.novas;
       }
+      if (Number(d.segExtra) > 0) { var sx = Garagem.creditarSeguros(lerDoc('carteira/' + uid), d.segExtra, r.resp.tempo, 'corrida', now); if (sx.creditos) { gravar('carteira/' + uid, sx.carteira); r.resp.segCreditos = sx.creditos; } }
       return r.resp;
     }
     if (nome === 'anularTentativa') {
@@ -277,6 +278,7 @@ function criarDemo() {
         var mt = Garagem.registrarMultas(lerDoc('carteira/' + uid), Math.min(Number(d.multas), Garagem.maxMultas(rt.resp.tempo)), rt.sessao.carro || rt.sessao.cat, rt.sessao.cat, 'treino', now);
         if (mt.novas) gravar('carteira/' + uid, mt.carteira); rt.resp.multas = mt.novas;
       }
+      if (d.op === 'finalizar' && rt.resp.valido && Number(d.segExtra) > 0) { var st2 = Garagem.creditarSeguros(lerDoc('carteira/' + uid), d.segExtra, rt.resp.tempo, 'treino', now); if (st2.creditos) { gravar('carteira/' + uid, st2.carteira); rt.resp.segCreditos = st2.creditos; } }
       return rt.resp;
     }
     Logica.erro('Função desconhecida: ' + nome);
@@ -316,6 +318,7 @@ function criarDemo() {
         var f = Garagem.finalizarDuelo({ now: now, uid: uid, d: du, n: d.n, tempo: d.tempo }); doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
         var lado = Garagem.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
         if (Number(d.multas) > 0 && f.valido) { var m = Garagem.registrarMultas(L2.carts[lado], Math.min(Number(d.multas), Garagem.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now); if (m.novas) { L2.carts[lado] = m.carteira; resp.multas = m.novas; } }
+        if (Number(d.segExtra) > 0 && f.valido) { var sd = Garagem.creditarSeguros(L2.carts[lado], d.segExtra, f.tempo, 'duelo', now); if (sd.creditos) { L2.carts[lado] = sd.carteira; resp.segCreditos = sd.creditos; } }
       }
       if (doc.status === 'pendente' && now > doc.prazo) { var re = Garagem.desfazer({ now: now, d: doc, motivo: 'expirado', cartDe: L2.carts.de, garDe: L2.gars.de }); doc = re.doc; L2.carts.de = re.carteira; L2.gars.de = re.garagem; }
       var liq = Garagem.liquidarDuelo(doc, L2.carts, L2.gars, now); if (liq) { doc = liq.doc; L2.carts = liq.carteiras; L2.gars = liq.garagens; }

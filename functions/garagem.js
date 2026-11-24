@@ -332,6 +332,17 @@
     var base = G.MULTA.valor;
     return now <= m.vence ? Math.round(base * (1 - G.MULTA.desconto)) : Math.round(base * (1 + G.MULTA.juros));
   };
+  // Seguro Porto pego com o estoque cheio vira crédito na carteira (máximo plausível: 1 a cada 10 s de corrida)
+  G.SEGURO_CREDITO = 2;
+  G.maxSegurosExtra = function (tempo) { return Math.max(0, Math.min(30, Math.floor((Number(tempo) || 0) / 10) + 1)); };
+  G.creditarSeguros = function (cart0, n, tempo, origem, now) {
+    n = Math.max(0, Math.min(Math.floor(Number(n) || 0), G.maxSegurosExtra(tempo)));
+    var cart = L.clone(cart0 || {}), v = n * G.SEGURO_CREDITO;
+    if (!v) return { carteira: cart, creditos: 0 };
+    cart.recebido = (cart.recebido || 0) + v;
+    mov(cart, { t: now, v: v, d: 'Seguros extras (' + n + ') no ' + origem });
+    return { carteira: cart, creditos: v };
+  };
   // máximo plausível: uma praça a cada 12 s de corrida
   G.maxMultas = function (tempo) { return Math.max(0, Math.floor((Number(tempo) || 0) / 12) + 1); };
   G.registrarMultas = function (cart0, n, carro, cat, origem, now) {

@@ -73,8 +73,8 @@ exports.finalizarCorrida = onCall((req) => {
   return rodar(() => db.runTransaction(async (tx) => {
     const tr = refsTentativas(rid, uid);
     const snaps = await Promise.all([db.doc('jogadores/' + uid), db.doc('rodadas/' + rid)].concat(tr).map((x) => tx.get(x)));
-    const multas = Math.floor(Number(req.data.multas) || 0);
-    const [cart, gar] = multas > 0 ? await Promise.all([tx.get(db.doc('carteira/' + uid)), tx.get(db.doc('garagens/' + uid))]) : [null, null];
+    const multas = Math.floor(Number(req.data.multas) || 0), segs = Math.floor(Number(req.data.segExtra) || 0);
+    const [cart, gar] = multas > 0 || segs > 0 ? await Promise.all([tx.get(db.doc('carteira/' + uid)), tx.get(db.doc('garagens/' + uid))]) : [null, null];
     const rodada = dados(snaps[1]); if (rodada) rodada.id = rid;
     const now = Date.now();
     const res = L.finalizarCorrida({ now, uid, jog: dados(snaps[0]), rodada, tent: snaps.slice(2).map(dados), n, tempo: req.data.tempo });
@@ -85,6 +85,11 @@ exports.finalizarCorrida = onCall((req) => {
       const m = G.registrarMultas(dados(cart), Math.min(multas, G.maxMultas(res.resp.tempo)), cat === 'aura' && carro !== 'aura' ? 'aura' : carro, cat, 'corrida', now);
       if (m.novas) tx.set(db.doc('carteira/' + uid), m.carteira);
       res.resp.multas = m.novas;
+      if (m.novas) cart.__c = m.carteira;
+    }
+    if (segs > 0 && res.resp.valido !== false) {
+      const s = G.creditarSeguros((cart && cart.__c) || dados(cart), segs, res.resp.tempo, 'corrida', now);
+      if (s.creditos) { tx.set(db.doc('carteira/' + uid), s.carteira); res.resp.segCreditos = s.creditos; }
     }
     return res.resp;
   }));
@@ -335,6 +340,11 @@ exports.treino = onCall((req) => {
         const m = G.registrarMultas(dados(cart), Math.min(Number(d.multas), G.maxMultas(r.resp.tempo)), r.sessao.carro || r.sessao.cat, r.sessao.cat, 'treino', now);
         if (m.novas) tx.set(db.doc('carteira/' + uid), m.carteira);
         r.resp.multas = m.novas;
+        if (m.novas) cart.__c = m.carteira;
+      }
+      if (r.resp.valido && Number(d.segExtra) > 0) {
+        const s = G.creditarSeguros(cart.__c || dados(cart), d.segExtra, r.resp.tempo, 'treino', now);
+        if (s.creditos) { tx.set(db.doc('carteira/' + uid), s.carteira); r.resp.segCreditos = s.creditos; }
       }
       return r.resp;
     }
@@ -414,6 +424,10 @@ exports.duelo = onCall((req) => {
           const lado = G.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
           const m = G.registrarMultas(lados.carts[lado], Math.min(nm, G.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now);
           if (m.novas) { lados.carts[lado] = m.carteira; resp.multas = m.novas; }
+        }
+        if (Number(d.segExtra) > 0 && f.valido) {
+          const lado = G.lado(du, uid), s = G.creditarSeguros(lados.carts[lado], d.segExtra, f.tempo, 'duelo', now);
+          if (s.creditos) { lados.carts[lado] = s.carteira; resp.segCreditos = s.creditos; }
         }
       }
       if (doc.status === 'pendente' && now > doc.prazo) {
