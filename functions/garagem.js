@@ -335,7 +335,7 @@
     return now <= m.vence ? Math.round(base * (1 - G.MULTA.desconto)) : Math.round(base * (1 + G.MULTA.juros));
   };
   // Seguro Porto pego com o estoque cheio vira crédito na carteira (máximo plausível: 1 a cada 10 s de corrida)
-  G.SEGURO_CREDITO = 2;
+  G.SEGURO_CREDITO = 5;
   G.maxSegurosExtra = function (tempo) { return Math.max(0, Math.min(30, Math.floor((Number(tempo) || 0) / 10) + 1)); };
   G.creditarSeguros = function (cart0, n, tempo, origem, now) {
     n = Math.max(0, Math.min(Math.floor(Number(n) || 0), G.maxSegurosExtra(tempo)));

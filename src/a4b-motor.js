@@ -287,7 +287,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
       if (o.tipo === 'seguro') {
         o.pego = true;
         if (s.vidas < MAX_VIDAS) { s.vidas++; s.msg = { txt: 'Seguro Porto: +1 vida', cor: '#9FD3FF', ate: s.t + 1.4 }; }
-        else { s.segExtra++; s.msg = { txt: 'Seguro extra: +' + (window.Garagem ? Garagem.SEGURO_CREDITO : 2) + ' créditos', cor: '#7CE0B0', ate: s.t + 1.2 }; }
+        else { s.segExtra++; s.msg = { txt: 'Seguro extra: +' + (window.Garagem ? Garagem.SEGURO_CREDITO : 5) + ' créditos', cor: '#7CE0B0', ate: s.t + 1.2 }; }
         continue;
       }
       if (o.tipo === 'cancela' && o.ff) {
