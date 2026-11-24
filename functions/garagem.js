@@ -36,6 +36,9 @@
     'trilha':          { nome: 'Conceito Trilha',   modelo: 'trilha',    cor: null, preco: 1250, tipo: 'Conceito',  atr: { faixa: 1.40, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11' },
     'hatch-e':         { nome: 'Hatch E',           modelo: 'hatch',     cor: 0x7FD3F5, preco: 480,  tipo: 'Elétrico',  atr: { faixa: 1.25, pneu: 0.95, seguro: 0, eletrico: true }, lancado: '2026-11', fora: true },
     'suv-e':           { nome: 'SUV Porto E',       modelo: 'suv',       cor: 0x2FB8A6, preco: 820,  tipo: 'Elétrico',  atr: { faixa: 1.20, pneu: 0.80, seguro: 1, eletrico: true }, lancado: '2026-11', fora: true },
+    // lançamentos de dezembro (só aparecem à venda a partir de 01/12)
+    'rali':            { nome: 'Rali Evo',          modelo: 'rali',      cor: null, preco: 1150, tipo: 'Rali',      atr: { faixa: 1.40, pneu: 0.85, seguro: 1 }, lancado: '2026-12' },
+    'hibrido':         { nome: 'Híbrido 90',        modelo: 'hibrido',   cor: null, preco: 1800, tipo: 'Superesportivo', atr: { faixa: 1.65, pneu: 1.00, seguro: 1, eletrico: true }, lancado: '2026-12' },
     'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.75, pneu: 0.95, seguro: 1 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
@@ -49,7 +52,9 @@
     var ult = todos.map(function (k) { return G.CATALOGO[k].lancado; }).sort().pop();
     return { mes: ult, doMes: ult === mes, cats: todos.filter(function (k) { return G.CATALOGO[k].lancado === ult; }).sort(function (a, b) { return G.CATALOGO[b].preco - G.CATALOGO[a].preco; }) };
   };
-  G.VENDA = Object.keys(G.CATALOGO).filter(function (k) { return G.BASE.indexOf(k) < 0 && !G.CATALOGO[k].fora; });
+  // à venda no mês: tira os grátis, os fora de linha e os lançamentos de meses que ainda não chegaram
+  G.venda = function (now) { var mes = G.mesId(now || Date.now()); return Object.keys(G.CATALOGO).filter(function (k) { var c = G.CATALOGO[k]; return G.BASE.indexOf(k) < 0 && !c.fora && !(c.lancado && c.lancado > mes); }); };
+  G.VENDA = G.venda(Date.now());
   G.PONTOS_VITORIA_PLACA = 30;
   G.TREINO_PROP = 0.4;          // treino rende 40% dos pontos que o tempo valeria na rodada…
   G.TREINO_EXTRA_APOS = 180;    // …e, sem teto, +1 crédito a cada 15 s depois dos 3 minutos
@@ -88,7 +93,7 @@
   G.semana = function (now) { return 'S' + new Date(L.inicioSemana(now)).toISOString().slice(0, 10); };
   G.lote = function (now) {
     var sid = G.semana(now), r = L.rng(L.hash('retomados|' + sid)), itens = [];
-    var cats = L.shuffle(G.VENDA.slice(), r);
+    var cats = L.shuffle(G.venda(now), r);
     for (var i = 0; i < G.LOTE; i++) {
       var cat = cats[i % cats.length], base = G.CATALOGO[cat].preco, desc = 0.35 + r() * 0.2;
       var idI = sid + '-' + (i + 1);
@@ -102,7 +107,7 @@
     if (!lote || !lote.itens) return lote;
     var mudou = false, itens = lote.itens.map(function (it) {
       if (it.vendidoPara || !G.foraDeLinha(it.cat)) return it;
-      mudou = true; var h = L.hash('troca|' + it.id), cat = G.VENDA[h % G.VENDA.length], desc = 0.35 + (h % 1000) / 1000 * 0.2;
+      mudou = true; var h = L.hash('troca|' + it.id), vd = G.venda(lote.criadoEm || Date.now()), cat = vd[h % vd.length], desc = 0.35 + (h % 1000) / 1000 * 0.2;
       var n = L.clone(it); n.cat = cat; n.preco = Math.round(G.CATALOGO[cat].preco * (1 - desc) / 5) * 5; return n;
     });
     if (!mudou) return lote; var l2 = L.clone(lote); l2.itens = itens; return l2;
@@ -147,7 +152,7 @@
   };
   G.comprar0km = function (st, cat, now) {
     var c = G.CATALOGO[cat];
-    if (!c || G.BASE.indexOf(cat) >= 0 || c.fora) L.erro('Carro indisponível.');
+    if (!c || G.venda(now).indexOf(cat) < 0) L.erro('Carro indisponível.');
     precisa(st.saldo, c.preco);
     var gar = L.clone(st.garagem || {}), cart = L.clone(st.carteira || {});
     var iid = novaInst(gar, cat, '0km', 0, now);

@@ -87,7 +87,7 @@ function garShowroom(saldo) {
 function gar0km() {
   var saldo = GS.saldo ? GS.saldo.saldo : 0, h = garShowroom(saldo) + '<div class="sec">Todos os 0 km</div><p class="small mut">Carros novos, direto da concessionária. Preço fixo.</p>' + legendaAtr() + '<div class="glista">';
   var lz = Garagem.lancamentos(Date.now());
-  Garagem.VENDA.forEach(function (cat) {
+  Garagem.venda(Date.now()).forEach(function (cat) {
     var c = Garagem.CATALOGO[cat], pode = saldo >= c.preco, novo = lz.cats.indexOf(cat) >= 0;
     h += '<div class="gitem">' + fotoCat(cat) + '<div class="ginfo"><b>' + esc(c.nome) + '</b>' + (novo ? ' <span class="gselo novo">NOVO</span>' : '') + '<span>' + c.tipo + ' · 0 km</span>' + barrasAtrMini(c.atr, cat) +
       '<div class="row between" style="margin-top:8px"><span class="gpreco">' + nCred(c.preco) + ' <small>créditos</small></span><button class="btn sm ' + (pode ? 'lar' : 'gh') + '" data-a="garComprar0km" data-v="' + cat + '"' + (pode ? '' : ' disabled') + '>' + (pode ? 'Comprar' : 'Faltam ' + nCred(c.preco - saldo)) + '</button></div></div></div>';
@@ -149,7 +149,7 @@ function dataCurta(ms) { var d = new Date(ms); return ('0' + d.getDate()).slice(
 function garPrecos() {
   var tr = listaTransacoes(), h = '<div class="card gporto"><b>Preço Aura</b><p class="small" style="margin:4px 0 0">Referência de preço de cada modelo, calculada pelas vendas reais entre o time e pelos Retomados Itaú e Porto. Usa a mediana das últimas 15 vendas, ajustada para 30 mil km (cada mil km a mais desvaloriza 0,4%). Com menos de 3 vendas, vale uma estimativa de 70% do 0 km.</p></div>';
   h += '<div class="card" style="padding:4px 14px;margin-top:10px;overflow-x:auto"><table class="t gtab"><tr><th>Modelo</th><th class="n">Preço Aura</th><th class="n">0 km</th><th class="n">Vendas</th></tr>';
-  Garagem.VENDA.concat(Object.keys(Garagem.CATALOGO).filter(Garagem.foraDeLinha)).forEach(function (cat) {
+  Garagem.venda(Date.now()).concat(Object.keys(Garagem.CATALOGO).filter(Garagem.foraDeLinha)).forEach(function (cat) {
     var c = Garagem.CATALOGO[cat], p = Garagem.precoAura(cat, tr), n = tr.filter(function (t) { return t.cat === cat; }).length;
     h += '<tr><td><b>' + esc(c.nome) + '</b><br><span class="tiny mut">' + c.tipo + (c.fora ? ' · fora de linha' : '') + (p.ultima ? ' · última: ' + nCred(p.ultima.preco) + ' em ' + dataCurta(p.ultima.em) : '') + '</span></td><td class="n"><b>' + nCred(p.valor) + '</b>' + (p.estimado ? '<br><span class="tiny mut">estimado</span>' : '<br><span class="tiny mut">' + p.n + ' vendas</span>') + '</td><td class="n">' + (c.fora ? '—' : nCred(c.preco)) + '</td><td class="n">' + n + '</td></tr>';
   });

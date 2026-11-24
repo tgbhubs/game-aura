@@ -28,6 +28,8 @@ var CARROS = {
   touro: { arquivo: 'assets/carros/touro.glb', rotY: 0 },
   monoposto: { arquivo: 'assets/carros/monoposto.glb', rotY: Math.PI },
   viajante: { arquivo: 'assets/carros/viajante.glb', rotY: 0 },
+  rali: { arquivo: 'assets/carros/rali.glb', rotY: Math.PI },
+  hibrido: { arquivo: 'assets/carros/hibrido.glb', rotY: Math.PI },
   roadster: { arquivo: 'assets/carros/roadster.glb', rotY: -2.142 },
   trilha: { arquivo: 'assets/carros/trilha.glb', rotY: Math.PI }
 };
