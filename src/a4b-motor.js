@@ -30,6 +30,13 @@ var CARROS = {
   viajante: { arquivo: 'assets/carros/viajante.glb', rotY: 0 },
   rali: { arquivo: 'assets/carros/rali.glb', rotY: Math.PI },
   hibrido: { arquivo: 'assets/carros/hibrido.glb', rotY: Math.PI },
+  serra: { arquivo: 'assets/carros/serra.glb', rotY: Math.PI },
+  berlinetta: { arquivo: 'assets/carros/berlinetta.glb', rotY: Math.PI },
+  samurai: { arquivo: 'assets/carros/samurai.glb', rotY: Math.PI },
+  trovao: { arquivo: 'assets/carros/trovao.glb', rotY: Math.PI },
+  brisa: { arquivo: 'assets/carros/brisa.glb', rotY: Math.PI },
+  patrulha: { arquivo: 'assets/carros/patrulha.glb', rotY: Math.PI },
+  vento: { arquivo: 'assets/carros/vento.glb', rotY: 0 },
   roadster: { arquivo: 'assets/carros/roadster.glb', rotY: -2.142 },
   trilha: { arquivo: 'assets/carros/trilha.glb', rotY: Math.PI }
 };

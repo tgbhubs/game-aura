@@ -39,6 +39,13 @@
     // lançamentos de dezembro (só aparecem à venda a partir de 01/12)
     'rali':            { nome: 'Rali Evo',          modelo: 'rali',      cor: null, preco: 1150, tipo: 'Rali',      atr: { faixa: 1.40, pneu: 0.85, seguro: 1 }, lancado: '2026-12' },
     'hibrido':         { nome: 'Híbrido 90',        modelo: 'hibrido',   cor: null, preco: 1800, tipo: 'Superesportivo', atr: { faixa: 1.65, pneu: 1.00, seguro: 1, eletrico: true }, lancado: '2026-12' },
+    'serra':           { nome: 'Serra 7',           modelo: 'serra',     cor: null, preco: 650,  tipo: 'SUV',       atr: { faixa: 1.15, pneu: 0.75, seguro: 1 }, lancado: '2026-12' },
+    'berlinetta':      { nome: 'Berlinetta 94',     modelo: 'berlinetta', cor: null, preco: 1050, tipo: 'Clássico',  atr: { faixa: 1.38, pneu: 0.95, seguro: 0 }, lancado: '2026-12' },
+    'samurai':         { nome: 'Samurai R',         modelo: 'samurai',   cor: null, preco: 1250, tipo: 'Esportivo', atr: { faixa: 1.45, pneu: 0.95, seguro: 1 }, lancado: '2026-12' },
+    'trovao':          { nome: 'Trovão EV',         modelo: 'trovao',    cor: null, preco: 1300, tipo: 'Picape',    atr: { faixa: 1.30, pneu: 0.75, seguro: 1, eletrico: true }, lancado: '2026-12' },
+    'brisa':           { nome: 'Brisa GT',          modelo: 'brisa',     cor: null, preco: 1450, tipo: 'Conversível', atr: { faixa: 1.50, pneu: 1.00, seguro: 1 }, lancado: '2026-12' },
+    'patrulha':        { nome: 'Patrulha 50',       modelo: 'patrulha',  cor: null, preco: 1700, tipo: 'Viatura',   atr: { faixa: 1.62, pneu: 1.00, seguro: 1 }, lancado: '2026-12' },
+    'vento':           { nome: 'Vento F',           modelo: 'vento',     cor: null, preco: 2100, tipo: 'Hipercarro', atr: { faixa: 1.72, pneu: 1.05, seguro: 0 }, lancado: '2026-12' },
     'monoposto':       { nome: 'Monoposto F',       modelo: 'monoposto', cor: null, preco: 2000, tipo: 'Fórmula',   atr: { faixa: 1.75, pneu: 0.95, seguro: 1 }, lancado: '2026-11' }
   };
   G.BASE = ['aura', 'conceito', 'cyberpunk'];
