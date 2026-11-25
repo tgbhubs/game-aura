@@ -20,3 +20,13 @@ const dia = (ms) => new Date(ms - 3 * 3600000).toISOString().slice(0, 10);
   ds.docs.forEach((x) => { const d = x.data(); console.log('DUELO', x.id, d.ap.de, 'x', d.ap.para, d.status, 'criado', dh(d.criadoEm), 'aceito', dh(d.aceitoEm), 'prazo', dh(d.prazo), 'fim', dh(d.fimEm),
     'de:', JSON.stringify((d.corridas.de || []).map((c) => c && { t: c.t, ini: dh(c.inicio) })), 'para:', JSON.stringify((d.corridas.para || []).map((c) => c && { t: c.t, ini: dh(c.inicio) })), 'placar', JSON.stringify(d.placar), 'venceu', JSON.stringify(d.venceu)); });
 })();
+// treinos (leitura): recordes acima de 250 s, com data e carro
+(async () => {
+  const jg = await db.collection('jogadores').get(); const nome = {}; jg.docs.forEach((x) => { nome[x.id] = x.data().nome; });
+  const tr = await db.collection('treinos').get();
+  const dh = (ms) => ms ? new Date(ms - 3 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '-';
+  const lin = [];
+  tr.docs.forEach((x) => { const d = x.data(); const regs = [d.melhor].concat(Object.values(d.semanas || {})).concat(Object.values(d.porCarro || {}));
+    const vistos = {}; regs.forEach((r) => { if (r && r.t >= 250 && !vistos[r.em]) { vistos[r.em] = 1; lin.push([r.t, nome[x.id] || x.id, r.cat, dh(r.em)]); } }); });
+  lin.sort((a, b) => b[0] - a[0]).forEach((l) => console.log('TREINO', l.join(' | ')));
+})();
