@@ -1317,6 +1317,9 @@ span.pc{display:flex}
     if (!d || d.status !== 'pendente') L.erro('Esse desafio não está mais aberto.');
     if (d.para !== c.uid) L.erro('Esse desafio não é para você.');
     if (c.now > d.prazo) L.erro('Esse desafio expirou.');
+    // o duelo é ou de créditos ou de carro: quem aceita aposta do mesmo tipo de quem desafiou
+    var tipoDe = d.aposta && d.aposta.de && d.aposta.de.tipo === 'carro' ? 'carro' : 'creditos';
+    if (((c.aposta || {}).tipo === 'carro' ? 'carro' : 'creditos') !== tipoDe) L.erro(tipoDe === 'carro' ? 'Esse duelo vale carro: aposte um carro seu.' : 'Esse duelo vale créditos: aposte créditos.');
     var a = G.validarAposta(c.st, c.aposta, c.anunciados);
     var cart = L.clone(c.st.carteira || {}), gar = L.clone(c.st.garagem || { carros: {} });
     reservar(cart, gar, a, c.id, d.ap.de, c.now);
@@ -1540,7 +1543,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-24f';
+var BUILD = '2026-11-25a';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -2861,7 +2864,7 @@ function telaRegras() {
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
     '<p class="small mut">Conquistas de rodada aparecem quando a rodada fecha (domingo 23:59), exceto Gabaritou, Piloto de Ouro e Combo Perfeito, que saem na hora. Toque numa conquista para compartilhar a imagem.</p>' +
-    '<h4>⚔️ Duelos</h4><ul><li>Desafie alguém numa <b>melhor de 3 corridas</b>, cada um no seu tempo (até 48 h depois do aceite), com as mesmas pistas para os dois.</li><li>Cada lado aposta de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ' créditos ou um carro (não vale carro da casa, anunciado ou com multa). Quem vencer 2 corridas leva as duas apostas; empate decide na soma dos tempos.</li><li>Valem os atributos do carro e as multas do free flow. Corrida não feita no prazo vale 0.</li></ul>' +
+    '<h4>⚔️ Duelos</h4><ul><li>Desafie alguém numa <b>melhor de 3 corridas</b>, cada um no seu tempo (até 48 h depois do aceite), com as mesmas pistas para os dois.</li><li>Quem desafia escolhe se o duelo vale <b>créditos</b> (de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ') ou <b>carro</b> (não vale carro da casa, anunciado ou com multa). Quem aceita aposta do mesmo tipo: créditos contra créditos ou carro contra carro. Quem vencer 2 corridas leva as duas apostas; empate decide na soma dos tempos.</li><li>Valem os atributos do carro e as multas do free flow. Corrida não feita no prazo vale 0.</li></ul>' +
     '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo de ' + Garagem.LOTE + ' carros com desconto toda segunda; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
     '<h4 id="regras-placa">🃏 Placa!</h4><ul><li>Jogo de cartas online, de 2 a 6 pessoas. Crie uma mesa na aba Jogar ou entre numa mesa aberta. Uma mão = uma partida.</li>' +
     '<li>Baralho de 108 cartas em 4 cores (laranja, azul, verde e vermelho): números de 0 a 9, <b>Pedágio</b> (o próximo perde a vez), <b>Retorno</b> (inverte o sentido), <b>Guincho +2</b>, <b>Seguro</b> (curinga: escolhe a cor) e <b>Seguro Total +4</b> (curinga: escolhe a cor e o próximo compra 4 e perde a vez).</li>' +
@@ -5272,11 +5275,13 @@ function carrosApostaveis() {
 }
 function formAposta() {
   var cs = carrosApostaveis(), tipo = DU.tipo || 'creditos', saldo = GS.saldo ? GS.saldo.saldo : null;
-  var h = '<label class="f">Sua aposta</label><div class="seg" style="margin:0 0 8px;display:grid;grid-template-columns:1fr 1fr"><button class="' + (tipo === 'creditos' ? 'on' : '') + '" data-a="duelTipo" data-v="creditos">Créditos</button><button class="' + (tipo === 'carro' ? 'on' : '') + '" data-a="duelTipo" data-v="carro">Um carro</button></div>';
+  var h = DU.fixo ? '<label class="f">Sua aposta: ' + (tipo === 'carro' ? 'um carro seu' : 'créditos') + '</label>' :
+    '<label class="f">Sua aposta</label><div class="seg" style="margin:0 0 8px;display:grid;grid-template-columns:1fr 1fr"><button class="' + (tipo === 'creditos' ? 'on' : '') + '" data-a="duelTipo" data-v="creditos">Créditos</button><button class="' + (tipo === 'carro' ? 'on' : '') + '" data-a="duelTipo" data-v="carro">Um carro</button></div>' +
+    '<div class="tiny mut" style="margin:-2px 0 8px">Quem aceitar aposta do mesmo tipo: créditos contra créditos ou carro contra carro.</div>';
   if (tipo === 'creditos') {
     h += '<input class="inp" id="duValor" type="number" inputmode="numeric" min="' + Garagem.DUELO.minCred + '" max="' + Garagem.DUELO.maxCred + '" value="' + (DU.valor || 20) + '"><div class="tiny mut">De ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ' créditos' + (saldo != null ? ' · você tem ' + nCred(saldo) : '') + '.</div>';
   } else if (!cs.length) {
-    h += '<div class="small mut">Você não tem carro para apostar. Os carros da casa não valem, e carro anunciado, com multa ou já apostado também não.</div>';
+    h += '<div class="small mut">Você não tem carro para apostar. Os carros da casa não valem, e carro anunciado, com multa ou já apostado também não.' + (DU.fixo ? ' Como esse duelo vale carro, você pode recusar o desafio.' : '') + '</div>';
   } else {
     h += '<div class="garagem rolar" style="margin:0">' + cs.map(function (x) { var c = Garagem.CATALOGO[x.cat], f = window.FOTOS_CARROS && FOTOS_CARROS[x.cat]; return '<button class="gcar' + (DU.iid === x.key ? ' on' : '') + '" style="color:var(--ink)" data-a="duelCarro" data-v="' + esc(x.key) + '">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '<span>' + esc(c.nome) + '</span></button>'; }).join('') + '</div>';
   }
@@ -5297,7 +5302,7 @@ function modalDesafiar() {
 }
 function modalAceitar(id) {
   var d = D.duelos[id]; if (!d) return;
-  abrirModal('<h3>Aceitar o duelo de ' + esc(d.ap.de) + '?</h3><p class="small">A aposta de ' + esc(d.ap.de) + ': ' + apostaHTML(d.aposta.de) + '</p><p class="small mut">Escolha o que você aposta. Quem vencer leva as duas apostas.</p>' +
+  abrirModal('<h3>Aceitar o duelo de ' + esc(d.ap.de) + '?</h3><p class="small">A aposta de ' + esc(d.ap.de) + ': ' + apostaHTML(d.aposta.de) + '</p><p class="small mut">' + (d.aposta.de && d.aposta.de.tipo === 'carro' ? 'Esse duelo vale carro: escolha um carro seu para apostar.' : 'Esse duelo vale créditos: escolha quantos créditos você aposta.') + ' Quem vencer leva as duas apostas.</p>' +
     '<div id="duForm">' + formAposta() + '</div><div id="duErr"></div><div class="mact"><button class="btn gh" data-a="fecharModal">Voltar</button><button class="btn lar" data-a="duelConfirmarAceite" data-v="' + id + '">Aceitar e apostar</button></div>');
 }
 function redesenharForm() { var f = $('#duForm'); if (f) f.innerHTML = formAposta(); }
@@ -5314,7 +5319,7 @@ function abrirCorridaDuelo(id, n) {
 var A_DUELO = {
   duelos: function () { DU.tela = true; S.tab = 'jogar'; R(); window.scrollTo(0, 0); },
   duelVoltar: function () { DU.tela = false; R(); },
-  duelDesafiar: function () { DU.tipo = 'creditos'; DU.iid = ''; DU.para = ''; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalDesafiar(); },
+  duelDesafiar: function () { DU.fixo = false; DU.tipo = 'creditos'; DU.iid = ''; DU.para = ''; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalDesafiar(); },
   duelTipo: function (v) { var p = $('#duPara'); if (p) DU.para = p.value; var vv = $('#duValor'); if (vv) DU.valor = vv.value; DU.tipo = v; redesenharForm(); Array.prototype.forEach.call(document.querySelectorAll('#modal [data-a="duelTipo"]'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); }); },
   duelCarro: function (v) { DU.iid = v; redesenharForm(); },
   duelEnviar: function () {
@@ -5323,7 +5328,7 @@ var A_DUELO = {
     if (!ap) { erroDuelo({ message: 'Escolha o carro que vai apostar.' }); return; }
     B.chamar('duelo', { op: 'desafiar', para: para, aposta: ap }).then(function () { fecharModal(); toast('Desafio enviado! A pessoa tem 48 h para aceitar.'); DU.tela = true; R(); }).catch(erroDuelo);
   },
-  duelAceitar: function (id) { DU.tipo = 'creditos'; DU.iid = ''; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalAceitar(id); },
+  duelAceitar: function (id) { var dd = D.duelos[id]; DU.tipo = dd && dd.aposta && dd.aposta.de && dd.aposta.de.tipo === 'carro' ? 'carro' : 'creditos'; DU.fixo = true; DU.iid = ''; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalAceitar(id); },
   duelConfirmarAceite: function (id) {
     var ap = lerAposta(); if (!ap) { erroDuelo({ message: 'Escolha o carro que vai apostar.' }); return; }
     B.chamar('duelo', { op: 'aceitar', id: id, aposta: ap }).then(function () { fecharModal(); toast('Duelo aceito! Valendo.'); R(); }).catch(erroDuelo);
@@ -5331,7 +5336,7 @@ var A_DUELO = {
   duelRecusar: function (id) { abrirConfirma('Recusar o desafio?', 'A aposta volta para quem desafiou.', 'Recusar', function () { B.chamar('duelo', { op: 'recusar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelCancelar: function (id) { abrirConfirma('Cancelar o desafio?', 'Sua aposta volta para você.', 'Cancelar desafio', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelResumo: function (id) { var d = D.duelos[id]; if (d) { d._id = id; abrirModal(resumoDueloHTML(d)); } },
-  duelRevanche: function (uid) { fecharModal(); DU.tipo = 'creditos'; DU.iid = ''; DU.para = uid; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalDesafiar(); },
+  duelRevanche: function (uid) { fecharModal(); DU.fixo = false; DU.tipo = 'creditos'; DU.iid = ''; DU.para = uid; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalDesafiar(); },
   duelRanking: function () { DU.tela = false; S.tab = 'ranking'; S.rankModo = 'duelos'; R(); window.scrollTo(0, 0); },
   duelVerDepois: function () { fecharOv(); DU.tela = true; S.tab = 'jogar'; R(); window.scrollTo(0, 0); },
   duelCorrer: function (v) { var p = v.split('|'); abrirCorridaDuelo(p[0], parseInt(p[1], 10)); }

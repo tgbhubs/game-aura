@@ -260,6 +260,9 @@
     if (!d || d.status !== 'pendente') L.erro('Esse desafio não está mais aberto.');
     if (d.para !== c.uid) L.erro('Esse desafio não é para você.');
     if (c.now > d.prazo) L.erro('Esse desafio expirou.');
+    // o duelo é ou de créditos ou de carro: quem aceita aposta do mesmo tipo de quem desafiou
+    var tipoDe = d.aposta && d.aposta.de && d.aposta.de.tipo === 'carro' ? 'carro' : 'creditos';
+    if (((c.aposta || {}).tipo === 'carro' ? 'carro' : 'creditos') !== tipoDe) L.erro(tipoDe === 'carro' ? 'Esse duelo vale carro: aposte um carro seu.' : 'Esse duelo vale créditos: aposte créditos.');
     var a = G.validarAposta(c.st, c.aposta, c.anunciados);
     var cart = L.clone(c.st.carteira || {}), gar = L.clone(c.st.garagem || { carros: {} });
     reservar(cart, gar, a, c.id, d.ap.de, c.now);
