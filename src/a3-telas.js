@@ -285,7 +285,7 @@ function rankingTreino() {
   if (porCarro) sem = false;
   h += '<div class="chips"><button class="chip' + (sem ? ' on' : '') + '" data-a="rankTreino" data-v="semana">Desta semana</button><button class="chip' + (!sem && !porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="geral">Geral</button><button class="chip' + (porCarro ? ' on' : '') + '" data-a="rankTreino" data-v="carro">Por carro</button></div>';
   if (porCarro) return h + rankingPorCarro();
-  var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return r ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
+  var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return Garagem.vale(r) ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
     .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
   h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos no ranking da temporada; cada treino rende créditos para a Garagem.</p><div class="card" style="padding:6px 16px">';
   if (!l.length) h += '<div class="empty">Ninguém treinou ' + (sem ? 'esta semana' : 'ainda') + '.</div>';
