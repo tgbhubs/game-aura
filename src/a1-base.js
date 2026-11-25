@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-24e';
+var BUILD = '2026-11-24f';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -42,7 +42,9 @@ function corDe(uid) { return CORES_AV[Logica.hash(uid || 'x') % CORES_AV.length]
 function nomeExib(j) {
   if (!j) return '—';
   var pn = primeiroNome(j.nome);
-  if (j.apelido && j.apelido.toLowerCase() !== pn.toLowerCase()) return j.apelido + ' · ' + pn;
+  var sem = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); };
+  // apelido igual ao primeiro nome (mesmo sem acento, ex.: Tarcisio x Tarcísio) não repete
+  if (j.apelido && sem(j.apelido) !== sem(pn)) return j.apelido + ' · ' + pn;
   return j.apelido || pn || '—';
 }
 function avatar(j, uid, cls) {
