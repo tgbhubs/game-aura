@@ -103,6 +103,10 @@ function telaDuelos() {
     h += '<div class="sec">Desafios para você</div>';
     rec.forEach(function (d) {
       var venc = Date.now() > d.prazo;
+      if (d.contra) {
+        h += '<div class="card dduel"><div class="row" style="gap:10px;align-items:center">' + avatar(jogDe(d.de, { uid: d.de, ap: d.ap.de }), d.de) + '<div style="min-width:0;flex:1"><b>' + esc(d.ap.de) + ' te desafiou</b><div class="small mut">Desafio: ' + d.aposta.de.valor + ' créditos · você propôs <b>' + d.contra.valor + ' créditos</b></div><div class="tiny mut">' + (venc ? 'Expirou' : 'Aguardando ' + esc(d.ap.de) + ' responder · ' + prazoTxt(d.prazo)) + '</div></div><button class="lnk tiny" data-a="duelRecusar" data-v="' + d._id + '">Desistir</button></div></div>';
+        return;
+      }
       h += '<div class="card dduel"><div class="row" style="gap:10px;align-items:center">' + avatar(jogDe(d.de, { uid: d.de, ap: d.ap.de }), d.de) + '<div style="min-width:0;flex:1"><b>' + esc(d.ap.de) + ' te desafiou</b><div class="small mut">Aposta: ' + apostaHTML(d.aposta.de) + '</div><div class="tiny mut">' + (venc ? 'Expirou' : 'Responda em ' + prazoTxt(d.prazo)) + '</div></div></div>' +
         (venc ? '' : '<div class="row" style="gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" data-a="duelRecusar" data-v="' + d._id + '">Recusar</button><button class="btn lar" style="flex:1" data-a="duelAceitar" data-v="' + d._id + '">Aceitar</button></div>') + '</div>';
     });
@@ -114,6 +118,12 @@ function telaDuelos() {
   if (env.length) {
     h += '<div class="sec">Esperando resposta</div>';
     env.forEach(function (d) {
+      if (d.contra) {
+        var vc = Date.now() > d.prazo;
+        h += '<div class="card dduel"><div class="row" style="gap:10px;align-items:center">' + avatar(jogDe(d.para, { uid: d.para, ap: d.ap.para }), d.para) + '<div style="min-width:0;flex:1"><b>' + esc(d.ap.para) + ' propôs outro valor</b><div class="small mut">Seu desafio: ' + d.aposta.de.valor + ' créditos · proposta: <b>' + d.contra.valor + ' créditos</b> de cada lado</div><div class="tiny mut">' + (vc ? 'Expirou: a aposta volta para você' : 'Responda em ' + prazoTxt(d.prazo)) + '</div></div></div>' +
+          (vc ? '' : '<div class="row" style="gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" data-a="duelRecusarContra" data-v="' + d._id + '">Recusar</button><button class="btn lar" style="flex:1" data-a="duelAceitarContra" data-v="' + d._id + '">Aceitar ' + d.contra.valor + '</button></div>') + '</div>';
+        return;
+      }
       h += '<div class="card dduel"><div class="row" style="gap:10px;align-items:center">' + avatar(jogDe(d.para, { uid: d.para, ap: d.ap.para }), d.para) + '<div style="min-width:0;flex:1"><b>Você desafiou ' + esc(d.ap.para) + '</b><div class="small mut">Sua aposta: ' + apostaHTML(d.aposta.de) + '</div><div class="tiny mut">' + (Date.now() > d.prazo ? 'Expirou: a aposta volta para você' : 'Expira em ' + prazoTxt(d.prazo)) + '</div></div><button class="lnk tiny" data-a="duelCancelar" data-v="' + d._id + '">Cancelar</button></div></div>';
     });
   }
@@ -165,7 +175,7 @@ function formAposta() {
   var cs = carrosApostaveis(), tipo = DU.tipo || 'creditos', saldo = GS.saldo ? GS.saldo.saldo : null;
   var h = DU.fixo ? '<label class="f">Sua aposta: ' + (tipo === 'carro' ? 'um carro seu' : 'créditos') + '</label>' :
     '<label class="f">Sua aposta</label><div class="seg" style="margin:0 0 8px;display:grid;grid-template-columns:1fr 1fr"><button class="' + (tipo === 'creditos' ? 'on' : '') + '" data-a="duelTipo" data-v="creditos">Créditos</button><button class="' + (tipo === 'carro' ? 'on' : '') + '" data-a="duelTipo" data-v="carro">Um carro</button></div>' +
-    '<div class="tiny mut" style="margin:-2px 0 8px">Quem aceitar aposta do mesmo tipo: créditos contra créditos ou carro contra carro.</div>';
+    '<div class="tiny mut" style="margin:-2px 0 8px">Quem aceitar aposta o mesmo valor em créditos (ou pode propor outro), ou um carro contra o seu.</div>';
   if (tipo === 'creditos') {
     h += '<input class="inp" id="duValor" type="number" inputmode="numeric" min="' + Garagem.DUELO.minCred + '" max="' + Garagem.DUELO.maxCred + '" value="' + (DU.valor || 20) + '"><div class="tiny mut">De ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ' créditos' + (saldo != null ? ' · você tem ' + nCred(saldo) : '') + '.</div>';
   } else if (!cs.length) {
@@ -190,6 +200,14 @@ function modalDesafiar() {
 }
 function modalAceitar(id) {
   var d = D.duelos[id]; if (!d) return;
+  if (d.aposta.de && d.aposta.de.tipo !== 'carro') {
+    var v = d.aposta.de.valor, sd = GS.saldo ? GS.saldo.saldo : null;
+    abrirModal('<h3>Aceitar o duelo de ' + esc(d.ap.de) + '?</h3><p class="small">Valendo <b>' + v + ' créditos</b> de cada lado. Quem vencer leva os ' + (2 * v) + '.</p>' +
+      (sd != null ? '<p class="tiny mut">Você tem ' + nCred(sd) + '.</p>' : '') +
+      '<div id="duContra" style="display:none"><label class="f" for="duValor">Seu valor (de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ')</label><input class="inp" id="duValor" type="number" inputmode="numeric" min="' + Garagem.DUELO.minCred + '" max="' + Garagem.DUELO.maxCred + '" value="' + v + '"><div class="tiny mut">' + esc(d.ap.de) + ' recebe a proposta e decide: se aceitar, o duelo começa com esse valor; se recusar, é cancelado.</div><button class="btn lar full" style="margin-top:10px" data-a="duelEnviarContra" data-v="' + id + '">Enviar contraproposta</button></div>' +
+      '<div id="duErr"></div><div class="mact" id="duAcoes"><button class="btn gh" data-a="fecharModal">Voltar</button><button class="btn out" data-a="duelAbrirContra">Propor outro valor</button><button class="btn lar" data-a="duelConfirmarAceite" data-v="' + id + '">Aceitar ' + v + '</button></div>');
+    return;
+  }
   abrirModal('<h3>Aceitar o duelo de ' + esc(d.ap.de) + '?</h3><p class="small">A aposta de ' + esc(d.ap.de) + ': ' + apostaHTML(d.aposta.de) + '</p><p class="small mut">' + (d.aposta.de && d.aposta.de.tipo === 'carro' ? 'Esse duelo vale carro: escolha um carro seu para apostar.' : 'Esse duelo vale créditos: escolha quantos créditos você aposta.') + ' Quem vencer leva as duas apostas.</p>' +
     '<div id="duForm">' + formAposta() + '</div><div id="duErr"></div><div class="mact"><button class="btn gh" data-a="fecharModal">Voltar</button><button class="btn lar" data-a="duelConfirmarAceite" data-v="' + id + '">Aceitar e apostar</button></div>');
 }
@@ -218,9 +236,22 @@ var A_DUELO = {
   },
   duelAceitar: function (id) { var dd = D.duelos[id]; DU.tipo = dd && dd.aposta && dd.aposta.de && dd.aposta.de.tipo === 'carro' ? 'carro' : 'creditos'; DU.fixo = true; DU.iid = ''; if (typeof atualizarSaldo === 'function') atualizarSaldo(); modalAceitar(id); },
   duelConfirmarAceite: function (id) {
-    var ap = lerAposta(); if (!ap) { erroDuelo({ message: 'Escolha o carro que vai apostar.' }); return; }
+    var dd = D.duelos[id];
+    var ap = dd && dd.aposta.de && dd.aposta.de.tipo !== 'carro' ? { tipo: 'creditos', valor: dd.aposta.de.valor } : lerAposta(); if (!ap) { erroDuelo({ message: 'Escolha o carro que vai apostar.' }); return; }
     B.chamar('duelo', { op: 'aceitar', id: id, aposta: ap }).then(function () { fecharModal(); toast('Duelo aceito! Valendo.'); R(); }).catch(erroDuelo);
   },
+  duelAbrirContra: function () { var c = $('#duContra'), a = $('#duAcoes'); if (c) c.style.display = ''; if (a) a.innerHTML = '<button class="btn gh" data-a="fecharModal">Voltar</button>'; var i = $('#duValor'); if (i) i.focus(); },
+  duelEnviarContra: function (id) {
+    var v = Math.round(Number(($('#duValor') || {}).value || 0));
+    B.chamar('duelo', { op: 'contrapropor', id: id, valor: v }).then(function () { fecharModal(); toast('Contraproposta enviada.'); R(); }).catch(erroDuelo);
+  },
+  duelAceitarContra: function (id) {
+    var dd = D.duelos[id]; if (!dd || !dd.contra) return;
+    abrirConfirma('Aceitar ' + dd.contra.valor + ' créditos?', 'O duelo com ' + dd.ap.para + ' começa valendo ' + dd.contra.valor + ' créditos de cada lado. Sua aposta é ajustada de ' + dd.aposta.de.valor + ' para ' + dd.contra.valor + '.', 'Aceitar', function () {
+      B.chamar('duelo', { op: 'aceitarContra', id: id }).then(function () { toast('Duelo valendo!'); R(); }).catch(function (e) { toast(msgErro(e)); });
+    });
+  },
+  duelRecusarContra: function (id) { abrirConfirma('Recusar a contraproposta?', 'O duelo é cancelado e a sua aposta volta para você.', 'Recusar', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelRecusar: function (id) { abrirConfirma('Recusar o desafio?', 'A aposta volta para quem desafiou.', 'Recusar', function () { B.chamar('duelo', { op: 'recusar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelCancelar: function (id) { abrirConfirma('Cancelar o desafio?', 'Sua aposta volta para você.', 'Cancelar desafio', function () { B.chamar('duelo', { op: 'cancelar', id: id }).catch(function (e) { toast(msgErro(e)); }); }); },
   duelResumo: function (id) { var d = D.duelos[id]; if (d) { d._id = id; abrirModal(resumoDueloHTML(d)); } },

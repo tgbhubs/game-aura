@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-26b';
+var BUILD = '2026-11-26c';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -309,6 +309,8 @@ function criarDemo() {
     var du = lerDoc('duelos/' + d.id); if (!du) Logica.erro('Duelo não encontrado.');
     var lados = function () { return { carts: { de: lerDoc('carteira/' + du.de) || {}, para: lerDoc('carteira/' + du.para) || {} }, gars: { de: lerDoc('garagens/' + du.de) || { carros: {} }, para: lerDoc('garagens/' + du.para) || { carros: {} } } }; };
     if (op === 'aceitar') { var ra = Garagem.aceitar({ id: d.id, now: now, uid: uid, d: du, aposta: d.aposta, st: demoSaldo(uid), anunciados: anunciados(uid) }); gravar('duelos/' + d.id, ra.doc); gravar('carteira/' + uid, ra.carteira); gravar('garagens/' + uid, ra.garagem); return { ok: true }; }
+    if (op === 'contrapropor') { gravar('duelos/' + d.id, Garagem.contrapropor({ now: now, uid: uid, d: du, valor: d.valor, st: demoSaldo(uid) }).doc); return { ok: true }; }
+    if (op === 'aceitarContra') { var rc = Garagem.aceitarContra({ id: d.id, now: now, uid: uid, d: du, stDe: demoSaldo(du.de), stPara: demoSaldo(du.para) }); gravar('duelos/' + d.id, rc.doc); gravar('carteira/' + du.de, rc.carteiraDe); gravar('carteira/' + du.para, rc.carteiraPara); return { ok: true }; }
     if (op === 'recusar' || op === 'cancelar') {
       var rd = Garagem.desfazer({ now: now, d: du, motivo: op === 'recusar' ? 'recusado' : 'cancelado', cartDe: lerDoc('carteira/' + du.de), garDe: lerDoc('garagens/' + du.de) });
       gravar('duelos/' + d.id, rd.doc); gravar('carteira/' + du.de, rd.carteira); gravar('garagens/' + du.de, rd.garagem); return { ok: true };

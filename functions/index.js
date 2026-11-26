@@ -393,6 +393,8 @@ async function emailsDuelo(op, id) {
   if (!du) return;
   if (op === 'desafiar') { const j = await jogEmail(du.para); if (j) await Email.enviar(j.email, Email.desafio(du.ap.de, G.apostaTxt(du.aposta.de), Math.round(G.DUELO.prazoAceite / 3600000))); return; }
   if (op === 'aceitar' && du.status === 'andamento') { const j = await jogEmail(du.de); if (j) await Email.enviar(j.email, Email.dueloAceito(du.ap.para, G.apostaTxt(du.aposta.para))); return; }
+  if (op === 'contrapropor' && du.contra) { const j = await jogEmail(du.de); if (j) await Email.enviar(j.email, Email.contraproposta(du.ap.para, du.aposta.de.valor, du.contra.valor)); return; }
+  if (op === 'aceitarContra' && du.status === 'andamento') { const j = await jogEmail(du.para); if (j) await Email.enviar(j.email, Email.dueloAceito(du.ap.de, G.apostaTxt(du.aposta.de))); return; }
   if (du.status === 'fim' && !du.emailFim) {
     await ref.set({ emailFim: Date.now() }, { merge: true });
     for (const s of ['de', 'para']) {
@@ -446,6 +448,18 @@ function dueloOp(req) {
       const anunciados = await anunciadosDe(uid);
       const r = G.aceitar({ id: ref.id, now, uid, d: du, aposta: d.aposta, st, anunciados });
       tx.set(ref, r.doc); tx.set(db.doc('carteira/' + uid), r.carteira); tx.set(db.doc('garagens/' + uid), r.garagem);
+      return { ok: true };
+    }
+    if (op === 'contrapropor') {
+      const st = await lerSaldo(tx, uid);
+      const r = G.contrapropor({ now, uid, d: du, valor: d.valor, st });
+      tx.set(ref, r.doc);
+      return { ok: true };
+    }
+    if (op === 'aceitarContra') {
+      const stDe = await lerSaldo(tx, du.de), stPara = await lerSaldo(tx, du.para);
+      const r = G.aceitarContra({ id: ref.id, now, uid, d: du, stDe, stPara });
+      tx.set(ref, r.doc); tx.set(db.doc('carteira/' + du.de), r.carteiraDe); tx.set(db.doc('carteira/' + du.para), r.carteiraPara);
       return { ok: true };
     }
     if (op === 'recusar' || op === 'cancelar') {

@@ -254,6 +254,41 @@
       aposta: { de: a, para: null }, seeds: [], corridas: { de: [null, null, null], para: [null, null, null] }, placar: { de: 0, para: 0 }, vencedor: '' };
     return { doc: doc, carteira: cart, garagem: gar };
   };
+  // contraproposta (só em duelo de créditos): quem foi desafiado propõe outro valor; quem desafiou aceita (o duelo começa) ou recusa
+  G.contrapropor = function (c) {
+    // c: { now, uid, d, valor, st }
+    var d = L.clone(c.d);
+    if (!d || d.status !== 'pendente') L.erro('Esse desafio não está mais aberto.');
+    if (d.para !== c.uid) L.erro('Esse desafio não é para você.');
+    if (c.now > d.prazo) L.erro('Esse desafio expirou.');
+    if (!d.aposta.de || d.aposta.de.tipo !== 'creditos') L.erro('Contraproposta só vale em duelo de créditos.');
+    var v = Math.round(Number(c.valor));
+    if (!(v >= G.DUELO.minCred && v <= G.DUELO.maxCred)) L.erro('Proponha de ' + G.DUELO.minCred + ' a ' + G.DUELO.maxCred + ' créditos.');
+    if (v === d.aposta.de.valor) L.erro('Esse já é o valor do desafio: é só aceitar.');
+    if ((c.st.saldo || 0) < v) L.erro('Você não tem ' + v + ' créditos para propor.');
+    d.contra = { valor: v, em: c.now }; d.prazo = c.now + G.DUELO.prazoAceite;
+    return { doc: d };
+  };
+  G.aceitarContra = function (c) {
+    // c: { id, now, uid, d, stDe, stPara } : quem desafiou aceita o novo valor e o duelo começa
+    var d = L.clone(c.d);
+    if (!d || d.status !== 'pendente' || !d.contra) L.erro('Não há contraproposta aberta nesse duelo.');
+    if (d.de !== c.uid) L.erro('Só quem desafiou responde à contraproposta.');
+    if (c.now > d.prazo) L.erro('A contraproposta expirou.');
+    var v = d.contra.valor, antes = d.aposta.de.valor, dif = v - antes;
+    var cartDe = L.clone(c.stDe.carteira || {});
+    if (dif > 0) { if ((c.stDe.saldo || 0) < dif) L.erro('Você precisa de mais ' + dif + ' créditos para aceitar esse valor.'); cartDe.gasto = (cartDe.gasto || 0) + dif; mov(cartDe, { t: c.now, v: -dif, d: 'Aposta ajustada para ' + v + ': duelo com ' + d.ap.para }); }
+    else if (dif < 0) { cartDe.recebido = (cartDe.recebido || 0) - dif; mov(cartDe, { t: c.now, v: -dif, d: 'Aposta ajustada para ' + v + ': duelo com ' + d.ap.para }); }
+    d.aposta.de = { tipo: 'creditos', valor: v };
+    if ((c.stPara.saldo || 0) < v) L.erro(d.ap.para + ' não tem mais ' + v + ' créditos. Recuse e desafie de novo.');
+    var a = { tipo: 'creditos', valor: v }, cartPara = L.clone(c.stPara.carteira || {}), garPara = L.clone(c.stPara.garagem || { carros: {} });
+    reservar(cartPara, garPara, a, c.id, d.ap.de, c.now);
+    d.aposta.para = a; d.contraAceita = { de: antes, para: v, em: c.now }; delete d.contra;
+    d.status = 'andamento'; d.aceitoEm = c.now; d.prazo = c.now + G.DUELO.prazoCorridas;
+    var r = L.rng(L.hash('duelo|' + c.id + '|' + c.now));
+    d.seeds = [0, 1, 2].map(function () { return (Math.floor(r() * 4294967295) >>> 0) || 1; });
+    return { doc: d, carteiraDe: cartDe, carteiraPara: cartPara };
+  };
   G.aceitar = function (c) {
     // c: { now, uid, d, aposta, st, anunciados }
     var d = L.clone(c.d);
@@ -263,6 +298,9 @@
     // o duelo é ou de créditos ou de carro: quem aceita aposta do mesmo tipo de quem desafiou
     var tipoDe = d.aposta && d.aposta.de && d.aposta.de.tipo === 'carro' ? 'carro' : 'creditos';
     if (((c.aposta || {}).tipo === 'carro' ? 'carro' : 'creditos') !== tipoDe) L.erro(tipoDe === 'carro' ? 'Esse duelo vale carro: aposte um carro seu.' : 'Esse duelo vale créditos: aposte créditos.');
+    if (d.contra) L.erro('Você já propôs outro valor. Aguarde a resposta de ' + d.ap.de + '.');
+    // créditos: o valor tem de ser igual ao de quem desafiou (para outro valor, use a contraproposta)
+    if (tipoDe === 'creditos' && Math.round(Number(c.aposta.valor)) !== d.aposta.de.valor) L.erro('Para aceitar, aposte os mesmos ' + d.aposta.de.valor + ' créditos. Se quiser outro valor, faça uma contraproposta.');
     var a = G.validarAposta(c.st, c.aposta, c.anunciados);
     var cart = L.clone(c.st.carteira || {}), gar = L.clone(c.st.garagem || { carros: {} });
     reservar(cart, gar, a, c.id, d.ap.de, c.now);

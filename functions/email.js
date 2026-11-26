@@ -46,6 +46,11 @@ function desafio(de, apostaTxt, horas) {
     p('Você tem <b>' + horas + ' horas</b> para aceitar ou recusar. Ao aceitar, escolha sua aposta do mesmo tipo e faça as 3 corridas no seu tempo, em até 48 h.');
   return { assunto: de + ' te desafiou no Game Aura', html: moldura('Você foi desafiado!', corpo, { href: LINK, txt: 'Ver o desafio' }) };
 }
+function contraproposta(outro, antes, novo) {
+  const corpo = p('<b>' + esc(outro) + '</b> recebeu o seu desafio de <b>' + antes + ' créditos</b> e propôs outro valor: <b>' + novo + ' créditos</b>.') +
+    p('Se você aceitar, o duelo começa valendo ' + novo + ' créditos de cada lado. Se recusar, o duelo é cancelado e sua aposta volta.');
+  return { assunto: outro + ' propôs ' + novo + ' créditos no duelo', html: moldura('Contraproposta no duelo', corpo, { href: LINK, txt: 'Responder' }) };
+}
 function dueloAceito(outro, apostaOutro) {
   const corpo = p('<b>' + esc(outro) + '</b> aceitou o seu desafio e apostou <b>' + esc(apostaOutro) + '</b>.') +
     p('Agora são 3 corridas para cada um, no seu tempo, em até 48 horas. As pistas são as mesmas para os dois.');
@@ -99,4 +104,4 @@ async function enviar(para, msg) {
   try { await t.sendMail({ from: '"Game Aura" <' + REMETENTE + '>', to: para, subject: msg.assunto, html: msg.html }); return true; }
   catch (e) { console.error('email', para, e && e.message); return false; }
 }
-module.exports = { enviar, boasVindas, desafio, dueloAceito, dueloPrazo, dueloResultado, carroVendido, rodadaAberta, lembrete, lancamentos, fimTemporada, moldura };
+module.exports = { enviar, boasVindas, desafio, contraproposta, dueloAceito, dueloPrazo, dueloResultado, carroVendido, rodadaAberta, lembrete, lancamentos, fimTemporada, moldura };
