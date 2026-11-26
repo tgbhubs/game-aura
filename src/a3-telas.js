@@ -434,7 +434,7 @@ function telaPerfil() {
     }
   }
   var emOn = S.me.emails !== false;
-  h += '<div class="sec">Avisos por e-mail</div><div class="card"><div class="row between" style="gap:12px"><div><b>' + (emOn ? 'Ligados' : 'Desligados') + '</b><div class="tiny mut">Boas-vindas e quando alguém te desafiar para um duelo' + (S.me.email ? ', em ' + esc(S.me.email) : '') + '.</div></div><button class="btn ' + (emOn ? 'gh' : 'lar') + ' sm" data-a="emailsToggle">' + (emOn ? 'Desligar' : 'Ligar') + '</button></div></div>';
+  h += '<div class="sec">Avisos por e-mail</div><div class="card"><div class="row between" style="gap:12px"><div><b>' + (emOn ? 'Ligados' : 'Desligados') + '</b><div class="tiny mut">Rodada aberta, lembrete de domingo, duelos, venda no Mercado, lançamentos e fim de temporada' + (S.me.email ? ', em ' + esc(S.me.email) : '') + '.</div></div><button class="btn ' + (emOn ? 'gh' : 'lar') + ' sm" data-a="emailsToggle">' + (emOn ? 'Desligar' : 'Ligar') + '</button></div></div>';
   h += '<button class="btn out full" style="margin-top:18px" data-a="sair">Sair</button>';
   return h;
 }

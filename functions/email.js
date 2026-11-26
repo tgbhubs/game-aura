@@ -46,10 +46,57 @@ function desafio(de, apostaTxt, horas) {
     p('Você tem <b>' + horas + ' horas</b> para aceitar ou recusar. Ao aceitar, escolha sua aposta do mesmo tipo e faça as 3 corridas no seu tempo, em até 48 h.');
   return { assunto: de + ' te desafiou no Game Aura', html: moldura('Você foi desafiado!', corpo, { href: LINK, txt: 'Ver o desafio' }) };
 }
+function dueloAceito(outro, apostaOutro) {
+  const corpo = p('<b>' + esc(outro) + '</b> aceitou o seu desafio e apostou <b>' + esc(apostaOutro) + '</b>.') +
+    p('Agora são 3 corridas para cada um, no seu tempo, em até 48 horas. As pistas são as mesmas para os dois.');
+  return { assunto: outro + ' aceitou o seu duelo', html: moldura('Duelo valendo!', corpo, { href: LINK, txt: 'Correr agora' }) };
+}
+function dueloPrazo(outro, faltam) {
+  const corpo = p('Faltam menos de <b>12 horas</b> para o fim do seu duelo com <b>' + esc(outro) + '</b>, e você ainda tem <b>' + faltam + (faltam === 1 ? ' corrida' : ' corridas') + '</b> para fazer.') +
+    p('Corrida não feita no prazo vale 0.');
+  return { assunto: 'Seu duelo com ' + outro + ' termina em menos de 12 h', html: moldura('O prazo do duelo está acabando', corpo, { href: LINK, txt: 'Fazer as corridas' }) };
+}
+function dueloResultado(res, outro, placar, apostaTxt) {
+  const tit = res === 'venceu' ? 'Você venceu o duelo!' : res === 'perdeu' ? 'Não foi dessa vez' : 'O duelo empatou';
+  const corpo = res === 'venceu' ? p('Você venceu <b>' + esc(outro) + '</b> por <b>' + placar + '</b> e levou <b>' + esc(apostaTxt) + '</b>.')
+    : res === 'perdeu' ? p('<b>' + esc(outro) + '</b> venceu o duelo por <b>' + placar + '</b> e levou <b>' + esc(apostaTxt) + '</b>.') + p('Que tal uma revanche?')
+    : p('Você e <b>' + esc(outro) + '</b> empataram. Cada um recebeu a própria aposta de volta.');
+  return { assunto: res === 'venceu' ? 'Você venceu o duelo com ' + outro : res === 'perdeu' ? outro + ' venceu o duelo' : 'Seu duelo com ' + outro + ' empatou', html: moldura(tit, corpo + p('O resumo completo está em Garagem › Duelos.'), { href: LINK, txt: 'Ver o resumo' }) };
+}
+function carroVendido(carro, preco, comprador) {
+  const corpo = p('O <b>' + esc(carro) + '</b> que você anunciou no Mercado foi comprado por <b>' + esc(comprador) + '</b>.') +
+    p('Os <b>' + preco + ' créditos</b> já estão na sua carteira.');
+  return { assunto: 'Você vendeu o ' + carro, html: moldura('Carro vendido!', corpo, { href: LINK, txt: 'Ver a carteira' }) };
+}
+function rodadaAberta(nome, n, temporada, fimTxt, total) {
+  const corpo = p('Oi, ' + esc(nome) + '! A <b>Rodada ' + n + (total ? ' de ' + total : '') + '</b> da ' + esc(temporada) + ' começou.') +
+    (n === 1 ? p('É a largada da temporada: os pontos começam do zero para todo mundo.') : '') +
+    '<ul style="margin:0 0 12px;padding-left:20px;color:#14235E">' + li('<b>Quiz</b>: 10 perguntas novas.') + li('<b>Corrida valendo</b>: 3 tentativas, vale a melhor.') + '</ul>' +
+    p('A rodada fecha ' + esc(fimTxt) + '.');
+  return { assunto: 'Rodada ' + n + ' aberta no Game Aura', html: moldura('Rodada ' + n + ' no ar', corpo, { href: LINK, txt: 'Jogar a rodada' }) };
+}
+function lembrete(nome, n) {
+  const corpo = p('Oi, ' + esc(nome) + '! A <b>Rodada ' + n + '</b> fecha <b>hoje às 23h59</b> e você ainda não jogou.') +
+    p('São uns 5 minutos: 10 perguntas e a corrida. Cada rodada conta para o ranking da temporada e para a sua área.');
+  return { assunto: 'A Rodada ' + n + ' fecha hoje', html: moldura('Última chance nesta rodada', corpo, { href: LINK, txt: 'Jogar agora' }) };
+}
+function lancamentos(carros, mesTxt) {
+  const lista = '<ul style="margin:0 0 12px;padding-left:20px;color:#14235E">' + carros.map((c) => li('<b>' + esc(c.nome) + '</b> · ' + esc(c.tipo) + ' · ' + c.preco + ' créditos')).join('') + '</ul>';
+  const corpo = p('Chegaram ' + carros.length + ' carros novos ao showroom da Garagem em ' + esc(mesTxt) + ':') + lista + p('Os créditos vêm da rodada, do treino, do Placa! e dos duelos.');
+  return { assunto: 'Lançamentos de ' + mesTxt + ' na Garagem', html: moldura('Lançamentos do mês', corpo, { href: LINK, txt: 'Ver o showroom' }) };
+}
+function fimTemporada(nome, temporada, top, minha, premio) {
+  const lista = '<ol style="margin:0 0 12px;padding-left:22px;color:#14235E">' + top.map((t) => li('<b>' + esc(t.nome) + '</b> · ' + t.pts + ' pts')).join('') + '</ol>';
+  const corpo = p('Oi, ' + esc(nome) + '! A <b>' + esc(temporada) + '</b> terminou. O pódio final:') + lista +
+    (minha ? p('Você terminou em <b>' + minha.pos + 'º lugar</b>, com ' + minha.pts + ' pontos.') : '') +
+    (premio ? p('Os 5 primeiros ganham brinde: a organização do jogo vai entrar em contato.') : '') +
+    p('Seus carros e créditos continuam com você para a próxima temporada.');
+  return { assunto: temporada + ': o resultado final', html: moldura(esc(temporada) + ' encerrada', corpo, { href: LINK, txt: 'Ver o ranking final' }) };
+}
 async function enviar(para, msg) {
   const t = transporte();
   if (!t || !para || !/@/.test(para)) return false;
   try { await t.sendMail({ from: '"Game Aura" <' + REMETENTE + '>', to: para, subject: msg.assunto, html: msg.html }); return true; }
   catch (e) { console.error('email', para, e && e.message); return false; }
 }
-module.exports = { enviar, boasVindas, desafio };
+module.exports = { enviar, boasVindas, desafio, dueloAceito, dueloPrazo, dueloResultado, carroVendido, rodadaAberta, lembrete, lancamentos, fimTemporada, moldura };

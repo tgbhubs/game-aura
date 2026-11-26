@@ -221,6 +221,7 @@ exports.placa = onCall((req) => {
    Saldo = pontos de todas as rodadas + vitórias no Placa! contra pessoas + vendas − compras.
    Carteira, garagem, lote e anúncios são gravados só aqui. */
 const G = require('./garagem');
+const Email = require('./email');
 
 async function lerSaldo(tx, uid) {
   const [plac, temps, vit, cart, gar, trn] = await Promise.all([
@@ -239,7 +240,20 @@ async function lerSaldo(tx, uid) {
   return { uid, ganhos, carteira, garagem: dados(gar) || { carros: {} }, saldo: G.saldo(ganhos, carteira) };
 }
 
-exports.garagem = onCall((req) => {
+exports.garagem = onCall(async (req) => {
+  const r = await garagemOp(req);
+  const d = req.data || {};
+  if (String(d.op || '') === 'comprarUsado' && r) {
+    try {
+      const an = dados(await db.doc('anuncios/' + String(d.anuncioId || '')).get());
+      const j = an && an.status === 'vendido' ? await jogEmail(an.vendedor) : null;
+      const comp = an ? dados(await db.doc('jogadores/' + an.compradoPor).get()) : null;
+      if (j) await Email.enviar(j.email, Email.carroVendido((G.CATALOGO[an.cat] || {}).nome || 'carro', an.preco, (comp && (comp.apelido || String(comp.nome || '').split(/\s+/)[0])) || 'um colega'));
+    } catch (e) { console.error('email venda', e && e.message); }
+  }
+  return r;
+});
+function garagemOp(req) {
   const uid = uidDe(req);
   const d = req.data || {};
   const op = String(d.op || '');
@@ -317,7 +331,7 @@ exports.garagem = onCall((req) => {
     }
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');
   }));
-});
+}
 
 /* ================== TREINO COM RECORDE ==================
    O treino continua livre, mas o tempo só entra no ranking de treinos se bater com o tempo real decorrido. */
@@ -354,7 +368,6 @@ exports.treino = onCall((req) => {
 
 /* ================== DUELOS (melhor de 3 corridas, valendo créditos ou carro) ==================
    Tudo gravado só aqui: o convite, as apostas reservadas, as corridas e a entrega do prêmio. */
-const Email = require('./email');
 // boas-vindas: o app chama logo depois do cadastro ativo; envia uma vez só
 exports.bemVindo = onCall(async (req) => {
   const uid = uidDe(req);
@@ -369,15 +382,28 @@ exports.bemVindo = onCall(async (req) => {
 exports.duelo = onCall(async (req) => {
   const r = await dueloOp(req);
   const d = req.data || {};
-  if (String(d.op || '') === 'desafiar' && r && r.id) {
-    try {
-      const du = dados(await db.doc('duelos/' + r.id).get());
-      const alvo = du && dados(await db.doc('jogadores/' + du.para).get());
-      if (alvo && alvo.emails !== false) await Email.enviar(alvo.email, Email.desafio(du.ap.de, G.apostaTxt(du.aposta.de), Math.round(G.DUELO.prazoAceite / 3600000)));
-    } catch (e) { console.error('email duelo', e && e.message); }
-  }
+  try { await emailsDuelo(String(d.op || ''), r && r.id ? r.id : String(d.id || '')); } catch (e) { console.error('email duelo', e && e.message); }
   return r;
 });
+async function jogEmail(uid) { const j = dados(await db.doc('jogadores/' + uid).get()); return j && j.status === 'ativo' && j.emails !== false && j.email ? j : null; }
+// e-mails de duelo depois de cada operação: desafio, aceite e resultado (cada um uma vez só)
+async function emailsDuelo(op, id) {
+  if (!id) return;
+  const ref = db.doc('duelos/' + id), du = dados(await ref.get());
+  if (!du) return;
+  if (op === 'desafiar') { const j = await jogEmail(du.para); if (j) await Email.enviar(j.email, Email.desafio(du.ap.de, G.apostaTxt(du.aposta.de), Math.round(G.DUELO.prazoAceite / 3600000))); return; }
+  if (op === 'aceitar' && du.status === 'andamento') { const j = await jogEmail(du.de); if (j) await Email.enviar(j.email, Email.dueloAceito(du.ap.para, G.apostaTxt(du.aposta.para))); return; }
+  if (du.status === 'fim' && !du.emailFim) {
+    await ref.set({ emailFim: Date.now() }, { merge: true });
+    for (const s of ['de', 'para']) {
+      const j = await jogEmail(du[s]); if (!j) continue;
+      const o = s === 'de' ? 'para' : 'de', pl = du.placar ? du.placar[s] + '×' + du.placar[o] : '';
+      const res = !du.vencedor ? 'empate' : du.vencedor === du[s] ? 'venceu' : 'perdeu';
+      const ap = res === 'venceu' ? G.apostaTxt(du.aposta[o]) : res === 'perdeu' ? G.apostaTxt(du.aposta[s]) : '';
+      await Email.enviar(j.email, Email.dueloResultado(res, du.ap[o], du.vencedor === du[s] ? pl : (du.placar ? du.placar[o] + '×' + du.placar[s] : ''), ap));
+    }
+  }
+}
 function dueloOp(req) {
   const uid = uidDe(req);
   const d = req.data || {};

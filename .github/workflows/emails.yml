@@ -1,0 +1,40 @@
+name: E-mails agendados
+on:
+  schedule:
+    - cron: '7 12 * * 1'
+    - cron: '7 15 * * 0'
+    - cron: '23 * * * *'
+    - cron: '13 13 1 * *'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'segunda | domingo | hora | lancamentos | teste'
+        default: 'teste'
+jobs:
+  emails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cd functions && npm install --no-audit --no-fund
+      - env:
+          SA: ${{ secrets.FIREBASE_SA }}
+        run: printf '%s' "$SA" > "$HOME/sa.json"
+      - env:
+          GMAIL_SENHA: ${{ secrets.GMAIL_SENHA }}
+          AGENDA: ${{ github.event.schedule }}
+          ENTRADA: ${{ github.event.inputs.modo }}
+        run: |
+          case "$AGENDA" in
+            '7 12 * * 1') MODO=segunda ;;
+            '7 15 * * 0') MODO=domingo ;;
+            '23 * * * *') MODO=hora ;;
+            '13 13 1 * *') MODO=lancamentos ;;
+            *) MODO="${ENTRADA:-teste}" ;;
+          esac
+          export MODO GOOGLE_APPLICATION_CREDENTIALS="$HOME/sa.json"
+          cp scripts/emails.js functions/ && cd functions && node emails.js
+      - if: always()
+        run: rm -f "$HOME/sa.json"
