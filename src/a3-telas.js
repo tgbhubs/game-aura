@@ -23,6 +23,8 @@ function tela() {
   if (!S.meOk) return carregando('Carregando seu cadastro…');
   if (!S.me) return telaCompletar();
   if (S.me.status === 'pendente') return telaPendente();
+  // e-mail de boas-vindas: uma vez, para quem entrou a partir do lançamento dos e-mails
+  if (S.me.status === 'ativo' && !S.me.boasVindasEm && !S._bv && !(typeof DEMO !== 'undefined' && DEMO) && (S.me.criadoEm || 0) >= Date.UTC(2026, 10, 26, 3)) { S._bv = 1; B.chamar('bemVindo', {}).catch(function () { }); }
   if (S.me.status === 'bloqueado') return telaMsg('Acesso bloqueado', 'Seu acesso ao Game Aura foi bloqueado. Fale com a administração do jogo.');
   return shell();
 }
@@ -431,6 +433,8 @@ function telaPerfil() {
       h += '</table></div>';
     }
   }
+  var emOn = S.me.emails !== false;
+  h += '<div class="sec">Avisos por e-mail</div><div class="card"><div class="row between" style="gap:12px"><div><b>' + (emOn ? 'Ligados' : 'Desligados') + '</b><div class="tiny mut">Boas-vindas e quando alguém te desafiar para um duelo' + (S.me.email ? ', em ' + esc(S.me.email) : '') + '.</div></div><button class="btn ' + (emOn ? 'gh' : 'lar') + ' sm" data-a="emailsToggle">' + (emOn ? 'Desligar' : 'Ligar') + '</button></div></div>';
   h += '<button class="btn out full" style="margin-top:18px" data-a="sair">Sair</button>';
   return h;
 }

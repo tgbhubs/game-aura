@@ -354,7 +354,31 @@ exports.treino = onCall((req) => {
 
 /* ================== DUELOS (melhor de 3 corridas, valendo créditos ou carro) ==================
    Tudo gravado só aqui: o convite, as apostas reservadas, as corridas e a entrega do prêmio. */
-exports.duelo = onCall((req) => {
+const Email = require('./email');
+// boas-vindas: o app chama logo depois do cadastro ativo; envia uma vez só
+exports.bemVindo = onCall(async (req) => {
+  const uid = uidDe(req);
+  const ref = db.doc('jogadores/' + uid);
+  const j = dados(await ref.get());
+  if (!j || j.status !== 'ativo' || j.boasVindasEm) return { ok: false };
+  await ref.set({ boasVindasEm: Date.now() }, { merge: true });
+  if (j.emails === false) return { ok: false };
+  const nome = j.apelido || String(j.nome || '').split(/\s+/)[0];
+  return { ok: await Email.enviar(j.email, Email.boasVindas(nome)) };
+});
+exports.duelo = onCall(async (req) => {
+  const r = await dueloOp(req);
+  const d = req.data || {};
+  if (String(d.op || '') === 'desafiar' && r && r.id) {
+    try {
+      const du = dados(await db.doc('duelos/' + r.id).get());
+      const alvo = du && dados(await db.doc('jogadores/' + du.para).get());
+      if (alvo && alvo.emails !== false) await Email.enviar(alvo.email, Email.desafio(du.ap.de, G.apostaTxt(du.aposta.de), Math.round(G.DUELO.prazoAceite / 3600000)));
+    } catch (e) { console.error('email duelo', e && e.message); }
+  }
+  return r;
+});
+function dueloOp(req) {
   const uid = uidDe(req);
   const d = req.data || {};
   const op = String(d.op || '');
@@ -442,4 +466,4 @@ exports.duelo = onCall((req) => {
     }
     throw new HttpsError('invalid-argument', 'Operação desconhecida.');
   }));
-});
+}

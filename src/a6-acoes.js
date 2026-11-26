@@ -213,6 +213,7 @@ var A = {
     S.ocupado = true; S.authErro = ''; R();
     salvarCadastro(c).catch(function (er) { S.authErro = msgErro(er); }).then(function () { S.ocupado = false; R(); });
   },
+  emailsToggle: function () { var on = S.me.emails !== false; B.update('jogadores/' + S.user.uid, { emails: !on }).then(function () { toast(on ? 'Avisos por e-mail desligados.' : 'Avisos por e-mail ligados.'); }).catch(function (e) { toast(msgErro(e)); }); },
   usarCodigo: function () {
     var c = $('#fCodigo').value.trim().toUpperCase();
     if (!c) { S.authErro = 'Digite o código.'; R(); return; }
