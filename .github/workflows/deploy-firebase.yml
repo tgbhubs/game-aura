@@ -22,7 +22,13 @@ jobs:
       - name: Senha do e-mail (Gmail, senha de app)
         env:
           GS: ${{ secrets.GMAIL_SENHA }}
-        run: if [ -n "$GS" ]; then printf 'GMAIL_SENHA=%s\n' "$(printf '%s' "$GS" | tr -d ' ')" > functions/.env; echo "senha configurada"; else echo "sem senha: e-mails desligados"; fi
+        run: |
+          if [ -n "$GS" ]; then
+            printf 'GMAIL_SENHA=%s\n' "$(printf '%s' "$GS" | tr -d ' ')" > functions/.env
+            echo "senha configurada"
+          else
+            echo "sem senha, e-mails desligados"
+          fi
       - name: Deploy
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="$HOME/sa.json"
