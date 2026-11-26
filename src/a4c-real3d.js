@@ -212,7 +212,8 @@ function criar3DReal(E) {
     meu.children.slice().forEach(function (ch) { if (manter.indexOf(ch) < 0) meu.remove(ch); });
     modelo.traverse(function (m) { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material && m.material.isMeshStandardMaterial) m.material.envMapIntensity = 1.1;
       // vidros escuros (insulfilm): esconde a cabine vazia do modelo
-      if (m.material && (m.material.transparent || /glass|vidro|window/i.test(m.material.name || ''))) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = Math.max(m.material.opacity || 0, 0.9); m.material.color = new T.Color(0x0B1018); if ('metalness' in m.material) { m.material.metalness = 0.2; m.material.roughness = 0.05; } }
+      // só vira vidro escuro o que é vidro: nome de vidro, ou translúcido de verdade (opacidade < 0,95); grade, emblema e decalque com recorte ficam como estão
+      if (m.material && (/glass|vidro|window/i.test(m.material.name || '') || (m.material.transparent && (m.material.opacity == null ? 1 : m.material.opacity) < 0.95))) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = Math.max(m.material.opacity || 0, 0.9); m.material.color = new T.Color(0x0B1018); if ('metalness' in m.material) { m.material.metalness = 0.2; m.material.roughness = 0.05; } }
     } });
     meu.add(modelo);
     var somb = new T.Mesh(new T.PlaneGeometry(2.4, 3.8), new T.MeshBasicMaterial({ map: texGlow, color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false })); somb.rotation.x = -Math.PI / 2; somb.position.y = 0.012; meu.add(somb);
