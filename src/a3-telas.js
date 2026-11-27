@@ -1,7 +1,17 @@
 /* ================== RENDER ================== */
+// atualizações vindas do banco (de qualquer jogador) chegam o tempo todo: junta várias num só desenho por quadro
+// e não redesenha a tela de fundo enquanto o quiz, a corrida ou o Placa! estão abertos (redesenha ao fechar)
 function render(forcar) {
+  if (!forcar) {
+    var ov = document.getElementById('ov');
+    if (ov && ov.className === 'on') { S.renderPendente = true; return; }
+    if (S._rq) return;
+    S._rq = requestAnimationFrame(function () { S._rq = 0; render(true); });
+    return;
+  }
+  if (S._rq) { cancelAnimationFrame(S._rq); S._rq = 0; }
   var ae = document.activeElement;
-  if (!forcar && ae && ae.closest && ae.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) { S.renderPendente = true; return; }
+  if (forcar !== true && ae && ae.closest && ae.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) { S.renderPendente = true; return; }
   S.renderPendente = false;
   var y = window.scrollY;
   $('#app').innerHTML = tela();
