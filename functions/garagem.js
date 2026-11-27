@@ -497,6 +497,8 @@
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(G.creditosTreino(tempo, ss.cat), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
       doc.hoje.creditos += creditos; doc.creditos = (doc.creditos || 0) + creditos;
+      // histórico curto para o extrato (últimos 20 treinos)
+      doc.hist = [{ t: tempo, cat: ss.cat, c: creditos, em: c.now }].concat(doc.hist || []).slice(0, 20);
       // guarda só as últimas 12 semanas
       Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
     }

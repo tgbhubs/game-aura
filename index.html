@@ -1558,6 +1558,8 @@ span.pc{display:flex}
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(G.creditosTreino(tempo, ss.cat), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
       doc.hoje.creditos += creditos; doc.creditos = (doc.creditos || 0) + creditos;
+      // histórico curto para o extrato (últimos 20 treinos)
+      doc.hist = [{ t: tempo, cat: ss.cat, c: creditos, em: c.now }].concat(doc.hist || []).slice(0, 20);
       // guarda só as últimas 12 semanas
       Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
     }
@@ -1599,7 +1601,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27c';
+var BUILD = '2026-11-27d';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -4960,6 +4962,21 @@ var GS = { aba: 'minha', saldo: null, carregandoSaldo: false, estoque: null, sub
 function nCred(n) { return (n || 0).toLocaleString('pt-BR'); }
 function fotoCat(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="gfoto zoom" src="' + f.foto + '" alt="Ver ' + esc((Garagem.CATALOGO[cat] || {}).nome || 'carro') + ' em detalhe" data-a="verCarro" data-v="' + esc(cat) + '">' : '<div class="gfoto"></div>'; }
 // vitrine 360°: o carro em 3D, girando com o dedo (cai para a foto ampliada se o 3D não carregar)
+// extrato: o que veio de jogar (rodadas da temporada e treinos recentes), além das movimentações da carteira
+function extratoJogo() {
+  var uid = S.user.uid, h = '', lin = function (t, v, sub) { return '<div class="row between small" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>' + t + (sub ? '<br><span class="tiny mut">' + sub + '</span>' : '') + '</span><b style="color:var(--ok)">+' + nCred(v) + '</b></div>'; };
+  var k = (tempAtiva() || {}).k || 40, rods = Object.keys(D.placares || {}).map(function (rid) { var p = D.placares[rid], e = p && p.p && p.p[uid], r = D.rodadas && D.rodadas[rid]; return e && r ? { r: r, e: e } : null; }).filter(Boolean).sort(function (a, b) { return b.r.inicio - a.r.inicio; });
+  if (rods.length) h += '<div class="sec" style="margin-top:14px">Rodadas da temporada</div>' + rods.map(function (x) {
+    var e = x.e, pq = (e.q || 0) * 10, pc = Logica.curva(e.c || 0, k), partes = [];
+    if (typeof e.q === 'number' || e.qf) partes.push('quiz ' + (e.q || 0) + ' acerto' + ((e.q || 0) === 1 ? '' : 's') + ' (' + nCred(pq) + ')');
+    if ((e.tn || 0) > 0) partes.push('corrida ' + fmtSeg(e.c || 0) + ' (' + nCred(pc) + ')');
+    return lin('Rodada ' + x.r.n, pq + pc, partes.join(' · '));
+  }).join('');
+  var tr = (D.treinos && D.treinos[uid]) || {}, hs = tr.hist || [];
+  if (hs.length) h += '<div class="sec" style="margin-top:14px">Treinos recentes</div>' + hs.slice(0, 10).map(function (t) { var c = Garagem.CATALOGO[t.cat] || {}; return lin('Treino · ' + fmtSeg(t.t), t.c, esc(c.nome || '') + ' · ' + new Date(t.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })); }).join('');
+  else if (tr.creditos) h += '<div class="sec" style="margin-top:14px">Treinos</div>' + lin('Créditos de treinos', tr.creditos, 'Total acumulado; o detalhe por treino aparece a partir de agora');
+  return h;
+}
 var VIT = null;
 function pararVitrine() { if (VIT) { VIT.vivo = false; try { VIT.rd.dispose(); } catch (e) { } VIT = null; } }
 function abrirVitrine(cat) {
@@ -5199,8 +5216,8 @@ var A_GAR = {
   garUsar: function (v) { gravarLS('gi_carro', v); toast('Carro escolhido para a corrida.'); R(); },
   garExtrato: function () {
     var sd = GS.saldo || {}, mv = (D.carteira && D.carteira.mov) || sd.mov || [];
-    abrirModal('<h3>Extrato de créditos</h3><div class="gext"><div class="row between"><span>Ganhos jogando (rodadas, Placa! e treinos)</span><b>' + nCred(sd.ganhos) + '</b></div><div class="row between"><span>Vendas no mercado</span><b>+' + nCred(sd.recebido) + '</b></div><div class="row between"><span>Compras e multas</span><b>−' + nCred(sd.gasto) + '</b></div><div class="row between" style="border-top:1px solid var(--line);padding-top:8px"><span>Saldo</span><b>' + nCred(sd.saldo) + '</b></div></div>' +
-      (mv.length ? '<div class="sec" style="margin-top:14px">Últimas movimentações</div>' + mv.slice(0, 12).map(function (m) { return '<div class="row between small" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(m.d) + '</span><b style="color:' + (m.v < 0 ? 'var(--ink)' : '#17935F') + '">' + (m.v > 0 ? '+' : '−') + nCred(Math.abs(m.v)) + '</b></div>'; }).join('') : '') +
+    abrirModal('<h3>Extrato de créditos</h3><div class="gext"><div class="row between"><span>Ganhos jogando (rodadas, Placa! e treinos)</span><b>' + nCred(sd.ganhos) + '</b></div><div class="row between"><span>Vendas, prêmios e bônus (duelos, seguros extras)</span><b>+' + nCred(sd.recebido) + '</b></div><div class="row between"><span>Compras e multas</span><b>−' + nCred(sd.gasto) + '</b></div><div class="row between" style="border-top:1px solid var(--line);padding-top:8px"><span>Saldo</span><b>' + nCred(sd.saldo) + '</b></div></div>' +
+      extratoJogo() + (mv.length ? '<div class="sec" style="margin-top:14px">Outras movimentações</div>' + mv.slice(0, 12).map(function (m) { return '<div class="row between small" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(m.d) + '</span><b style="color:' + (m.v < 0 ? 'var(--ink)' : '#17935F') + '">' + (m.v > 0 ? '+' : '−') + nCred(Math.abs(m.v)) + '</b></div>'; }).join('') : '') +
       '<div class="mact"><button class="btn gh" data-a="fecharModal">Fechar</button></div>');
   },
   garComprar0km: function (v) {
