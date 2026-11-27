@@ -479,10 +479,18 @@ function dueloOp(req) {
     if (op === 'finalizar' || op === 'atualizar') {
       if (!G.lado(du, uid)) throw new HttpsError('permission-denied', 'Esse duelo não é seu.');
       const lados = await lerLados(du);
-      let doc = du, resp = {};
+      let doc = du, resp = {}, treinoDuelo = null;
       if (op === 'finalizar') {
         const f = G.finalizarDuelo({ now, uid, d: du, n: d.n, tempo: d.tempo });
         doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
+        // o tempo do duelo também vale para o ranking do treino (sem créditos de treino: o duelo já paga)
+        if (f.valido) {
+          const lado0 = G.lado(du, uid), x0 = doc.corridas[lado0][Math.floor(Number(d.n))] || {};
+          const tref = db.doc('treinos/' + uid), tdoc = dados(await tx.get(tref)) || {};
+          if (tdoc.sessao === undefined) delete tdoc.sessao;
+          const rr = G.gravarRecordes(tdoc, { t: f.tempo, cat: x0.cat || 'aura', em: now, duelo: true }, now);
+          treinoDuelo = { ref: tref, doc: tdoc }; resp.recorde = rr.recorde; resp.recordeSemana = rr.recordeSemana;
+        }
         const nm = Math.floor(Number(d.multas) || 0);
         if (nm > 0 && f.valido) {
           const lado = G.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
@@ -501,6 +509,7 @@ function dueloOp(req) {
       const liq = G.liquidarDuelo(doc, lados.carts, lados.gars, now);
       if (liq) { doc = liq.doc; lados.carts = liq.carteiras; lados.gars = liq.garagens; }
       tx.set(ref, doc); gravarLados(doc, lados.carts, lados.gars);
+      if (treinoDuelo) tx.set(treinoDuelo.ref, treinoDuelo.doc);
       resp.status = doc.status; resp.vencedor = doc.vencedor || ''; resp.placar = G.placarDuelo(doc, now);
       return resp;
     }

@@ -1519,10 +1519,21 @@ span.pc{display:flex}
   G.vale = function (r, now) { return !!r && ((now || Date.now()) < G.CORTE_TEMPOS || (r.em || 0) >= G.CORTE_TEMPOS); };
   // melhores tempos por carro de um documento de treino (usa porCarro e, para dados antigos, melhor e semanas)
   G.porCarroDe = function (doc, now) {
-    var m = {}, add = function (r) { if (r && G.vale(r, now) && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = { t: r.t, em: r.em }; };
-    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em }); });
+    var m = {}, add = function (r) { if (r && G.vale(r, now) && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = r.duelo ? { t: r.t, em: r.em, duelo: true } : { t: r.t, em: r.em }; };
+    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em, duelo: doc.porCarro[k].duelo }); });
     add(doc && doc.melhor); Object.keys((doc && doc.semanas) || {}).forEach(function (k) { add(doc.semanas[k]); });
     return m;
+  };
+  // recordes do treino (geral, da semana e por carro) a partir de um tempo válido; também usado pelas corridas de duelo
+  G.gravarRecordes = function (doc, reg, now) {
+    var sid = G.semana(now), recorde = false, recordeSemana = false;
+    if (!G.vale(doc.melhor, now) || reg.t > doc.melhor.t) { doc.melhor = reg; recorde = true; }
+    doc.semanas = doc.semanas || {};
+    if (!doc.semanas[sid] || reg.t > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+    doc.porCarro = G.porCarroDe(doc, now);
+    if (!doc.porCarro[reg.cat] || reg.t > doc.porCarro[reg.cat].t) doc.porCarro[reg.cat] = reg.duelo ? { t: reg.t, em: now, duelo: true } : { t: reg.t, em: now };
+    Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
+    return { recorde: recorde, recordeSemana: recordeSemana };
   };
   G.finalizarTreino = function (c) {
     var doc = L.clone(c.doc || {}), ss = doc.sessao;
@@ -1534,12 +1545,7 @@ span.pc{display:flex}
     doc.treinos = (doc.treinos || 0) + 1;
     var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false, creditos = 0;
     if (valido) {
-      if (!G.vale(doc.melhor, c.now) || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
-      doc.semanas = doc.semanas || {};
-      if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
-      // melhor tempo com cada carro (ranking por carro); na primeira vez, aproveita os recordes já gravados
-      doc.porCarro = G.porCarroDe(doc, c.now);
-      if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
+      var rr = G.gravarRecordes(doc, reg, c.now); recorde = rr.recorde; recordeSemana = rr.recordeSemana;
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(G.creditosTreino(tempo, ss.cat), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
@@ -1585,7 +1591,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27a';
+var BUILD = '2026-11-27b';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1896,6 +1902,7 @@ function criarDemo() {
       if (op === 'finalizar') {
         var f = Garagem.finalizarDuelo({ now: now, uid: uid, d: du, n: d.n, tempo: d.tempo }); doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
         var lado = Garagem.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
+        if (f.valido) { var td = lerDoc('treinos/' + uid) || {}, rr = Garagem.gravarRecordes(td, { t: f.tempo, cat: (x && x.cat) || 'aura', em: now, duelo: true }, now); gravar('treinos/' + uid, td); resp.recorde = rr.recorde; }
         if (Number(d.multas) > 0 && f.valido) { var m = Garagem.registrarMultas(L2.carts[lado], Math.min(Number(d.multas), Garagem.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now); if (m.novas) { L2.carts[lado] = m.carteira; resp.multas = m.novas; } }
         if (Number(d.segExtra) > 0 && f.valido) { var sd = Garagem.creditarSeguros(L2.carts[lado], d.segExtra, f.tempo, 'duelo', now); if (sd.creditos) { L2.carts[lado] = sd.carteira; resp.segCreditos = sd.creditos; } }
       }
@@ -2749,12 +2756,12 @@ function rankingTreino() {
   if (porCarro) return h + rankingPorCarro();
   var l = Object.keys(D.treinos || {}).map(function (k) { var d = D.treinos[k], r = sem ? (d.semanas || {})[sid] : d.melhor; return Garagem.vale(r) ? { uid: k, d: d, r: r } : null; }).filter(Boolean)
     .sort(function (a, b) { return b.r.t - a.r.t || a.r.em - b.r.em; });
-  h += '<p class="small mut">Melhor tempo no treino livre' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos no ranking da temporada; cada treino rende créditos para a Garagem.</p><div class="card" style="padding:6px 16px">';
+  h += '<p class="small mut">Melhor tempo no treino livre e nas corridas de duelo' + (sem ? ' desta semana (segunda a domingo)' : ' de todos os tempos') + '. Aqui valem os atributos de cada carro, por isso o carro usado aparece ao lado. Não conta pontos no ranking da temporada; cada treino rende créditos para a Garagem.</p><div class="card" style="padding:6px 16px">';
   if (!l.length) h += '<div class="empty">Ninguém treinou ' + (sem ? 'esta semana' : 'ainda') + '.</div>';
   l.forEach(function (x, i) {
     var j = jogDe(x.uid, { uid: x.uid, ap: x.d.ap, nm: x.d.nm, a: x.d.a }), c = Garagem.CATALOGO[x.r.cat] || Garagem.CATALOGO.aura, pos = i > 0 && l[i - 1].r.t === x.r.t ? linhas[i - 1].pos : i + 1;
     linhas.push({ pos: pos, uid: x.uid, l: { ap: x.d.ap, nm: x.d.nm, a: x.d.a }, pts: fmtSeg(x.r.t), sub: c.nome });
-    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span class="rkcar">' + miniCarro(x.r.cat) + esc(c.nome) + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
+    h += '<div class="rk' + (x.uid === uid ? ' eu' : '') + '"><span class="pos p' + pos + '">' + pos + '</span>' + avatar(j, x.uid) + '<div class="nm"><b>' + esc(nomeExib(j)) + '</b><span class="rkcar">' + miniCarro(x.r.cat) + esc(c.nome) + (x.r.duelo ? ' · ⚔️ duelo' : '') + '</span></div><div class="pt">' + fmtSeg(x.r.t).replace(' s', '') + '<small>segundos</small></div></div>';
   });
   h += '</div>';
   S._compart = { titulo: 'Treino · ' + (sem ? 'semana' : 'geral'), linhas: linhas, area: false };
@@ -2907,7 +2914,7 @@ function telaRegras() {
     '<div class="card regras" style="margin-top:12px"><h3 style="font-size:20px">Como funciona</h3>' +
     '<p>O Game Aura tem uma <b>rodada por semana</b>, de segunda 00:00 a domingo 23:59. Cada rodada tem duas etapas, que você joga quando quiser dentro da semana e em qualquer ordem.</p>' +
     '<h4>🧠 Quiz</h4><ul><li>10 perguntas, 4 alternativas, 20 segundos por pergunta.</li><li>Uma tentativa por rodada. Tempo esgotado conta como erro.</li><li>10 pontos por acerto (máximo 100).</li><li>Se você sair no meio, pode continuar depois; a pergunta que estava na tela conta como erro se o tempo dela acabar.</li><li>Desempate: menor tempo total nas perguntas que você acertou.</li><li>A ordem das perguntas e das alternativas muda para cada pessoa.</li></ul>' +
-    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua. Pegou seguro já com 2? Ele vira <b>5 créditos</b> na carteira (no treino, na rodada e no duelo).</li><li><b>Posto (combustível e recarga):</b> o carro gasta combustível com o tempo; a barra ⛽ fica embaixo da do pneu. Pare no <b>posto</b> (faixa verde, na direita ou na esquerda) para encher: combustão para 2 s; elétrico (🔋) para 3,5 s e a bateria dura menos (cerca de 65 s contra 95 s), mas o elétrico tem +10% de agilidade e rende +15% de créditos no treino e nos duelos. Se acabar, o Seguro Porto socorre; sem seguro, a corrida acaba. Na rodada todos andam a combustão.</li><li><b>Pausa:</b> toque em ❚❚ no alto da tela (ou tecla P). Sair do app também pausa.</li><li><b>Poder Aura:</b> a partir do nível 10 aparece o "a" do logo nas três cores. Pegou, fica <b>5 segundos invencível</b>: atravessa cones, carros, buracos e cancelas sem perder nada (o free flow sem TAG continua dando multa).</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita ou da esquerda: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos. Depois de 2 minutos começa a <b>reta final</b>: mais obstáculos, menos Seguros e CAPs mais raros, até ficar impossível. A corrida não tem fim: ganha quem for mais longe.</li><li><b>Praça de pedágio:</b> as <b>3 faixas do meio</b> têm cancela. Cada <b>tag</b> que você pega vale 1 mensalidade (acumula até 3; costuma aparecer logo depois do aviso PEDÁGIO) e cada passagem usa uma: a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b>.</li><li><b>Free flow:</b> as <b>2 faixas laterais</b> têm pórtico de free flow, sem cancela. Com tag, passa sem parar e usa 1 mensalidade. Sem tag, passa sem parar, mas leva uma <b>multa por evasão</b>. Vale igual no treino e na rodada; a multa não mexe no tempo nem no ranking.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O treino rende <b>créditos</b> para a Garagem: 40% dos pontos que o tempo valeria na rodada. O seu melhor tempo entra no <b>ranking de treinos</b> (da semana e geral), onde valem os atributos do carro.</li></ul>' +
+    '<h4>🏎️ Corrida</h4><ul><li>A pista tem <b>5 faixas</b>. Desvie de cones e carros parados (bater encerra a corrida) e de buracos (não encerram, mas tiram 35% do pneu) tocando no lado esquerdo ou direito da tela (ou com as setas ← → no computador).</li><li><b>Seguro Porto:</b> pegue o escudo azul para ganhar uma vida extra (acumula até 2). Se bater, o seguro é acionado, o carro pisca por 1,5 s sem sofrer dano e a corrida continua. Pegou seguro já com 2? Ele vira <b>5 créditos</b> na carteira (no treino, na rodada e no duelo).</li><li><b>Posto (combustível e recarga):</b> o carro gasta combustível com o tempo; a barra ⛽ fica embaixo da do pneu. Pare no <b>posto</b> (faixa verde, na direita ou na esquerda) para encher: combustão para 2 s; elétrico (🔋) para 3,5 s e a bateria dura menos (cerca de 65 s contra 95 s), mas o elétrico tem +10% de agilidade e rende +15% de créditos no treino e nos duelos. Se acabar, o Seguro Porto socorre; sem seguro, a corrida acaba. Na rodada todos andam a combustão.</li><li><b>Pausa:</b> toque em ❚❚ no alto da tela (ou tecla P). Sair do app também pausa.</li><li><b>Poder Aura:</b> a partir do nível 10 aparece o "a" do logo nas três cores. Pegou, fica <b>5 segundos invencível</b>: atravessa cones, carros, buracos e cancelas sem perder nada (o free flow sem TAG continua dando multa).</li><li><b>Pneus e CAP Porto:</b> o pneu gasta com o tempo (medidor no canto). Com pneu gasto, o carro demora mais para trocar de faixa. De tempos em tempos aparece a entrada do <b>CAP Porto</b> na faixa da direita ou da esquerda: passando por ela, o carro para, troca os pneus, perde 3 segundos no cronômetro e ganha 15 segundos de revisão, que deixa passar por buracos. Se o pneu acabar, ele fura: o seguro troca o pneu, se você tiver; se não, a corrida termina.</li><li>A velocidade aumenta a cada 10 segundos. Depois de 2 minutos começa a <b>reta final</b>: mais obstáculos, menos Seguros e CAPs mais raros, até ficar impossível. A corrida não tem fim: ganha quem for mais longe.</li><li><b>Praça de pedágio:</b> as <b>3 faixas do meio</b> têm cancela. Cada <b>tag</b> que você pega vale 1 mensalidade (acumula até 3; costuma aparecer logo depois do aviso PEDÁGIO) e cada passagem usa uma: a cancela abre e você passa direto. Sem tag, o carro para para pagar e você perde <b>5 segundos</b>.</li><li><b>Free flow:</b> as <b>2 faixas laterais</b> têm pórtico de free flow, sem cancela. Com tag, passa sem parar e usa 1 mensalidade. Sem tag, passa sem parar, mas leva uma <b>multa por evasão</b>. Vale igual no treino e na rodada; a multa não mexe no tempo nem no ranking.</li><li>3 tentativas por rodada, vale o <b>melhor tempo</b>. Começou, a tentativa conta. Sair do app no meio encerra a tentativa.</li><li>Todo mundo corre na mesma pista na rodada (a pista muda a cada tentativa e a cada semana).</li><li>Treino é livre e não vale ponto. O treino rende <b>créditos</b> para a Garagem: 40% dos pontos que o tempo valeria na rodada. O seu melhor tempo entra no <b>ranking de treinos</b> (da semana, geral e por carro), onde valem os atributos do carro. As corridas de <b>duelo</b> também contam para esse ranking.</li></ul>' +
     '<p><b>Pontos pelo melhor tempo</b> (não depende da posição dos outros):</p><table class="t" style="max-width:260px"><tr><th>Tempo</th><th class="n">Pontos</th></tr>' + tab + '</table>' +
     '<h4>🏆 Rankings</h4><ul><li>Rodada: quiz + corrida, até 200 pontos.</li><li>Temporada: soma das rodadas. Desempate por mais rodadas jogadas e depois pelos pontos do quiz.</li><li>Áreas: média dos pontos de quem jogou (mínimo de 3 participantes).</li></ul>' +
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d) + '</li>'; }).join('') + '</ul>' +

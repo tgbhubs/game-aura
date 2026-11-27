@@ -458,10 +458,21 @@
   G.vale = function (r, now) { return !!r && ((now || Date.now()) < G.CORTE_TEMPOS || (r.em || 0) >= G.CORTE_TEMPOS); };
   // melhores tempos por carro de um documento de treino (usa porCarro e, para dados antigos, melhor e semanas)
   G.porCarroDe = function (doc, now) {
-    var m = {}, add = function (r) { if (r && G.vale(r, now) && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = { t: r.t, em: r.em }; };
-    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em }); });
+    var m = {}, add = function (r) { if (r && G.vale(r, now) && r.cat && G.CATALOGO[r.cat] && (!m[r.cat] || r.t > m[r.cat].t)) m[r.cat] = r.duelo ? { t: r.t, em: r.em, duelo: true } : { t: r.t, em: r.em }; };
+    Object.keys((doc && doc.porCarro) || {}).forEach(function (k) { add({ cat: k, t: doc.porCarro[k].t, em: doc.porCarro[k].em, duelo: doc.porCarro[k].duelo }); });
     add(doc && doc.melhor); Object.keys((doc && doc.semanas) || {}).forEach(function (k) { add(doc.semanas[k]); });
     return m;
+  };
+  // recordes do treino (geral, da semana e por carro) a partir de um tempo válido; também usado pelas corridas de duelo
+  G.gravarRecordes = function (doc, reg, now) {
+    var sid = G.semana(now), recorde = false, recordeSemana = false;
+    if (!G.vale(doc.melhor, now) || reg.t > doc.melhor.t) { doc.melhor = reg; recorde = true; }
+    doc.semanas = doc.semanas || {};
+    if (!doc.semanas[sid] || reg.t > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
+    doc.porCarro = G.porCarroDe(doc, now);
+    if (!doc.porCarro[reg.cat] || reg.t > doc.porCarro[reg.cat].t) doc.porCarro[reg.cat] = reg.duelo ? { t: reg.t, em: now, duelo: true } : { t: reg.t, em: now };
+    Object.keys(doc.semanas).sort().slice(0, -12).forEach(function (k) { delete doc.semanas[k]; });
+    return { recorde: recorde, recordeSemana: recordeSemana };
   };
   G.finalizarTreino = function (c) {
     var doc = L.clone(c.doc || {}), ss = doc.sessao;
@@ -473,12 +484,7 @@
     doc.treinos = (doc.treinos || 0) + 1;
     var sid = G.semana(c.now), reg = { t: tempo, cat: ss.cat, em: c.now }, recorde = false, recordeSemana = false, creditos = 0;
     if (valido) {
-      if (!G.vale(doc.melhor, c.now) || tempo > doc.melhor.t) { doc.melhor = reg; recorde = true; }
-      doc.semanas = doc.semanas || {};
-      if (!doc.semanas[sid] || tempo > doc.semanas[sid].t) { doc.semanas[sid] = reg; recordeSemana = true; }
-      // melhor tempo com cada carro (ranking por carro); na primeira vez, aproveita os recordes já gravados
-      doc.porCarro = G.porCarroDe(doc, c.now);
-      if (!doc.porCarro[ss.cat] || tempo > doc.porCarro[ss.cat].t) doc.porCarro[ss.cat] = { t: tempo, em: c.now };
+      var rr = G.gravarRecordes(doc, reg, c.now); recorde = rr.recorde; recordeSemana = rr.recordeSemana;
       // créditos do treino, com limite diário
       var hoje = G.dia(c.now); if (!doc.hoje || doc.hoje.id !== hoje) doc.hoje = { id: hoje, creditos: 0 };
       creditos = Math.max(0, Math.min(G.creditosTreino(tempo, ss.cat), G.TREINO_LIMITE_DIA - doc.hoje.creditos));
