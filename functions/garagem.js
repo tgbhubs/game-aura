@@ -73,6 +73,14 @@
     var c = Math.round(L.curva(tempo, 40) * G.TREINO_PROP) + Math.max(0, Math.floor((tempo - G.TREINO_EXTRA_APOS) / G.TREINO_EXTRA_CADA));
     return G.ehEletrico(cat) ? Math.round(c * (1 + G.BONUS_ELETRICO)) : c;
   };
+  // corrida de duelo: rende créditos como um treino, com 40% a mais
+  G.DUELO_PROP = 1.4;
+  G.creditosDuelo = function (tempo, cat) { return Math.round(G.creditosTreino(tempo, cat) * G.DUELO_PROP); };
+  G.creditarCorridaDuelo = function (cart0, tempo, cat, adv, now) {
+    var v = G.creditosDuelo(tempo, cat), cart = L.clone(cart0 || {});
+    if (v > 0) { cart.recebido = (cart.recebido || 0) + v; mov(cart, { t: now, v: v, d: 'Corrida de duelo com ' + adv + ' (' + (Math.round(tempo * 10) / 10) + ' s)' }); }
+    return { carteira: cart, creditos: v };
+  };
   G.TREINO_LIMITE_DIA = Infinity; // sem limite: créditos não mexem no ranking e incentivam compra e venda
   G.dia = function (now) { return new Date(now - 3 * 3600000).toISOString().slice(0, 10); };
   G.LOTE = 5;

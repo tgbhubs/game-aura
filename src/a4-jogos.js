@@ -200,6 +200,7 @@ function resultadoDuelo() {
     var ele = d && d.corridas[o][CR.duelo.n];
     h += '<div class="tiny" style="opacity:.8;margin-top:6px">' + (ele && ele.t != null ? esc(CR.duelo.adv) + ' fez ' + fmtSeg(ele.t) + ' nesta pista.' : esc(CR.duelo.adv) + ' ainda não correu esta pista.') + '</div>';
   }
+  if (r.creditos) h += '<div class="row between" style="margin-top:8px"><span>Créditos da corrida</span><b style="color:#7CE0B0">+' + r.creditos + '</b></div><div class="tiny" style="opacity:.75">Corrida de duelo rende 40% a mais que o treino.' + (r.recorde ? ' Novo recorde no ranking do treino!' : '') + '</div>';
   if (r.valido === false) h += '<div class="tiny" style="opacity:.7;margin-top:6px">O tempo foi ajustado: não bateu com o tempo real da partida.</div>';
   return h + '</div>';
 }

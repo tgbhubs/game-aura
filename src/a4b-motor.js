@@ -395,7 +395,22 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
     }
     if (s.revisao > 0) { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = '#9FD3FF'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('REVISÃO ' + Math.ceil(s.revisao) + ' s', px + pw / 2, ay + 12); ay += 30; }
     else if (gasto && s.fase === 'rodando') { ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = pisca ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PARE NO CAP', px + pw / 2, ay + 12); ay += 30; }
-    if (TANQUE && s.comb < COMB_BAIXO && s.fase === 'rodando') { var pc = Math.floor(s.t * 3) % 2 === 0; ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = pc ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ELETRICO ? 'RECARREGUE' : 'ABASTEÇA', px + pw / 2, ay + 12); }
+    if (TANQUE && s.comb < COMB_BAIXO && s.fase === 'rodando') { var pc = Math.floor(s.t * 3) % 2 === 0; ctx.fillStyle = 'rgba(13,24,64,.78)'; rr(ctx, px, ay, pw, 24, 8); ctx.fill(); ctx.fillStyle = pc ? '#FFB27A' : '#fff'; ctx.font = '800 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ELETRICO ? 'RECARREGUE' : 'ABASTEÇA', px + pw / 2, ay + 12); ay += 30; }
+    // tempo até o próximo CAP e o próximo posto (pela velocidade atual)
+    if (s.fase === 'rodando') {
+      // já na pista: tempo exato; ainda não sorteado: estimativa pelo intervalo mínimo entre um e outro (CAP e posto saem logo depois desse intervalo)
+      var vAt = Math.max(vel(s.t), 1), exA = extra(s.t), prox = function (tp) {
+        var md = Infinity; for (var q = 0; q < s.obst.length; q++) { var oq = s.obst[q]; if (oq.tipo === tp && !oq.pego && oq.d > s.dist && oq.d - s.dist < md) md = oq.d - s.dist; }
+        if (md !== Infinity) return md / vAt;
+        var libera = tp === 'cap' ? Math.max(14, s.ultCap + 18 + 4 * exA) : Math.max(20, s.ultPosto + 26 + 4 * exA);
+        return Math.max(0, libera - s.t) + (s.prox - s.dist + 640) / vAt;
+      };
+      [['cap', '🔧 CAP'], TANQUE ? ['posto', ELETRICO ? '🔋 Recarga' : '⛽ Posto'] : null].forEach(function (it) {
+        if (!it) return; var tq = prox(it[0]); if (tq == null || tq > 60) return;
+        ctx.fillStyle = 'rgba(13,24,64,.7)'; rr(ctx, px, ay, pw, 22, 8); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 11px Montserrat, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(it[1] + ' em ' + Math.max(1, Math.ceil(tq)) + ' s', px + pw / 2, ay + 11); ay += 26;
+      });
+    }
     if (s.msg && s.t < s.msg.ate) { ctx.fillStyle = 'rgba(13,24,64,.85)'; rr(ctx, HW / 2 - 140, 140, 280, 44, 12); ctx.fill(); ctx.fillStyle = s.msg.cor; ctx.textAlign = 'center'; ctx.font = '900 17px Montserrat, Arial, sans-serif'; ctx.fillText(s.msg.txt, HW / 2, 163); }
     if (s.fase === 'contagem') {
       ctx.fillStyle = 'rgba(13,24,64,.55)'; ctx.fillRect(0, 0, HW, HH);

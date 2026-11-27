@@ -490,6 +490,8 @@ function dueloOp(req) {
           if (tdoc.sessao === undefined) delete tdoc.sessao;
           const rr = G.gravarRecordes(tdoc, { t: f.tempo, cat: x0.cat || 'aura', em: now, duelo: true }, now);
           treinoDuelo = { ref: tref, doc: tdoc }; resp.recorde = rr.recorde; resp.recordeSemana = rr.recordeSemana;
+          const cc = G.creditarCorridaDuelo(lados.carts[lado0], f.tempo, x0.cat || 'aura', du.ap[G.outro(lado0)], now);
+          lados.carts[lado0] = cc.carteira; resp.creditos = cc.creditos;
         }
         const nm = Math.floor(Number(d.multas) || 0);
         if (nm > 0 && f.valido) {

@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27b';
+var BUILD = '2026-11-27c';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -321,7 +321,7 @@ function criarDemo() {
       if (op === 'finalizar') {
         var f = Garagem.finalizarDuelo({ now: now, uid: uid, d: du, n: d.n, tempo: d.tempo }); doc = f.doc; resp = { tempo: f.tempo, valido: f.valido };
         var lado = Garagem.lado(du, uid), x = doc.corridas[lado][Math.floor(Number(d.n))];
-        if (f.valido) { var td = lerDoc('treinos/' + uid) || {}, rr = Garagem.gravarRecordes(td, { t: f.tempo, cat: (x && x.cat) || 'aura', em: now, duelo: true }, now); gravar('treinos/' + uid, td); resp.recorde = rr.recorde; }
+        if (f.valido) { var td = lerDoc('treinos/' + uid) || {}, rr = Garagem.gravarRecordes(td, { t: f.tempo, cat: (x && x.cat) || 'aura', em: now, duelo: true }, now); gravar('treinos/' + uid, td); resp.recorde = rr.recorde; var cd = Garagem.creditarCorridaDuelo(L2.carts[lado], f.tempo, (x && x.cat) || 'aura', du.ap[Garagem.outro(lado)], now); L2.carts[lado] = cd.carteira; resp.creditos = cd.creditos; }
         if (Number(d.multas) > 0 && f.valido) { var m = Garagem.registrarMultas(L2.carts[lado], Math.min(Number(d.multas), Garagem.maxMultas(f.tempo)), x.carro, x.cat, 'duelo', now); if (m.novas) { L2.carts[lado] = m.carteira; resp.multas = m.novas; } }
         if (Number(d.segExtra) > 0 && f.valido) { var sd = Garagem.creditarSeguros(L2.carts[lado], d.segExtra, f.tempo, 'duelo', now); if (sd.creditos) { L2.carts[lado] = sd.carteira; resp.segCreditos = sd.creditos; } }
       }
