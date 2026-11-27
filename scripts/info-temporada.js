@@ -30,3 +30,12 @@ const dia = (ms) => new Date(ms - 3 * 3600000).toISOString().slice(0, 10);
     const vistos = {}; regs.forEach((r) => { if (r && r.t >= 250 && !vistos[r.em]) { vistos[r.em] = 1; lin.push([r.t, nome[x.id] || x.id, r.cat, dh(r.em)]); } }); });
   lin.sort((a, b) => b[0] - a[0]).forEach((l) => console.log('TREINO', l.join(' | ')));
 })();
+// tamanho das coleções que o app escuta inteiras (leitura)
+(async () => {
+  for (const c of ['jogadores', 'treinos', 'duelos', 'transacoes', 'anuncios', 'placar', 'mesas', 'placaPartidas', 'carteira', 'garagens']) {
+    const s = await db.collection(c).get(); let b = 0, maxb = 0; s.docs.forEach((d) => { const n = JSON.stringify(d.data()).length; b += n; if (n > maxb) maxb = n; });
+    console.log('COLECAO', c, 'docs', s.size, 'KB', Math.round(b / 1024), 'maior doc KB', Math.round(maxb / 1024));
+  }
+  const j = await db.collection('jogadores').get(); let fotos = 0, fb = 0; j.docs.forEach((d) => { const f = d.data().foto || ''; if (f.startsWith('data:')) { fotos++; fb += f.length; } });
+  console.log('FOTOS base64', fotos, 'KB', Math.round(fb / 1024), 'ativos', j.docs.filter((d) => d.data().status === 'ativo').length);
+})();
