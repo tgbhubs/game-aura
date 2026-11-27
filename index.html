@@ -1601,7 +1601,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27e';
+var BUILD = '2026-11-27f';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -4113,6 +4113,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   // sem WebGL, o 3D realista cai para o de cima realista
   var VISUAL = (visual === '3dreal' && R3) ? '3dreal' : 'realista';
   function desenhar(tempoReal) {
+    if (VISUAL === '3dreal' && R3 && R3.perdido && R3.perdido()) { VISUAL = 'realista'; try { if (box3d) box3d.style.display = 'none'; } catch (e) { } }
     if (VISUAL === '3d' || VISUAL === '3dreal') { R3.render(tempoReal); desenharHUD(true); }
     else if (VISUAL === 'realista') { desenharRealista(); desenharHUD(false); }
     else { desenharClassico(); desenharHUD(false); }
@@ -4185,6 +4186,9 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
 function criar3DReal(E) {
   var T = window.THREE, s = E.s, K = 0.035, N = E.N, LANE = E.LANE, ROAD = E.ROAD, CENTRO = E.CENTRO, CARH = E.CARH;
   var renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  // celular sem memória de vídeo pode perder o contexto do WebGL: a corrida segue no visual de cima (2D)
+  var ctxPerdido = false;
+  renderer.domElement.addEventListener('webglcontextlost', function (ev) { ev.preventDefault(); ctxPerdido = true; }, false);
   renderer.setPixelRatio(E.dpr); renderer.setSize(E.cssW, E.cssH);
   renderer.outputEncoding = T.sRGBEncoding;
   renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -4465,6 +4469,18 @@ function criar3DReal(E) {
   var matLaranja = new T.MeshStandardMaterial({ color: cor(0xEC7000), roughness: 0.5, emissive: cor(0x6A2E00), emissiveIntensity: 0.4 });
   var matVidroCab = new T.MeshStandardMaterial({ color: cor(0x9CC9FF), metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.65 });
   var CORES_PARADOS = [0xE6E8EC, 0x8E97A6, 0x202329, 0xC9CDD3, 0x4F5A4C, 0x6B6F55];
+  // cada obstáculo criava geometrias e materiais novos e nunca liberava: em corridas longas a memória de vídeo do celular
+  // acabava (asfalto escuro, tela branca). Agora peças iguais reaproveitam a mesma geometria e o mesmo material.
+  var cacheGeo = {}, cacheMat = {};
+  function chaveMat(m) { return [m.type, m.color && m.color.getHex(), m.emissive && m.emissive.getHex(), m.emissiveIntensity, m.map && m.map.uuid, m.transparent, m.opacity, m.depthWrite, m.roughness, m.metalness, m.side, m.blending].join('|'); }
+  function umMat(m) { var k = chaveMat(m); if (cacheMat[k]) { if (cacheMat[k] !== m) m.dispose(); return cacheMat[k]; } cacheMat[k] = m; return m; }
+  function compartilhar(g) {
+    g.traverse(function (m) {
+      if (!m.isMesh) return;
+      if (m.geometry && m.geometry.parameters) { var kg = m.geometry.type + JSON.stringify(m.geometry.parameters); if (cacheGeo[kg]) { if (cacheGeo[kg] !== m.geometry) { m.geometry.dispose(); m.geometry = cacheGeo[kg]; } } else cacheGeo[kg] = m.geometry; }
+      if (Array.isArray(m.material)) m.material = m.material.map(umMat); else if (m.material) m.material = umMat(m.material);
+    });
+  }
   function criarMesh(o) {
     var g = new T.Group(), wm = o.w * K, lm = o.h * K;
     if (o.tipo === 'cone') {
@@ -4529,6 +4545,7 @@ function criar3DReal(E) {
       var av = new T.Mesh(new T.PlaneGeometry(RW * 0.72, RW * 0.72 * 96 / 512), new T.MeshStandardMaterial({ map: texAviso, transparent: true, roughness: 0.8, depthWrite: false }));
       av.rotation.x = -Math.PI / 2; av.position.y = 0.008; av.receiveShadow = true; g.add(av);
     }
+    compartilhar(g);
     scene.add(g);
     var antigo = o._rm; o._rm = function () { scene.remove(g); if (antigo) antigo(); };
     return g;
@@ -4580,7 +4597,7 @@ function criar3DReal(E) {
     });
     parts = parts.filter(function (p) {
       var u = p.userData; u.vida -= dt;
-      if (u.vida <= 0) { scene.remove(p); return false; }
+      if (u.vida <= 0) { scene.remove(p); if (p.material) p.material.dispose(); return false; }
       u.v.y -= (u.faisca ? 12 : -1) * dt; p.position.addScaledVector(u.v, dt);
       if (!u.faisca) { var k2 = p.scale.x + dt * 2; p.scale.set(k2, k2, 1); }
       p.material.opacity = Math.min(1, u.vida * 1.5); return true;
@@ -4597,7 +4614,7 @@ function criar3DReal(E) {
     renderer.render(scene, cam);
   }
   function destruir() { try { renderer.dispose(); if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); } catch (e) { } }
-  return { render: render, destruir: destruir, foto: E.fotoCarro, pronto: function () { return !cfgCarro.arquivo || !!meu.userData.modelo; } };
+  return { render: render, destruir: destruir, foto: E.fotoCarro, perdido: function () { return ctxPerdido; }, pronto: function () { return !cfgCarro.arquivo || !!meu.userData.modelo; } };
 }
 
 /* ================== PLACA! (mesa online) ==================

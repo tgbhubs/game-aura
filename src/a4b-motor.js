@@ -917,6 +917,7 @@ function Motor(wrap, hud, box3d, seed, aoFim, cssW, cssH, dpr, visual) {
   // sem WebGL, o 3D realista cai para o de cima realista
   var VISUAL = (visual === '3dreal' && R3) ? '3dreal' : 'realista';
   function desenhar(tempoReal) {
+    if (VISUAL === '3dreal' && R3 && R3.perdido && R3.perdido()) { VISUAL = 'realista'; try { if (box3d) box3d.style.display = 'none'; } catch (e) { } }
     if (VISUAL === '3d' || VISUAL === '3dreal') { R3.render(tempoReal); desenharHUD(true); }
     else if (VISUAL === 'realista') { desenharRealista(); desenharHUD(false); }
     else { desenharClassico(); desenharHUD(false); }
