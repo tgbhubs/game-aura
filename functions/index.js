@@ -7,7 +7,8 @@ const L = require('./logica');
 
 admin.initializeApp();
 const db = admin.firestore();
-setGlobalOptions({ region: 'southamerica-east1', maxInstances: 10 });
+// com a empresa toda jogando: mais instâncias e várias chamadas por instância (antes era 1 por vez, até 10 instâncias, e as chamadas faziam fila)
+setGlobalOptions({ region: 'southamerica-east1', maxInstances: 30, memory: '512MiB', cpu: 1, concurrency: 20 });
 
 function uidDe(req) {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Faça login para jogar.');
