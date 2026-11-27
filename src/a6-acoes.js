@@ -250,7 +250,7 @@ var A = {
     if (on && CR && CR.motor && CR.motor.estado && CR.motor.estado.fase === 'rodando' && CR.motor.estado.vivo) Musica.tocar();
     toast(on ? 'Música e sons ligados' : 'Música e sons desligados', 1200);
   },
-  carro: function (v) { gravarLS('gi_carro', v); if (CR) { CR.carro = v; desenharCorrida(); } },
+  carro: function (v) { gravarLS('gi_carro', v); if (CR) { var r = $('.garagem.rolar'), sx = r ? r.scrollLeft : 0, ov = $('.ovw'), sy = ov ? ov.scrollTop : 0; CR.carro = v; desenharCorrida(); r = $('.garagem.rolar'); if (r) r.scrollLeft = sx; ov = $('.ovw'); if (ov) ov.scrollTop = sy; } },
   visual: function (v) { gravarLS('gi_visual', v); if (CR) { CR.visual = v; desenharCorrida(); } },
   fecharCorrida: function () {
     if (CR && CR.fase === 'jogo' && CR.motor) {

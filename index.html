@@ -134,6 +134,10 @@ textarea.inp{min-height:84px;resize:vertical}
 .bcell .e{font-size:30px}
 .bcell b{display:block;font-size:12px;margin-top:4px}
 .bcell span{display:block;font-size:11px;color:var(--mut)}
+.gfoto.zoom{cursor:zoom-in}
+.vitbox{position:relative;width:100%;aspect-ratio:1/0.62;background:linear-gradient(#E8EEF9,#F4F1EA);border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vitbox img{width:100%;height:100%;object-fit:contain}
+.vitcv{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 .bcell.off .e{opacity:.35;filter:grayscale(1)}
 .bcell.off b{opacity:.6}
 .bcell .como{display:block;font-style:normal;font-size:10.5px;line-height:1.3;color:var(--mut);margin-top:6px;padding:0 2px}
@@ -1581,7 +1585,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-26d';
+var BUILD = '2026-11-27a';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -4923,7 +4927,54 @@ var A_PLACA = {
    Tudo que mexe em créditos passa pela Cloud Function "garagem"; aqui só mostramos e pedimos. */
 var GS = { aba: 'minha', saldo: null, carregandoSaldo: false, estoque: null, subEst: null, semana: '' };
 function nCred(n) { return (n || 0).toLocaleString('pt-BR'); }
-function fotoCat(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="gfoto" src="' + f.foto + '" alt="">' : '<div class="gfoto"></div>'; }
+function fotoCat(cat) { var f = window.FOTOS_CARROS && FOTOS_CARROS[cat]; return f ? '<img class="gfoto zoom" src="' + f.foto + '" alt="Ver ' + esc((Garagem.CATALOGO[cat] || {}).nome || 'carro') + ' em detalhe" data-a="verCarro" data-v="' + esc(cat) + '">' : '<div class="gfoto"></div>'; }
+// vitrine 360°: o carro em 3D, girando com o dedo (cai para a foto ampliada se o 3D não carregar)
+var VIT = null;
+function pararVitrine() { if (VIT) { VIT.vivo = false; try { VIT.rd.dispose(); } catch (e) { } VIT = null; } }
+function abrirVitrine(cat) {
+  pararVitrine();
+  var c = Garagem.CATALOGO[cat]; if (!c) return;
+  var f = window.FOTOS_CARROS && FOTOS_CARROS[cat], cfg = window.CARROS && CARROS[c.modelo];
+  abrirModal('<div class="row between" style="align-items:center;margin-bottom:6px"><h3 style="margin:0">' + esc(c.nome) + '</h3><button class="lnk" data-a="fecharVitrine">Fechar</button></div>' +
+    '<div class="small mut" style="margin-bottom:8px">' + esc(c.tipo) + ' · ' + nCred(c.preco) + '</div>' +
+    '<div id="vitBox" class="vitbox">' + (f ? '<img src="' + f.foto + '" alt="">' : '') + '</div>' +
+    '<div id="vitDica" class="tiny mut" style="text-align:center;margin-top:8px">' + (cfg && cfg.arquivo ? 'Carregando o 3D…' : '') + '</div>' + barrasAtr(c.atr, true, cat));
+  if (!cfg || !cfg.arquivo || !webglOk()) return;
+  carregarThree(function (ok) {
+    if (!ok || !$('#vitBox')) return;
+    carregarModeloCarro(c.modelo, function (obj) {
+      var box = $('#vitBox'); if (!obj || !box) { var d0 = $('#vitDica'); if (d0) d0.textContent = ''; return; }
+      var T = THREE, w = box.clientWidth || 320, hh = Math.round(w * 0.62);
+      var cv = document.createElement('canvas'); cv.className = 'vitcv';
+      var rd = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+      rd.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); rd.setSize(w, hh); rd.outputEncoding = T.sRGBEncoding; rd.toneMapping = T.ACESFilmicToneMapping; rd.toneMappingExposure = 0.95;
+      var cena = new T.Scene(), cam = new T.PerspectiveCamera(32, w / hh, 0.1, 100);
+      try { var g = document.createElement('canvas'); g.width = 16; g.height = 256; var x = g.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#9CC8F0'); gr.addColorStop(0.5, '#F4F1EA'); gr.addColorStop(1, '#3A4466'); x.fillStyle = gr; x.fillRect(0, 0, 16, 256);
+        var tx = new T.CanvasTexture(g), pm = new T.PMREMGenerator(rd), ce = new T.Scene(); ce.add(new T.Mesh(new T.SphereGeometry(50, 32, 16), new T.MeshBasicMaterial({ map: tx, side: T.BackSide }))); cena.environment = pm.fromScene(ce, 0.02).texture; pm.dispose(); } catch (e) { }
+      cena.add(new T.HemisphereLight(0xffffff, 0x556070, 0.9)); var sol = new T.DirectionalLight(0xffffff, 1.4); sol.position.set(4, 8, 5); cena.add(sol);
+      obj.traverse(function (m) { if (!m.isMesh || !m.material) return; if (m.material.isMeshStandardMaterial) m.material.envMapIntensity = 0.9;
+        if (/glass|vidro|window/i.test(m.material.name || '') || (m.material.transparent && (m.material.opacity == null ? 1 : m.material.opacity) < 0.95)) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = Math.max(m.material.opacity || 0, 0.9); m.material.color = new T.Color(0x0B1018); } });
+      var piso = new T.Mesh(new T.CircleGeometry(2.6, 48), new T.MeshStandardMaterial({ color: 0xDCD8CE, roughness: 0.9 })); piso.rotation.x = -Math.PI / 2; cena.add(piso);
+      cena.add(obj);
+      box.innerHTML = ''; box.appendChild(cv);
+      var d = $('#vitDica'); if (d) d.textContent = 'Arraste para girar · pince ou use a roda do mouse para aproximar';
+      VIT = { vivo: true, rd: rd, ang: 0.8, alt: 0.3, dist: 5.4, auto: true };
+      var V = VIT, px = null, py = null, toques = {}, pinca = 0;
+      function pos() { var a = V.ang, e = V.alt; cam.position.set(Math.sin(a) * Math.cos(e) * V.dist, 0.55 + Math.sin(e) * V.dist, Math.cos(a) * Math.cos(e) * V.dist); cam.lookAt(0, 0.45, 0); }
+      cv.addEventListener('pointerdown', function (ev) { V.auto = false; toques[ev.pointerId] = [ev.clientX, ev.clientY]; px = ev.clientX; py = ev.clientY; try { cv.setPointerCapture(ev.pointerId); } catch (e) { } });
+      cv.addEventListener('pointermove', function (ev) {
+        if (!toques[ev.pointerId]) return; toques[ev.pointerId] = [ev.clientX, ev.clientY];
+        var ks = Object.keys(toques);
+        if (ks.length >= 2) { var a = toques[ks[0]], b = toques[ks[1]], dd = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinca) V.dist = Math.max(3.6, Math.min(10, V.dist * pinca / dd)); pinca = dd; return; }
+        V.ang -= (ev.clientX - px) * 0.012; V.alt = Math.max(0.05, Math.min(1.2, V.alt + (ev.clientY - py) * 0.006)); px = ev.clientX; py = ev.clientY;
+      });
+      var solta = function (ev) { delete toques[ev.pointerId]; pinca = 0; };
+      cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+      cv.addEventListener('wheel', function (ev) { ev.preventDefault(); V.auto = false; V.dist = Math.max(3.6, Math.min(10, V.dist * (ev.deltaY > 0 ? 1.08 : 0.92))); }, { passive: false });
+      (function loop() { if (!V.vivo || !document.body.contains(cv)) { if (VIT === V) pararVitrine(); return; } if (V.auto) V.ang += 0.006; pos(); rd.render(cena, cam); requestAnimationFrame(loop); })();
+    }, c.cor);
+  });
+}
 function origemTxt(o, rd) { return o === 'base' ? 'Da casa' : o === 'retomado' ? 'Retomado ' + (Garagem.ORIGENS[rd] || 'Porto') : o === 'usado' ? 'Usado' : o === 'duelo' ? 'Ganho em duelo' : '0 km'; }
 function seloOrigem(org) { return '<span class="gselo ' + org + '">' + (org === 'itau' ? 'Itaú' : 'Porto') + '</span>'; }
 function multasPend() { return Garagem.multasPendentes(D.carteira); }
@@ -5112,6 +5163,8 @@ var A_GAR = {
       garChamar({ op: 'pagarMulta', id: v }, function () { toast('Multa paga.'); R(); });
     });
   },
+  verCarro: function (v) { abrirVitrine(v); },
+  fecharVitrine: function () { pararVitrine(); fecharModal(); },
   garUsar: function (v) { gravarLS('gi_carro', v); toast('Carro escolhido para a corrida.'); R(); },
   garExtrato: function () {
     var sd = GS.saldo || {}, mv = (D.carteira && D.carteira.mov) || sd.mov || [];
@@ -6249,7 +6302,7 @@ var A = {
     if (on && CR && CR.motor && CR.motor.estado && CR.motor.estado.fase === 'rodando' && CR.motor.estado.vivo) Musica.tocar();
     toast(on ? 'Música e sons ligados' : 'Música e sons desligados', 1200);
   },
-  carro: function (v) { gravarLS('gi_carro', v); if (CR) { CR.carro = v; desenharCorrida(); } },
+  carro: function (v) { gravarLS('gi_carro', v); if (CR) { var r = $('.garagem.rolar'), sx = r ? r.scrollLeft : 0, ov = $('.ovw'), sy = ov ? ov.scrollTop : 0; CR.carro = v; desenharCorrida(); r = $('.garagem.rolar'); if (r) r.scrollLeft = sx; ov = $('.ovw'); if (ov) ov.scrollTop = sy; } },
   visual: function (v) { gravarLS('gi_visual', v); if (CR) { CR.visual = v; desenharCorrida(); } },
   fecharCorrida: function () {
     if (CR && CR.fase === 'jogo' && CR.motor) {
