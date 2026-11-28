@@ -1167,15 +1167,19 @@ span.pc{display:flex}
   G.ORIGENS = { itau: 'Itaú', porto: 'Porto' };
   G.origemRetomado = function (it) { return (it && (it.origem === 'itau' || it.origem === 'porto')) ? it.origem : (L.hash(String(it && it.id)) % 2 ? 'itau' : 'porto'); };
   G.semana = function (now) { return 'S' + new Date(L.inicioSemana(now)).toISOString().slice(0, 10); };
-  G.lote = function (now) {
-    var sid = G.semana(now), r = L.rng(L.hash('retomados|' + sid)), itens = [];
-    var cats = L.shuffle(G.venda(now), r);
-    for (var i = 0; i < G.LOTE; i++) {
+  // o lote cresce a cada rodada da temporada (5 na 1ª, +2 por rodada, até 20) e prioriza modelos que não vieram na semana anterior
+  G.tamanhoLote = function (n) { return Math.min(20, G.LOTE + 2 * Math.max(0, (Math.floor(Number(n) || 1)) - 1)); };
+  G.lote = function (now, op) {
+    op = op || {};
+    var sid = G.semana(now), r = L.rng(L.hash('retomados|' + sid)), itens = [], evitar = op.evitar || [];
+    var todos = L.shuffle(G.venda(now), r), cats = todos.filter(function (c) { return evitar.indexOf(c) < 0; }).concat(todos.filter(function (c) { return evitar.indexOf(c) >= 0; }));
+    var tam = G.tamanhoLote(op.n);
+    for (var i = 0; i < tam; i++) {
       var cat = cats[i % cats.length], base = G.CATALOGO[cat].preco, desc = 0.35 + r() * 0.2;
       var idI = sid + '-' + (i + 1);
       itens.push({ id: idI, origem: G.origemRetomado({ id: idI }), cat: cat, preco: Math.round(base * (1 - desc) / 5) * 5, km: Math.round((18 + r() * 75)) * 1000, vendidoPara: '' });
     }
-    return { semana: sid, itens: itens, criadoEm: now };
+    return { semana: sid, itens: itens, criadoEm: now, rodada: op.n || 1 };
   };
 
   // lote já gravado antes de um modelo sair de linha: troca os itens ainda à venda por um modelo atual (determinístico, igual no app e no servidor)
@@ -1601,7 +1605,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27f';
+var BUILD = '2026-11-27g';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -1923,14 +1927,20 @@ function criarDemo() {
     }
     Logica.erro('Operação desconhecida.');
   }
+  function demoLote(now) {
+    var n = 1, cfg = lerDoc('config/geral') || {}, t = cfg.temporadaAtiva ? lerDoc('temporadas/' + cfg.temporadaAtiva) : null;
+    if (t && t.inicio) n = Math.max(1, Math.floor((Logica.inicioSemana(now) - Logica.inicioSemana(t.inicio + 3600000)) / (7 * 86400000)) + 1);
+    var ant = lerDoc('estoque/' + Garagem.semana(now - 7 * 86400000));
+    return Garagem.lote(now, { n: n, evitar: ant && ant.itens ? ant.itens.map(function (x) { return x.cat; }) : [] });
+  }
   function demoGaragem(uid, jog, d, now) {
     var sid = Garagem.semana(now), op = d.op;
     if (op === 'saldo') { var st = demoSaldo(uid); return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] }; }
     if (op === 'pagarMulta') { var sm = demoSaldo(uid), rm = Garagem.pagarMulta(sm, String(d.id || ''), now); gravar('carteira/' + uid, rm.carteira); return { valor: rm.valor, saldo: sm.saldo - rm.valor }; }
-    if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, Garagem.lote(now)); return { semana: sid }; }
+    if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, demoLote(now)); return { semana: sid }; }
     if (op === 'comprar0km') { var st1 = demoSaldo(uid); st1.apelido = jog.apelido || jog.nome; var r1 = Garagem.comprar0km(st1, String(d.cat || ''), now); gravar('garagens/' + uid, r1.garagem); gravar('carteira/' + uid, r1.carteira); gravar('transacoes/T' + now.toString(36), r1.transacao); return { iid: r1.iid }; }
     if (op === 'comprarRetomado') {
-      var lote = lerDoc('estoque/' + sid) || Garagem.lote(now), st2 = demoSaldo(uid); st2.apelido = jog.apelido || jog.nome; var r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now); gravar('transacoes/T' + now.toString(36), r2.transacao);
+      var lote = lerDoc('estoque/' + sid) || demoLote(now), st2 = demoSaldo(uid); st2.apelido = jog.apelido || jog.nome; var r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now); gravar('transacoes/T' + now.toString(36), r2.transacao);
       gravar('estoque/' + sid, r2.lote); gravar('garagens/' + uid, r2.garagem); gravar('carteira/' + uid, r2.carteira); return { iid: r2.iid };
     }
     if (op === 'anunciar') {
@@ -2940,7 +2950,7 @@ function telaRegras() {
     '<h4>🎖️ Conquistas</h4><ul>' + ORDEM_BADGES.map(function (b) { return '<li>' + BADGES[b].e + ' <b>' + BADGES[b].t + '</b>: ' + esc(BADGES[b].como || BADGES[b].d) + '</li>'; }).join('') + '</ul>' +
     '<p class="small mut">Conquistas de rodada aparecem quando a rodada fecha (domingo 23:59), exceto Gabaritou, Piloto de Ouro e Combo Perfeito, que saem na hora. Toque numa conquista para compartilhar a imagem.</p>' +
     '<h4>⚔️ Duelos</h4><ul><li>Desafie alguém numa <b>melhor de 3 corridas</b>, cada um no seu tempo (até 48 h depois do aceite), com as mesmas pistas para os dois.</li><li>Quem desafia escolhe se o duelo vale <b>créditos</b> (de ' + Garagem.DUELO.minCred + ' a ' + Garagem.DUELO.maxCred + ') ou <b>carro</b> (não vale carro da casa, anunciado ou com multa). Quem aceita aposta do mesmo tipo: carro contra carro, ou o <b>mesmo valor</b> em créditos. Quem foi desafiado pode propor outro valor: se quem desafiou aceitar, o duelo começa; se recusar, é cancelado. Quem vencer 2 corridas leva as duas apostas; empate decide na soma dos tempos.</li><li>Valem os atributos do carro e as multas do free flow. Corrida não feita no prazo vale 0.</li><li>Cada corrida de duelo rende <b>créditos como um treino, com 40% a mais</b>, e o tempo entra no ranking do treino.</li></ul>' +
-    '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo de ' + Garagem.LOTE + ' carros com desconto toda segunda; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
+    '<h4>🚗 Garagem e créditos</h4><ul><li>Você ganha <b>créditos</b> com os pontos de cada rodada (quiz + corrida) e ' + Garagem.PONTOS_VITORIA_PLACA + ' por vitória no Placa! contra pessoas e os treinos da corrida (40% dos pontos, sem teto). Os créditos acumulam para sempre e não mexem no ranking.</li><li>Na aba <b>Garagem</b>, compre carros <b>0 km</b>, <b>Retomados Itaú e Porto</b> (lote novo com desconto toda segunda: ' + Garagem.LOTE + ' carros na 1ª rodada da temporada e +2 a cada rodada, até 20, sempre priorizando modelos que não vieram na semana anterior; quem comprar primeiro leva) ou <b>usados</b> anunciados por colegas (com 5% de taxa de transferência para quem compra).</li><li><b>Multas:</b> cada evasão no free flow gera uma multa de ' + Garagem.MULTA.valor + ' créditos no carro usado. Pagando em até ' + Garagem.MULTA.prazoDias + ' dias, tem ' + Math.round(Garagem.MULTA.desconto * 100) + '% de desconto; depois, sobe ' + Math.round(Garagem.MULTA.juros * 100) + '%. Carro com multa pendente não pode ser anunciado no mercado.</li><li>Cada carro tem atributos (agilidade, durabilidade dos pneus e seguro inicial), mas eles <b>só valem no treino</b>. Na rodada, todos os carros andam igual.</li></ul>' +
     '<h4 id="regras-placa">🃏 Placa!</h4><ul><li>Jogo de cartas online, de 2 a 6 pessoas. Crie uma mesa na aba Jogar ou entre numa mesa aberta. Uma mão = uma partida.</li>' +
     '<li>Baralho de 108 cartas em 4 cores (laranja, azul, verde e vermelho): números de 0 a 9, <b>Pedágio</b> (o próximo perde a vez), <b>Retorno</b> (inverte o sentido), <b>Guincho +2</b>, <b>Seguro</b> (curinga: escolhe a cor) e <b>Seguro Total +4</b> (curinga: escolhe a cor e o próximo compra 4 e perde a vez).</li>' +
     '<li>Cada pessoa começa com 7 cartas. Na sua vez, jogue uma carta da mesma cor, número ou símbolo da carta da mesa. Sem jogada, compre 1: se servir, pode jogá-la na hora.</li>' +
@@ -5147,7 +5157,7 @@ function gar0km() {
 function garRetomados() {
   assinarEstoque();
   var e = GS.estoque, saldo = GS.saldo ? GS.saldo.saldo : 0;
-  var h = '<div class="card gporto"><b>Retomados Itaú e Porto</b><p class="small" style="margin:4px 0 0">Carros retomados de financiamento pelo <b>Itaú</b> e recuperados pela <b>Porto</b>, revisados e com desconto. Um lote novo de ' + Garagem.LOTE + ' carros chega toda segunda; quem comprar primeiro leva.</p></div>';
+  var h = '<div class="card gporto"><b>Retomados Itaú e Porto</b><p class="small" style="margin:4px 0 0">Carros retomados de financiamento pelo <b>Itaú</b> e recuperados pela <b>Porto</b>, revisados e com desconto. Toda segunda chega um lote novo, que cresce a cada rodada (' + Garagem.LOTE + ' na 1ª, +2 por rodada, até 20) e traz modelos diferentes da semana anterior; quem comprar primeiro leva.' + (e && e.itens ? ' <b>Lote desta semana: ' + e.itens.length + ' carros' + (e.rodada ? ' (rodada ' + e.rodada + ')' : '') + '.</b>' : '') + '</p></div>';
   if (!e) return h + carregando('Abrindo o pátio…');
   h += '<div class="glista">';
   e.itens.forEach(function (it) {

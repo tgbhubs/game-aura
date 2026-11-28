@@ -241,6 +241,17 @@ async function lerSaldo(tx, uid) {
   return { uid, ganhos, carteira, garagem: dados(gar) || { carros: {} }, saldo: G.saldo(ganhos, carteira) };
 }
 
+// lote de retomados da semana: cresce com o número da rodada da temporada ativa e evita repetir os modelos da semana anterior
+async function novoLote(tx, now) {
+  let n = 1;
+  try {
+    const cfg = dados(await tx.get(db.doc('config/geral'))) || {}, t = cfg.temporadaAtiva ? dados(await tx.get(db.doc('temporadas/' + cfg.temporadaAtiva))) : null;
+    if (t && t.inicio) n = Math.max(1, Math.floor((L.inicioSemana(now) - L.inicioSemana(t.inicio + 3600000)) / (7 * 86400000)) + 1);
+  } catch (e) { }
+  let evitar = [];
+  try { const ant = dados(await tx.get(db.doc('estoque/' + G.semana(now - 7 * 86400000)))); if (ant && ant.itens) evitar = ant.itens.map((i) => i.cat); } catch (e) { }
+  return G.lote(now, { n, evitar });
+}
 exports.garagem = onCall(async (req) => {
   const r = await garagemOp(req);
   const d = req.data || {};
@@ -276,7 +287,7 @@ function garagemOp(req) {
     }
     if (op === 'vitrine') {
       const lt = await tx.get(loteRef);
-      if (!lt.exists) { const novo = G.lote(now); tx.set(loteRef, novo); return { semana: novo.semana }; }
+      if (!lt.exists) { const novo = await novoLote(tx, now); tx.set(loteRef, novo); return { semana: novo.semana }; }
       return { semana: lt.id };
     }
     if (op === 'comprar0km') {
@@ -290,7 +301,7 @@ function garagemOp(req) {
     if (op === 'comprarRetomado') {
       const lt = await tx.get(loteRef);
       const st = await lerSaldo(tx, uid); st.apelido = eu.apelido || eu.nome || '';
-      const lote = dados(lt) || G.lote(now);
+      const lote = dados(lt) || await novoLote(tx, now);
       const r = G.comprarRetomado(st, lote, String(d.item || ''), now);
       tx.set(db.collection('transacoes').doc(), r.transacao);
       tx.set(loteRef, r.lote);

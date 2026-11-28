@@ -10,7 +10,7 @@ var FIREBASE_CONFIG = {
   appId: "1:545618885083:web:d3449c6a14ab3be72b0ffe"
 };
 var REGIAO = 'southamerica-east1';
-var BUILD = '2026-11-27f';
+var BUILD = '2026-11-27g';
 var DEMO = !FIREBASE_CONFIG.apiKey;
 var FB_OK = typeof firebase !== 'undefined';
 var DIA = 86400000;
@@ -332,14 +332,20 @@ function criarDemo() {
     }
     Logica.erro('Operação desconhecida.');
   }
+  function demoLote(now) {
+    var n = 1, cfg = lerDoc('config/geral') || {}, t = cfg.temporadaAtiva ? lerDoc('temporadas/' + cfg.temporadaAtiva) : null;
+    if (t && t.inicio) n = Math.max(1, Math.floor((Logica.inicioSemana(now) - Logica.inicioSemana(t.inicio + 3600000)) / (7 * 86400000)) + 1);
+    var ant = lerDoc('estoque/' + Garagem.semana(now - 7 * 86400000));
+    return Garagem.lote(now, { n: n, evitar: ant && ant.itens ? ant.itens.map(function (x) { return x.cat; }) : [] });
+  }
   function demoGaragem(uid, jog, d, now) {
     var sid = Garagem.semana(now), op = d.op;
     if (op === 'saldo') { var st = demoSaldo(uid); return { saldo: st.saldo, ganhos: st.ganhos, gasto: st.carteira.gasto || 0, recebido: st.carteira.recebido || 0, mov: st.carteira.mov || [] }; }
     if (op === 'pagarMulta') { var sm = demoSaldo(uid), rm = Garagem.pagarMulta(sm, String(d.id || ''), now); gravar('carteira/' + uid, rm.carteira); return { valor: rm.valor, saldo: sm.saldo - rm.valor }; }
-    if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, Garagem.lote(now)); return { semana: sid }; }
+    if (op === 'vitrine') { if (!lerDoc('estoque/' + sid)) gravar('estoque/' + sid, demoLote(now)); return { semana: sid }; }
     if (op === 'comprar0km') { var st1 = demoSaldo(uid); st1.apelido = jog.apelido || jog.nome; var r1 = Garagem.comprar0km(st1, String(d.cat || ''), now); gravar('garagens/' + uid, r1.garagem); gravar('carteira/' + uid, r1.carteira); gravar('transacoes/T' + now.toString(36), r1.transacao); return { iid: r1.iid }; }
     if (op === 'comprarRetomado') {
-      var lote = lerDoc('estoque/' + sid) || Garagem.lote(now), st2 = demoSaldo(uid); st2.apelido = jog.apelido || jog.nome; var r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now); gravar('transacoes/T' + now.toString(36), r2.transacao);
+      var lote = lerDoc('estoque/' + sid) || demoLote(now), st2 = demoSaldo(uid); st2.apelido = jog.apelido || jog.nome; var r2 = Garagem.comprarRetomado(st2, lote, String(d.item || ''), now); gravar('transacoes/T' + now.toString(36), r2.transacao);
       gravar('estoque/' + sid, r2.lote); gravar('garagens/' + uid, r2.garagem); gravar('carteira/' + uid, r2.carteira); return { iid: r2.iid };
     }
     if (op === 'anunciar') {

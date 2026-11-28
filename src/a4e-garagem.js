@@ -159,7 +159,7 @@ function gar0km() {
 function garRetomados() {
   assinarEstoque();
   var e = GS.estoque, saldo = GS.saldo ? GS.saldo.saldo : 0;
-  var h = '<div class="card gporto"><b>Retomados Itaú e Porto</b><p class="small" style="margin:4px 0 0">Carros retomados de financiamento pelo <b>Itaú</b> e recuperados pela <b>Porto</b>, revisados e com desconto. Um lote novo de ' + Garagem.LOTE + ' carros chega toda segunda; quem comprar primeiro leva.</p></div>';
+  var h = '<div class="card gporto"><b>Retomados Itaú e Porto</b><p class="small" style="margin:4px 0 0">Carros retomados de financiamento pelo <b>Itaú</b> e recuperados pela <b>Porto</b>, revisados e com desconto. Toda segunda chega um lote novo, que cresce a cada rodada (' + Garagem.LOTE + ' na 1ª, +2 por rodada, até 20) e traz modelos diferentes da semana anterior; quem comprar primeiro leva.' + (e && e.itens ? ' <b>Lote desta semana: ' + e.itens.length + ' carros' + (e.rodada ? ' (rodada ' + e.rodada + ')' : '') + '.</b>' : '') + '</p></div>';
   if (!e) return h + carregando('Abrindo o pátio…');
   h += '<div class="glista">';
   e.itens.forEach(function (it) {

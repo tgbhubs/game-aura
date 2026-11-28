@@ -106,15 +106,19 @@
   G.ORIGENS = { itau: 'Itaú', porto: 'Porto' };
   G.origemRetomado = function (it) { return (it && (it.origem === 'itau' || it.origem === 'porto')) ? it.origem : (L.hash(String(it && it.id)) % 2 ? 'itau' : 'porto'); };
   G.semana = function (now) { return 'S' + new Date(L.inicioSemana(now)).toISOString().slice(0, 10); };
-  G.lote = function (now) {
-    var sid = G.semana(now), r = L.rng(L.hash('retomados|' + sid)), itens = [];
-    var cats = L.shuffle(G.venda(now), r);
-    for (var i = 0; i < G.LOTE; i++) {
+  // o lote cresce a cada rodada da temporada (5 na 1ª, +2 por rodada, até 20) e prioriza modelos que não vieram na semana anterior
+  G.tamanhoLote = function (n) { return Math.min(20, G.LOTE + 2 * Math.max(0, (Math.floor(Number(n) || 1)) - 1)); };
+  G.lote = function (now, op) {
+    op = op || {};
+    var sid = G.semana(now), r = L.rng(L.hash('retomados|' + sid)), itens = [], evitar = op.evitar || [];
+    var todos = L.shuffle(G.venda(now), r), cats = todos.filter(function (c) { return evitar.indexOf(c) < 0; }).concat(todos.filter(function (c) { return evitar.indexOf(c) >= 0; }));
+    var tam = G.tamanhoLote(op.n);
+    for (var i = 0; i < tam; i++) {
       var cat = cats[i % cats.length], base = G.CATALOGO[cat].preco, desc = 0.35 + r() * 0.2;
       var idI = sid + '-' + (i + 1);
       itens.push({ id: idI, origem: G.origemRetomado({ id: idI }), cat: cat, preco: Math.round(base * (1 - desc) / 5) * 5, km: Math.round((18 + r() * 75)) * 1000, vendidoPara: '' });
     }
-    return { semana: sid, itens: itens, criadoEm: now };
+    return { semana: sid, itens: itens, criadoEm: now, rodada: op.n || 1 };
   };
 
   // lote já gravado antes de um modelo sair de linha: troca os itens ainda à venda por um modelo atual (determinístico, igual no app e no servidor)
